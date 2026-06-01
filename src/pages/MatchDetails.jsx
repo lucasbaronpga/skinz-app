@@ -183,13 +183,23 @@ export default function MatchDetails() {
     )
   }
 
+  function getHoleToPar(
+    hole
+  ) {
+
+    return (
+      (hole?.score || 0) -
+      (hole?.par || 0)
+    )
+  }
+
   function getNineTotal(
     holes
   ) {
 
     return holes.reduce(
       (total, hole) =>
-        total + hole.score,
+        total + (hole.score || 0),
       0
     )
   }
@@ -205,6 +215,80 @@ export default function MatchDetails() {
     )
   }
 
+  function getNineToPar(
+    holes
+  ) {
+
+    return (
+      getNineTotal(holes) -
+      getNinePar(holes)
+    )
+  }
+
+  function getPlayerTotalScore(
+    player
+  ) {
+
+    return (
+      player.holes?.reduce(
+        (total, hole) =>
+          total + (hole.score || 0),
+        0
+      ) || 0
+    )
+  }
+
+  function getPlayerTotalPar(
+    player
+  ) {
+
+    return (
+      player.holes?.reduce(
+        (total, hole) =>
+          total + (hole.par || 0),
+        0
+      ) || coursePar
+    )
+  }
+
+  function renderSummaryCard(
+    label,
+    score,
+    par,
+    toPar
+  ) {
+
+    return (
+
+      <div className="rounded-[24px] border border-slate-100 bg-white p-4 text-center shadow-sm">
+
+        <div className="text-xs font-black uppercase tracking-widest text-slate-400">
+          {label}
+        </div>
+
+        <div className="mt-2 text-3xl font-black text-slate-950">
+          {score}
+        </div>
+
+        <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
+          Par {par}
+        </div>
+
+        <div
+          className={`mt-2 text-lg font-black ${getToParColor(
+            toPar
+          )}`}
+        >
+          {formatToPar(
+            toPar
+          )}
+        </div>
+
+      </div>
+
+    )
+  }
+
   function renderHoleGrid(
     holes
   ) {
@@ -214,53 +298,71 @@ export default function MatchDetails() {
       <div className="grid grid-cols-3 gap-3">
 
         {holes.map(
-          (hole) => (
+          (hole) => {
 
-            <div
-              key={hole.hole}
+            const toPar =
+              getHoleToPar(
+                hole
+              )
 
-              className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm"
-            >
+            return (
 
-              <div className="flex items-center justify-between">
+              <div
+                key={hole.hole}
 
-                <div className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
-                  Loch
+                className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm"
+              >
+
+                <div className="flex items-center justify-between">
+
+                  <div className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+                    Loch
+                  </div>
+
+                  <div className="text-xl font-black text-slate-950">
+                    {hole.hole}
+                  </div>
+
                 </div>
 
-                <div className="text-xl font-black text-slate-950">
-                  {hole.hole}
+                <div className="mt-4 flex justify-center">
+
+                  <div
+                    className={`flex h-14 w-14 items-center justify-center rounded-full border-2 text-lg font-black shadow-sm ${getScoreStyle(
+                      hole.result?.label
+                    )}`}
+                  >
+                    {hole.score}
+                  </div>
+
                 </div>
 
-              </div>
+                <div className="mt-4 flex items-center justify-between gap-2">
 
-              <div className="mt-4 flex justify-center">
+                  <div className="text-xs font-black uppercase tracking-widest text-slate-400">
+                    Par {hole.par}
+                  </div>
 
-                <div
-                  className={`flex h-14 w-14 items-center justify-center rounded-full border-2 text-lg font-black shadow-sm ${getScoreStyle(
-                    hole.result?.label
-                  )}`}
-                >
-                  {hole.score}
+                  <div
+                    className={`text-xs font-black uppercase tracking-widest ${getToParColor(
+                      toPar
+                    )}`}
+                  >
+                    {formatToPar(
+                      toPar
+                    )}
+                  </div>
+
                 </div>
 
-              </div>
-
-              <div className="mt-4 flex items-center justify-between gap-2">
-
-                <div className="text-xs font-black uppercase tracking-widest text-slate-400">
-                  Par {hole.par}
-                </div>
-
-                <div className="truncate text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <div className="mt-2 truncate text-center text-[10px] font-black uppercase tracking-widest text-slate-400">
                   {hole.result?.label || "Par"}
                 </div>
 
               </div>
 
-            </div>
-
-          )
+            )
+          }
         )}
 
       </div>
@@ -357,13 +459,15 @@ export default function MatchDetails() {
                 Match {round.id}
               </div>
 
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
+              <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
 
                 <MapPin
                   size={13}
                 />
 
-                {courseName}
+                <span className="max-w-[230px] truncate">
+                  {courseName}
+                </span>
 
               </div>
 
@@ -556,15 +660,19 @@ export default function MatchDetails() {
                     18
                   ) || []
 
-                const frontNinePar =
-                  getNinePar(
-                    frontNine
+                const totalScore =
+                  getPlayerTotalScore(
+                    player
                   )
 
-                const backNinePar =
-                  getNinePar(
-                    backNine
+                const totalPar =
+                  getPlayerTotalPar(
+                    player
                   )
+
+                const totalToPar =
+                  totalScore -
+                  totalPar
 
                 return (
 
@@ -639,7 +747,7 @@ export default function MatchDetails() {
                             </div>
 
                             <div className="mt-2 text-sm font-black uppercase tracking-widest text-slate-400">
-                              {player.skins} Skins
+                              {player.skins} Skins · {player.winnings}€
                             </div>
 
                           </div>
@@ -777,6 +885,32 @@ export default function MatchDetails() {
 
                           </div>
 
+                          {/* Score Summary */}
+                          <div className="mt-5 grid grid-cols-3 gap-3">
+
+                            {renderSummaryCard(
+                              "Front 9",
+                              getNineTotal(frontNine),
+                              getNinePar(frontNine),
+                              getNineToPar(frontNine)
+                            )}
+
+                            {renderSummaryCard(
+                              "Back 9",
+                              getNineTotal(backNine),
+                              getNinePar(backNine),
+                              getNineToPar(backNine)
+                            )}
+
+                            {renderSummaryCard(
+                              "Total",
+                              totalScore,
+                              totalPar,
+                              totalToPar
+                            )}
+
+                          </div>
+
                           {/* Front 9 */}
                           <div className="mt-6">
 
@@ -789,13 +923,23 @@ export default function MatchDetails() {
                                 </div>
 
                                 <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                                  Par {frontNinePar}
+                                  Score {getNineTotal(frontNine)} · Par {getNinePar(frontNine)}
                                 </div>
 
                               </div>
 
-                              <div className="text-sm font-black uppercase tracking-widest text-slate-400">
-                                Total {getNineTotal(frontNine)}
+                              <div
+                                className={`text-sm font-black uppercase tracking-widest ${getToParColor(
+                                  getNineToPar(
+                                    frontNine
+                                  )
+                                )}`}
+                              >
+                                {formatToPar(
+                                  getNineToPar(
+                                    frontNine
+                                  )
+                                )}
                               </div>
 
                             </div>
@@ -818,13 +962,23 @@ export default function MatchDetails() {
                                 </div>
 
                                 <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                                  Par {backNinePar}
+                                  Score {getNineTotal(backNine)} · Par {getNinePar(backNine)}
                                 </div>
 
                               </div>
 
-                              <div className="text-sm font-black uppercase tracking-widest text-slate-400">
-                                Total {getNineTotal(backNine)}
+                              <div
+                                className={`text-sm font-black uppercase tracking-widest ${getToParColor(
+                                  getNineToPar(
+                                    backNine
+                                  )
+                                )}`}
+                              >
+                                {formatToPar(
+                                  getNineToPar(
+                                    backNine
+                                  )
+                                )}
                               </div>
 
                             </div>
