@@ -293,7 +293,7 @@ export default function Round() {
 
       const confirmed =
         window.confirm(
-          "Es läuft bereits ein Match. Neues Match starten und aktuelles Match überschreiben?"
+          "Du bist noch auf der Runde. Neue Runde starten und aktuelle Runde überschreiben?"
         )
 
       if (!confirmed) {
@@ -333,7 +333,7 @@ export default function Round() {
         >
 
           <div className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">
-            Match Setup
+            Tee Time Setup
           </div>
 
           <h1 className="mt-3 text-5xl font-black tracking-tight">
@@ -341,9 +341,9 @@ export default function Round() {
           </h1>
 
           <p className="mt-4 max-w-sm text-sm font-bold leading-relaxed text-slate-400">
-            Wähle Golfplatz, Flight und
-            Einsatz. Danach geht es
-            direkt ins Live Scoring.
+            Wähle Course, Flight und
+            Skin pro Loch. Danach geht
+            es direkt auf die Runde.
           </p>
 
         </motion.div>
@@ -370,16 +370,16 @@ export default function Round() {
           >
 
             <div className="text-xs font-black uppercase tracking-[0.25em] text-amber-500">
-              Aktives Match
+              Auf der Runde
             </div>
 
             <div className="mt-2 text-2xl font-black tracking-tight text-slate-950">
-              Match läuft bereits
+              Runde läuft bereits
             </div>
 
             <div className="mt-2 text-sm font-bold leading-relaxed text-slate-400">
-              Wenn du ein neues Match startest,
-              wird das aktuelle Match überschrieben.
+              Wenn du eine neue Runde startest,
+              wird die aktuelle Runde überschrieben.
             </div>
 
           </motion.div>
@@ -406,7 +406,7 @@ export default function Round() {
         >
 
           <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
-            Nächste Match ID
+            Nächste Scorecard
           </div>
 
           <div className="mt-3 text-4xl font-black tracking-tight text-slate-950">
@@ -414,12 +414,12 @@ export default function Round() {
           </div>
 
           <div className="mt-2 text-sm font-bold text-slate-400">
-            Diese ID wird beim Start der Runde verwendet.
+            Diese ID wird für deine neue Runde verwendet.
           </div>
 
         </motion.div>
 
-        {/* Golfplatz / Einsatz Hero */}
+        {/* Course / Skin Hero */}
         <motion.div
           initial={{
             opacity: 0,
@@ -440,7 +440,7 @@ export default function Round() {
 
           <div className="p-8">
 
-            {/* Golfplatz */}
+            {/* Course */}
             <div className="flex items-start justify-between gap-4">
 
               <div className="min-w-0">
@@ -452,7 +452,7 @@ export default function Round() {
                   />
 
                   <div className="text-xs font-black uppercase tracking-[0.3em]">
-                    Golfplatz
+                    Course
                   </div>
 
                 </div>
@@ -478,12 +478,12 @@ export default function Round() {
               </div>
 
               <div className="shrink-0 rounded-full bg-emerald-500 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
-                Live
+                Ready
               </div>
 
             </div>
 
-            {/* Einsatz */}
+            {/* Stake */}
             <div className="mt-10 flex items-end justify-between">
 
               <div>
@@ -495,7 +495,7 @@ export default function Round() {
                   />
 
                   <div className="text-xs font-black uppercase tracking-widest">
-                    Einsatz pro Loch
+                    Skin pro Loch
                   </div>
 
                 </div>
@@ -561,7 +561,7 @@ export default function Round() {
 
         </motion.div>
 
-        {/* Golfplatz Auswahl */}
+        {/* Course Selection */}
         <motion.div
           initial={{
             opacity: 0,
@@ -585,11 +585,11 @@ export default function Round() {
             <div>
 
               <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
-                Golfplatz
+                Course
               </div>
 
               <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-                Golfplatz wählen
+                Course wählen
               </div>
 
             </div>
@@ -684,7 +684,7 @@ export default function Round() {
                     {isActive && (
 
                       <div className="mt-4 inline-flex rounded-full bg-emerald-500 px-3 py-1 text-xs font-black uppercase tracking-widest text-white">
-                        Ausgewählt
+                        Selected
                       </div>
 
                     )}
@@ -699,7 +699,7 @@ export default function Round() {
 
         </motion.div>
 
-        {/* Players */}
+        {/* Flight */}
         <motion.div
           initial={{
             opacity: 0,
@@ -736,7 +736,7 @@ export default function Round() {
               </div>
 
               <h2 className="mt-3 text-4xl font-black tracking-tight text-slate-950">
-                Spieler
+                Mitspieler
               </h2>
 
             </div>
@@ -771,7 +771,7 @@ export default function Round() {
                 }
               }}
 
-              placeholder="Spielername"
+              placeholder="Mitspieler"
 
               className="h-16 min-w-0 flex-1 rounded-[26px] border border-slate-100 bg-white px-5 text-lg font-black text-slate-950 shadow-sm outline-none placeholder:text-slate-300 focus:border-emerald-400"
             />
@@ -801,7 +801,7 @@ export default function Round() {
             {uniquePlayers.length === 0 && (
 
               <div className="rounded-[28px] border border-slate-100 bg-white p-5 text-center text-sm font-bold text-slate-400 shadow-sm">
-                Noch keine Spieler hinzugefügt.
+                Noch kein Flight zusammengestellt.
               </div>
 
             )}
@@ -846,7 +846,7 @@ export default function Round() {
 
                           {isCurrentUser
                             ? "Du"
-                            : "Aktiv im Match"}
+                            : "Im Flight"}
 
                         </div>
 
@@ -890,7 +890,7 @@ export default function Round() {
         {!canStart && (
 
           <div className="mt-5 rounded-[28px] border border-red-100 bg-white p-5 text-center text-sm font-bold text-red-500 shadow-sm">
-            Mindestens zwei unterschiedliche Spieler werden benötigt.
+            Mindestens zwei Mitspieler werden für eine Runde benötigt.
           </div>
 
         )}
@@ -914,8 +914,8 @@ export default function Round() {
 
           <span>
             {hasActiveMatch
-              ? "Neues Match starten"
-              : "Match starten"}
+              ? "Neue Runde starten"
+              : "Runde starten"}
           </span>
 
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
