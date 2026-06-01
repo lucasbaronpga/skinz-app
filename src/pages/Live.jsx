@@ -28,7 +28,6 @@ export default function Live() {
     useNavigate()
 
   const {
-
     hole,
 
     currentPot,
@@ -36,9 +35,7 @@ export default function Live() {
     currentCourse,
 
     players,
-
     history,
-
     celebration,
 
     matchFinished,
@@ -52,7 +49,6 @@ export default function Live() {
     finishHole,
 
     getGolfResult,
-
   } = useGame()
 
   const [
@@ -64,7 +60,9 @@ export default function Live() {
     [...players].sort(
       (a, b) =>
         b.winnings -
-        a.winnings
+          a.winnings ||
+        a.totalToPar -
+          b.totalToPar
     )
 
   const champion =
@@ -82,6 +80,27 @@ export default function Live() {
       currentCourse?.name ||
       "Erster Golfclub Westpfalz"
     )
+  }
+
+  function getCourseLocation() {
+
+    return (
+      currentCourse?.location ||
+      "Westpfalz"
+    )
+  }
+
+  function getCoursePar() {
+
+    return (
+      currentCourse?.par ||
+      72
+    )
+  }
+
+  function getCourseMeta() {
+
+    return `${getCourseLocation()} · Par ${getCoursePar()}`
   }
 
   function formatToPar(
@@ -191,6 +210,11 @@ export default function Live() {
     resetGame()
 
     navigate("/round")
+  }
+
+  function handleGoHome() {
+
+    navigate("/")
   }
 
   return (
@@ -905,15 +929,27 @@ export default function Live() {
               </motion.div>
 
               <div className="mt-6 text-xs font-black uppercase tracking-[0.3em] text-emerald-600">
-                Match Finished
+                Match beendet
               </div>
 
               <h2 className="mt-4 text-5xl font-black tracking-tight text-slate-950">
                 {champion?.name}
               </h2>
 
-              <div className="mt-4 text-4xl font-black text-emerald-600">
-                +{champion?.winnings}€
+              <div className="mt-3 inline-flex max-w-full rounded-full border border-slate-100 bg-white px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-500 shadow-sm">
+
+                <span className="truncate">
+                  {getCourseName()}
+                </span>
+
+              </div>
+
+              <div className="mt-2 text-sm font-bold text-slate-400">
+                {getCourseMeta()}
+              </div>
+
+              <div className="mt-5 text-5xl font-black text-emerald-600">
+                +{champion?.winnings || 0}€
               </div>
 
               <div className="mt-8 grid grid-cols-3 gap-3">
@@ -925,7 +961,7 @@ export default function Live() {
                   </div>
 
                   <div className="mt-2 text-4xl font-black text-slate-950">
-                    {champion?.skins}
+                    {champion?.skins || 0}
                   </div>
 
                 </div>
@@ -937,7 +973,7 @@ export default function Live() {
                   </div>
 
                   <div className="mt-2 text-4xl font-black text-emerald-600">
-                    {champion?.winnings}€
+                    {champion?.winnings || 0}€
                   </div>
 
                 </div>
@@ -945,36 +981,182 @@ export default function Live() {
                 <div className="rounded-[26px] border border-slate-100 bg-white p-5 shadow-sm">
 
                   <div className="text-sm font-bold text-slate-400">
-                    Leader
+                    To Par
                   </div>
 
-                  <div className="mt-2 flex justify-center text-yellow-500">
-
-                    <Crown
-                      size={34}
-                    />
-
+                  <div
+                    className={`mt-2 text-4xl font-black ${getToParColor(
+                      champion?.totalToPar
+                    )}`}
+                  >
+                    {formatToPar(
+                      champion?.totalToPar
+                    )}
                   </div>
 
                 </div>
 
               </div>
 
-              <motion.button
-                whileTap={{
-                  scale: 0.98,
-                }}
+              {/* Final Ranking */}
+              <div className="mt-8 rounded-[32px] bg-[#f5f5f7] p-4 text-left">
 
-                onClick={
-                  handleResetGame
-                }
+                <div className="flex items-center justify-between px-1">
 
-                className="mt-8 w-full rounded-[30px] bg-slate-950 py-5 text-lg font-black text-white shadow-lg"
-              >
+                  <div>
 
-                Neue Runde starten
+                    <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
+                      Final Ranking
+                    </div>
 
-              </motion.button>
+                    <div className="mt-1 text-2xl font-black tracking-tight text-slate-950">
+                      Rangliste
+                    </div>
+
+                  </div>
+
+                  <div className="text-3xl">
+                    🏆
+                  </div>
+
+                </div>
+
+                <div className="mt-4 space-y-3">
+
+                  {sortedPlayers.map(
+                    (
+                      player,
+                      index
+                    ) => {
+
+                      const isChampion =
+                        player.name ===
+                        champion?.name
+
+                      return (
+
+                        <div
+                          key={player.name}
+
+                          className={`flex items-center justify-between rounded-[24px] border px-4 py-4 shadow-sm ${
+                            isChampion
+                              ? "border-emerald-100 bg-emerald-50"
+                              : "border-slate-100 bg-white"
+                          }`}
+                        >
+
+                          <div className="flex min-w-0 items-center gap-3">
+
+                            <div
+                              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-black ${
+                                index === 0
+                                  ? "bg-yellow-400 text-black"
+                                  : index === 1
+                                  ? "border border-slate-200 bg-white text-slate-900"
+                                  : index === 2
+                                  ? "bg-orange-400 text-white"
+                                  : "border border-slate-200 bg-white text-slate-900"
+                              }`}
+                            >
+                              {index + 1}
+                            </div>
+
+                            <div className="min-w-0">
+
+                              <div className="flex items-center gap-2">
+
+                                <div className="truncate text-lg font-black text-slate-950">
+                                  {player.name}
+                                </div>
+
+                                {isChampion && (
+
+                                  <div className="flex shrink-0 items-center gap-1 rounded-full bg-yellow-400 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-black">
+
+                                    <Crown
+                                      size={10}
+                                    />
+
+                                    Winner
+
+                                  </div>
+
+                                )}
+
+                              </div>
+
+                              <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
+                                {player.skins || 0} Skins
+                              </div>
+
+                            </div>
+
+                          </div>
+
+                          <div className="shrink-0 text-right">
+
+                            <div className="text-2xl font-black text-emerald-600">
+                              {player.winnings || 0}€
+                            </div>
+
+                            <div
+                              className={`mt-1 text-xs font-black uppercase tracking-widest ${getToParColor(
+                                player.totalToPar
+                              )}`}
+                            >
+                              {formatToPar(
+                                player.totalToPar
+                              )}
+                            </div>
+
+                          </div>
+
+                        </div>
+
+                      )
+                    }
+                  )}
+
+                </div>
+
+              </div>
+
+              {/* Actions */}
+              <div className="mt-8 space-y-3">
+
+                <motion.button
+                  whileTap={{
+                    scale: 0.98,
+                  }}
+
+                  onClick={
+                    handleResetGame
+                  }
+
+                  className="w-full rounded-[30px] bg-slate-950 py-5 text-lg font-black text-white shadow-lg"
+                >
+
+                  Neue Runde starten
+
+                </motion.button>
+
+                <motion.button
+                  whileTap={{
+                    scale: 0.98,
+                  }}
+
+                  onClick={
+                    handleGoHome
+                  }
+
+                  className="w-full rounded-[30px] border border-slate-100 bg-white py-5 text-lg font-black text-slate-500 shadow-sm"
+                >
+
+                  Zurück zur Home
+
+                </motion.button>
+
+              </div>
 
             </motion.div>
 
