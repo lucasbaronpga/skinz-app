@@ -88,6 +88,48 @@ export default function Round() {
     )
   }
 
+  function getFrontNinePar(
+    course
+  ) {
+
+    return (
+      course?.pars
+        ?.slice(
+          0,
+          9
+        )
+        .reduce(
+          (
+            total,
+            par
+          ) =>
+            total + par,
+          0
+        ) || 0
+    )
+  }
+
+  function getBackNinePar(
+    course
+  ) {
+
+    return (
+      course?.pars
+        ?.slice(
+          9,
+          18
+        )
+        .reduce(
+          (
+            total,
+            par
+          ) =>
+            total + par,
+          0
+        ) || 0
+    )
+  }
+
   function getCourseMeta(
     course
   ) {
@@ -95,6 +137,17 @@ export default function Round() {
     return `${getCourseLocation(
       course
     )} · Par ${getCoursePar(
+      course
+    )}`
+  }
+
+  function getCourseNineMeta(
+    course
+  ) {
+
+    return `Front 9 Par ${getFrontNinePar(
+      course
+    )} · Back 9 Par ${getBackNinePar(
       course
     )}`
   }
@@ -404,14 +457,20 @@ export default function Round() {
 
                 </div>
 
-                <div className="mt-4 truncate text-5xl font-black tracking-tight">
+                <div className="mt-4 max-w-[250px] text-4xl font-black leading-none tracking-tight sm:max-w-none">
                   {getCourseName(
                     currentCourse
                   )}
                 </div>
 
-                <div className="mt-2 text-sm font-bold text-slate-400">
+                <div className="mt-3 text-sm font-bold text-slate-400">
                   {getCourseMeta(
+                    currentCourse
+                  )}
+                </div>
+
+                <div className="mt-3 inline-flex rounded-full bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-300">
+                  {getCourseNineMeta(
                     currentCourse
                   )}
                 </div>
@@ -565,34 +624,50 @@ export default function Round() {
                       )
                     }
 
-                    className={`w-full rounded-[28px] border px-5 py-4 text-left shadow-sm transition-all ${
+                    className={`w-full rounded-[30px] border px-5 py-5 text-left shadow-sm transition-all ${
                       isActive
                         ? "border-emerald-200 bg-emerald-50"
                         : "border-slate-100 bg-white"
                     }`}
                   >
 
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-start justify-between gap-4">
 
                       <div className="min-w-0">
 
-                        <div className="truncate text-2xl font-black tracking-tight text-slate-950">
+                        <div className="text-2xl font-black leading-tight tracking-tight text-slate-950">
                           {getCourseName(
                             course
                           )}
                         </div>
 
-                        <div className="mt-1 text-sm font-bold text-slate-400">
-                          {getCourseLocation(
+                        <div className="mt-2 text-sm font-bold text-slate-400">
+                          {getCourseMeta(
                             course
                           )}
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap gap-2">
+
+                          <div className="rounded-full border border-slate-100 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 shadow-sm">
+                            Front 9 Par {getFrontNinePar(
+                              course
+                            )}
+                          </div>
+
+                          <div className="rounded-full border border-slate-100 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 shadow-sm">
+                            Back 9 Par {getBackNinePar(
+                              course
+                            )}
+                          </div>
+
                         </div>
 
                       </div>
 
                       <div className="shrink-0 text-right">
 
-                        <div className="text-3xl font-black text-slate-950">
+                        <div className="text-4xl font-black text-slate-950">
                           {getCoursePar(
                             course
                           )}
