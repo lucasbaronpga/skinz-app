@@ -160,17 +160,17 @@ export default function Matches() {
         >
 
           <div className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">
-            Match Archiv
+            Rundenarchiv
           </div>
 
           <h1 className="mt-3 text-5xl font-black tracking-tight">
-            Matches
+            Rounds
           </h1>
 
           <p className="mt-4 max-w-sm text-sm font-bold leading-relaxed text-slate-400">
-            Vergangene Runden,
-            Golfplätze, Gewinner und
-            Scorekarten im Überblick.
+            Deine gespielten Runden,
+            Golfplätze, Round Winner
+            und Scorecards im Überblick.
           </p>
 
         </motion.div>
@@ -197,13 +197,13 @@ export default function Matches() {
             </div>
 
             <div className="mt-6 text-3xl font-black tracking-tight text-slate-950">
-              Noch keine Matches
+              Noch keine Runden
             </div>
 
             <div className="mt-3 text-sm font-bold leading-relaxed text-slate-400">
               Spiele eine komplette
-              Runde um dein Match
-              Archiv aufzubauen.
+              Runde, um deine erste
+              Scorecard zu speichern.
             </div>
 
           </motion.div>
@@ -282,7 +282,7 @@ export default function Matches() {
                       <div className="min-w-0">
 
                         <div className="text-xs font-black uppercase tracking-[0.3em] text-slate-500">
-                          Match Gewinner
+                          Round Winner
                         </div>
 
                         <div className="mt-4 flex items-center gap-3">
@@ -312,7 +312,7 @@ export default function Matches() {
                         {round.id}
                       </div>
 
-                      <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
+                      <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
 
                         <MapPin
                           size={13}
@@ -329,11 +329,11 @@ export default function Matches() {
                     {/* Bottom */}
                     <div className="mt-8 flex items-end justify-between">
 
-                      {/* Earnings */}
+                      {/* Winnings */}
                       <div>
 
                         <div className="text-xs font-black uppercase tracking-widest text-slate-500">
-                          Earnings
+                          Winnings
                         </div>
 
                         <div className="mt-2 text-6xl font-black tracking-tight text-emerald-400">
@@ -352,7 +352,7 @@ export default function Matches() {
                       <div className="text-right">
 
                         <div className="text-xs font-black uppercase tracking-widest text-slate-500">
-                          Score
+                          To Par
                         </div>
 
                         <div
@@ -391,16 +391,16 @@ export default function Matches() {
                         </div>
 
                         <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                          Abgeschlossen
+                          Runde gespielt
                         </div>
 
                       </div>
 
-                      {/* Players */}
+                      {/* Flight */}
                       <div className="rounded-[24px] border border-slate-100 bg-white p-4 text-right shadow-sm">
 
                         <div className="text-xs font-black uppercase tracking-widest text-slate-400">
-                          Spieler
+                          Flight
                         </div>
 
                         <div className="mt-2 flex items-center justify-end gap-2 text-xl font-black tracking-tight text-slate-950">
@@ -417,7 +417,7 @@ export default function Matches() {
                         </div>
 
                         <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                          Flight
+                          Mitspieler
                         </div>
 
                       </div>
@@ -592,12 +592,12 @@ export default function Matches() {
                     <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
 
                       <div className="text-sm font-black uppercase tracking-widest text-slate-400">
-                        Scorekarte
+                        Scorecard
                       </div>
 
                       <div className="flex items-center gap-2 text-sm font-black text-slate-950">
 
-                        Öffnen
+                        View
 
                         <ChevronRight
                           size={18}
