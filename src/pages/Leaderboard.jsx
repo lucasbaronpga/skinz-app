@@ -49,6 +49,16 @@ export default function Leaderboard() {
   const seasonLeader =
     sortedPlayers[0]
 
+  function handleBack() {
+
+    if (window.history.length > 1) {
+      navigate(-1)
+      return
+    }
+
+    navigate("/")
+  }
+
   function getRankStyle(
     index
   ) {
@@ -203,9 +213,7 @@ export default function Leaderboard() {
               scale: 0.92,
             }}
 
-            onClick={() =>
-              navigate("/")
-            }
+            onClick={handleBack}
 
             className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm"
           >
