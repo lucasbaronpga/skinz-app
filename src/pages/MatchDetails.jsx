@@ -59,7 +59,7 @@ export default function MatchDetails() {
         <div className="w-full max-w-sm rounded-[40px] bg-white p-10 text-center shadow-sm">
 
           <div className="text-3xl font-black tracking-tight text-slate-950">
-            Match nicht gefunden
+            Scorecard nicht gefunden
           </div>
 
           <button
@@ -398,7 +398,7 @@ export default function MatchDetails() {
           <div className="text-right">
 
             <div className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">
-              Match Details
+              Scorecard
             </div>
 
             <div className="mt-2 text-2xl font-black tracking-tight text-slate-950">
@@ -431,7 +431,7 @@ export default function MatchDetails() {
               <div className="min-w-0">
 
                 <div className="text-xs font-black uppercase tracking-[0.3em] text-slate-500">
-                  Match Winner
+                  Round Winner
                 </div>
 
                 <div className="mt-4 flex items-center gap-3">
@@ -478,7 +478,7 @@ export default function MatchDetails() {
               <div>
 
                 <div className="text-xs font-black uppercase tracking-widest text-slate-500">
-                  Earnings
+                  Winnings
                 </div>
 
                 <div className="mt-2 text-6xl font-black text-emerald-400">
@@ -582,7 +582,7 @@ export default function MatchDetails() {
             </div>
 
             <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-              Spieler
+              Flight
             </div>
 
           </div>
@@ -594,7 +594,7 @@ export default function MatchDetails() {
             </div>
 
             <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-              Löcher
+              Holes
             </div>
 
           </div>
@@ -621,11 +621,11 @@ export default function MatchDetails() {
             <div>
 
               <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
-                Final Ranking
+                Final Scores
               </div>
 
               <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-                Rangliste
+                Leaderboard
               </div>
 
             </div>
@@ -878,7 +878,7 @@ export default function MatchDetails() {
                               </div>
 
                               <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                                Earnings
+                                Winnings
                               </div>
 
                             </div>
