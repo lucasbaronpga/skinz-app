@@ -10,6 +10,7 @@ import {
   LogOut,
   Crown,
   ArrowRight,
+  MapPin,
 } from "lucide-react"
 
 import {
@@ -96,6 +97,47 @@ export default function Profile() {
     return "text-slate-950"
   }
 
+  function getRoundCourseName(
+    round
+  ) {
+
+    return (
+      round?.course?.name ||
+      "Erster Golfclub Westpfalz"
+    )
+  }
+
+  function getRoundCourseLocation(
+    round
+  ) {
+
+    return (
+      round?.course?.location ||
+      "Westpfalz"
+    )
+  }
+
+  function getRoundCoursePar(
+    round
+  ) {
+
+    return (
+      round?.course?.par ||
+      72
+    )
+  }
+
+  function getRoundCourseMeta(
+    round
+  ) {
+
+    return `${getRoundCourseLocation(
+      round
+    )} · Par ${getRoundCoursePar(
+      round
+    )}`
+  }
+
   return (
 
     <div className="min-h-screen bg-[#f5f5f7] pb-36 pt-8 text-slate-950">
@@ -104,7 +146,6 @@ export default function Profile() {
 
         {/* Header */}
         <motion.div
-
           initial={{
             opacity: 0,
             y: 20,
@@ -121,14 +162,13 @@ export default function Profile() {
           </div>
 
           <h1 className="mt-3 text-5xl font-black tracking-tight">
-            Profile
+            Profil
           </h1>
 
         </motion.div>
 
         {/* Hero */}
         <motion.div
-
           initial={{
             opacity: 0,
             y: 20,
@@ -182,7 +222,7 @@ export default function Profile() {
               <div className="rounded-[26px] bg-white/10 p-4 backdrop-blur-xl">
 
                 <div className="text-sm font-bold text-slate-400">
-                  Wins
+                  Siege
                 </div>
 
                 <div className="mt-2 text-3xl font-black text-white">
@@ -197,7 +237,7 @@ export default function Profile() {
               <div className="rounded-[26px] bg-white/10 p-4 backdrop-blur-xl">
 
                 <div className="text-sm font-bold text-slate-400">
-                  Rounds
+                  Runden
                 </div>
 
                 <div className="mt-2 text-3xl font-black text-white">
@@ -231,7 +271,6 @@ export default function Profile() {
 
         {/* Ranking Link */}
         <motion.button
-
           whileTap={{
             scale: 0.985,
           }}
@@ -281,7 +320,6 @@ export default function Profile() {
 
         {/* Performance */}
         <motion.div
-
           initial={{
             opacity: 0,
             y: 20,
@@ -409,7 +447,6 @@ export default function Profile() {
 
         {/* Recent Matches */}
         <motion.div
-
           initial={{
             opacity: 0,
             y: 20,
@@ -467,79 +504,103 @@ export default function Profile() {
                       user?.name
                   )
 
+                const courseName =
+                  getRoundCourseName(
+                    round
+                  )
+
+                const courseMeta =
+                  getRoundCourseMeta(
+                    round
+                  )
+
                 return (
 
                   <div
                     key={round.id}
 
-                    className="flex items-center justify-between rounded-[24px] border border-slate-100 bg-white px-5 py-4 shadow-sm"
+                    className="rounded-[26px] border border-slate-100 bg-white p-5 shadow-sm"
                   >
 
-                    {/* Left */}
-                    <div className="min-w-0">
+                    <div className="flex items-start justify-between gap-4">
 
-                      <div className="flex items-center gap-2">
+                      {/* Left */}
+                      <div className="min-w-0">
 
-                        <div className="text-lg font-black text-slate-950">
+                        <div className="flex items-center gap-2">
 
-                          {round.date}
-
-                        </div>
-
-                        <div className="rounded-full border border-slate-100 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 shadow-sm">
-
-                          {round.id}
-
-                        </div>
-
-                      </div>
-
-                      <div className="mt-2 flex items-center gap-2">
-
-                        <div className="text-xs font-black uppercase tracking-widest text-slate-400">
-
-                          {roundPlayer?.skins || 0} Skins
-
-                        </div>
-
-                        {round.winner === user?.name && (
-
-                          <div className="flex items-center gap-1 rounded-full bg-yellow-400 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-black">
-
-                            <Crown
-                              size={10}
-                            />
-
-                            Win
-
+                          <div className="text-lg font-black text-slate-950">
+                            {round.date}
                           </div>
 
-                        )}
+                          <div className="rounded-full border border-slate-100 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 shadow-sm">
+                            {round.id}
+                          </div>
+
+                        </div>
+
+                        <div className="mt-3 flex items-center gap-2 text-slate-400">
+
+                          <MapPin
+                            size={14}
+                          />
+
+                          <div className="truncate text-sm font-black text-slate-500">
+                            {courseName}
+                          </div>
+
+                        </div>
+
+                        <div className="mt-1 text-xs font-bold text-slate-400">
+                          {courseMeta}
+                        </div>
+
+                        <div className="mt-3 flex items-center gap-2">
+
+                          <div className="text-xs font-black uppercase tracking-widest text-slate-400">
+                            {roundPlayer?.skins || 0} Skins
+                          </div>
+
+                          {round.winner === user?.name && (
+
+                            <div className="flex items-center gap-1 rounded-full bg-yellow-400 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-black">
+
+                              <Crown
+                                size={10}
+                              />
+
+                              Win
+
+                            </div>
+
+                          )}
+
+                        </div>
 
                       </div>
 
-                    </div>
+                      {/* Right */}
+                      <div className="shrink-0 text-right">
 
-                    {/* Right */}
-                    <div className="shrink-0 text-right">
+                        <div className="text-3xl font-black text-emerald-600">
 
-                      <div className="text-3xl font-black text-emerald-600">
+                          {roundPlayer?.winnings > 0
+                            ? `+${roundPlayer?.winnings}€`
+                            : `${roundPlayer?.winnings || 0}€`}
 
-                        {roundPlayer?.winnings > 0
-                          ? `+${roundPlayer?.winnings}€`
-                          : `${roundPlayer?.winnings || 0}€`}
+                        </div>
 
-                      </div>
+                        <div
+                          className={`mt-1 text-sm font-black uppercase tracking-widest ${getToParColor(
+                            roundPlayer?.totalToPar
+                          )}`}
+                        >
 
-                      <div
-                        className={`mt-1 text-sm font-black uppercase tracking-widest ${getToParColor(
-                          roundPlayer?.totalToPar
-                        )}`}
-                      >
+                          {formatToPar(
+                            roundPlayer?.totalToPar
+                          )}
 
-                        {formatToPar(
-                          roundPlayer?.totalToPar
-                        )}
+                        </div>
 
                       </div>
 
@@ -557,7 +618,6 @@ export default function Profile() {
 
         {/* Logout */}
         <motion.button
-
           whileTap={{
             scale: 0.985,
           }}

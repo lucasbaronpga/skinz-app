@@ -17,6 +17,7 @@ import {
   Crown,
   Flame,
   Trophy,
+  MapPin,
 } from "lucide-react"
 
 import {
@@ -105,7 +106,53 @@ export default function Leaderboard() {
             playerName
         )
       )
+      .sort(
+        (a, b) =>
+          (b.createdAt || 0) -
+          (a.createdAt || 0)
+      )
       .slice(0, 3)
+  }
+
+  function getRoundCourseName(
+    round
+  ) {
+
+    return (
+      round?.course?.name ||
+      "Erster Golfclub Westpfalz"
+    )
+  }
+
+  function getRoundCourseLocation(
+    round
+  ) {
+
+    return (
+      round?.course?.location ||
+      "Westpfalz"
+    )
+  }
+
+  function getRoundCoursePar(
+    round
+  ) {
+
+    return (
+      round?.course?.par ||
+      72
+    )
+  }
+
+  function getRoundCourseMeta(
+    round
+  ) {
+
+    return `${getRoundCourseLocation(
+      round
+    )} · Par ${getRoundCoursePar(
+      round
+    )}`
   }
 
   function formatToPar(
@@ -312,7 +359,7 @@ export default function Leaderboard() {
                 <div className="text-right">
 
                   <div className="text-xs font-black uppercase tracking-widest text-slate-500">
-                    Wins
+                    Siege
                   </div>
 
                   <div className="mt-2 text-5xl font-black text-white">
@@ -343,7 +390,7 @@ export default function Leaderboard() {
                 </div>
 
                 <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-                  Players
+                  Spieler
                 </h2>
 
               </div>
@@ -467,7 +514,7 @@ export default function Leaderboard() {
 
                               <div className="mt-2 text-sm font-bold text-slate-400">
 
-                                {player.wins} Wins •{" "}
+                                {player.wins} Siege •{" "}
                                 {player.birdies} Birdies
 
                               </div>
@@ -533,7 +580,7 @@ export default function Leaderboard() {
                             </div>
 
                             <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                              Rounds
+                              Runden
                             </div>
 
                           </div>
@@ -646,52 +693,82 @@ export default function Leaderboard() {
                                           player.name
                                       )
 
+                                    const courseName =
+                                      getRoundCourseName(
+                                        round
+                                      )
+
+                                    const courseMeta =
+                                      getRoundCourseMeta(
+                                        round
+                                      )
+
                                     return (
 
                                       <div
                                         key={round.id}
 
-                                        className="flex items-center justify-between rounded-[24px] border border-slate-100 bg-white px-5 py-4 shadow-sm"
+                                        className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm"
                                       >
 
-                                        {/* Left */}
-                                        <div className="min-w-0">
+                                        <div className="flex items-start justify-between gap-4">
 
-                                          <div className="flex items-center gap-2">
+                                          {/* Left */}
+                                          <div className="min-w-0">
 
-                                            <div className="text-lg font-black text-slate-950">
-                                              {round.date}
+                                            <div className="flex items-center gap-2">
+
+                                              <div className="text-lg font-black text-slate-950">
+                                                {round.date}
+                                              </div>
+
+                                              <div className="rounded-full border border-slate-100 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 shadow-sm">
+                                                {round.id}
+                                              </div>
+
                                             </div>
 
-                                            <div className="rounded-full border border-slate-100 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 shadow-sm">
-                                              {round.id}
+                                            <div className="mt-3 flex items-center gap-2 text-slate-400">
+
+                                              <MapPin
+                                                size={14}
+                                              />
+
+                                              <div className="truncate text-sm font-black text-slate-500">
+                                                {courseName}
+                                              </div>
+
+                                            </div>
+
+                                            <div className="mt-1 text-xs font-bold text-slate-400">
+                                              {courseMeta}
+                                            </div>
+
+                                            <div className="mt-3 text-xs font-black uppercase tracking-widest text-slate-400">
+                                              {roundPlayer?.skins || 0} Skins
                                             </div>
 
                                           </div>
 
-                                          <div className="mt-2 text-xs font-black uppercase tracking-widest text-slate-400">
-                                            {roundPlayer?.skins || 0} Skins
-                                          </div>
+                                          {/* Right */}
+                                          <div className="shrink-0 text-right">
 
-                                        </div>
+                                            <div className="text-3xl font-black text-emerald-600">
+                                              {roundPlayer?.winnings > 0
+                                                ? `+${roundPlayer?.winnings}€`
+                                                : `${roundPlayer?.winnings || 0}€`}
+                                            </div>
 
-                                        {/* Right */}
-                                        <div className="text-right">
+                                            <div
+                                              className={`mt-1 text-sm font-black uppercase tracking-widest ${getToParColor(
+                                                roundPlayer?.totalToPar
+                                              )}`}
+                                            >
+                                              {formatToPar(
+                                                roundPlayer?.totalToPar
+                                              )}
+                                            </div>
 
-                                          <div className="text-3xl font-black text-emerald-600">
-                                            {roundPlayer?.winnings > 0
-                                              ? `+${roundPlayer?.winnings}€`
-                                              : `${roundPlayer?.winnings || 0}€`}
-                                          </div>
-
-                                          <div
-                                            className={`mt-1 text-sm font-black uppercase tracking-widest ${getToParColor(
-                                              roundPlayer?.totalToPar
-                                            )}`}
-                                          >
-                                            {formatToPar(
-                                              roundPlayer?.totalToPar
-                                            )}
                                           </div>
 
                                         </div>

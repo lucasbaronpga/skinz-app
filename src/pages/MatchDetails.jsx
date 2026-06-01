@@ -18,6 +18,7 @@ import {
   Crown,
   ChevronDown,
   Flame,
+  MapPin,
 } from "lucide-react"
 
 import {
@@ -91,18 +92,31 @@ export default function MatchDetails() {
         round.winner
     ) || sortedPlayers[0]
 
+  const courseName =
+    round.course?.name ||
+    "Erster Golfclub Westpfalz"
+
+  const courseLocation =
+    round.course?.location ||
+    "Westpfalz"
+
+  const coursePar =
+    round.course?.par ||
+    72
+
   function formatToPar(
     value
   ) {
 
     if (
       value === 0 ||
-      value === undefined
+      value === undefined ||
+      value === null
     ) {
       return "E"
     }
 
-    if (value > 0) {
+    if (Number(value) > 0) {
       return `+${value}`
     }
 
@@ -113,11 +127,11 @@ export default function MatchDetails() {
     value
   ) {
 
-    if (value < 0) {
+    if (Number(value) < 0) {
       return "text-emerald-500"
     }
 
-    if (value > 0) {
+    if (Number(value) > 0) {
       return "text-red-500"
     }
 
@@ -180,6 +194,17 @@ export default function MatchDetails() {
     )
   }
 
+  function getNinePar(
+    holes
+  ) {
+
+    return holes.reduce(
+      (total, hole) =>
+        total + (hole.par || 0),
+      0
+    )
+  }
+
   function renderHoleGrid(
     holes
   ) {
@@ -200,7 +225,7 @@ export default function MatchDetails() {
               <div className="flex items-center justify-between">
 
                 <div className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
-                  Hole
+                  Loch
                 </div>
 
                 <div className="text-xl font-black text-slate-950">
@@ -221,13 +246,13 @@ export default function MatchDetails() {
 
               </div>
 
-              <div className="mt-4 flex items-center justify-between">
+              <div className="mt-4 flex items-center justify-between gap-2">
 
                 <div className="text-xs font-black uppercase tracking-widest text-slate-400">
                   Par {hole.par}
                 </div>
 
-                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <div className="truncate text-[10px] font-black uppercase tracking-widest text-slate-400">
                   {hole.result?.label || "Par"}
                 </div>
 
@@ -325,8 +350,23 @@ export default function MatchDetails() {
 
             </div>
 
-            <div className="mt-6 inline-flex rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
-              Match {round.id}
+            {/* Match / Golfplatz Chips */}
+            <div className="mt-6 flex flex-wrap gap-2">
+
+              <div className="inline-flex rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
+                Match {round.id}
+              </div>
+
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
+
+                <MapPin
+                  size={13}
+                />
+
+                {courseName}
+
+              </div>
+
             </div>
 
             <div className="mt-10 flex items-end justify-between">
@@ -367,6 +407,67 @@ export default function MatchDetails() {
 
         </motion.div>
 
+        {/* Golfplatz Card */}
+        <motion.div
+          initial={{
+            opacity: 0,
+            y: 20,
+          }}
+
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+
+          transition={{
+            delay: 0.04,
+          }}
+
+          className="mt-8 rounded-[36px] bg-white p-6 shadow-sm"
+        >
+
+          <div className="flex items-center justify-between gap-4">
+
+            <div className="min-w-0">
+
+              <div className="flex items-center gap-2 text-slate-400">
+
+                <MapPin
+                  size={18}
+                />
+
+                <div className="text-xs font-black uppercase tracking-[0.25em]">
+                  Golfplatz
+                </div>
+
+              </div>
+
+              <div className="mt-3 truncate text-4xl font-black tracking-tight text-slate-950">
+                {courseName}
+              </div>
+
+              <div className="mt-2 text-sm font-bold text-slate-400">
+                {courseLocation}
+              </div>
+
+            </div>
+
+            <div className="shrink-0 text-right">
+
+              <div className="text-5xl font-black text-slate-950">
+                {coursePar}
+              </div>
+
+              <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
+                Par
+              </div>
+
+            </div>
+
+          </div>
+
+        </motion.div>
+
         {/* Meta */}
         <div className="mt-8 grid grid-cols-3 gap-3">
 
@@ -377,7 +478,7 @@ export default function MatchDetails() {
             </div>
 
             <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-              Players
+              Spieler
             </div>
 
           </div>
@@ -389,7 +490,7 @@ export default function MatchDetails() {
             </div>
 
             <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-              Holes
+              Löcher
             </div>
 
           </div>
@@ -420,7 +521,7 @@ export default function MatchDetails() {
               </div>
 
               <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-                Leaderboard
+                Rangliste
               </div>
 
             </div>
@@ -454,6 +555,16 @@ export default function MatchDetails() {
                     9,
                     18
                   ) || []
+
+                const frontNinePar =
+                  getNinePar(
+                    frontNine
+                  )
+
+                const backNinePar =
+                  getNinePar(
+                    backNine
+                  )
 
                 return (
 
@@ -494,7 +605,9 @@ export default function MatchDetails() {
                                 ? "bg-yellow-400 text-black"
                                 : index === 1
                                 ? "bg-slate-200 text-slate-900"
-                                : "bg-orange-400 text-white"
+                                : index === 2
+                                ? "bg-orange-400 text-white"
+                                : "bg-white text-slate-900 border border-slate-200"
                             }`}
                           >
                             {index + 1}
@@ -669,8 +782,16 @@ export default function MatchDetails() {
 
                             <div className="mb-3 flex items-end justify-between">
 
-                              <div className="text-2xl font-black tracking-tight text-slate-950">
-                                Front 9
+                              <div>
+
+                                <div className="text-2xl font-black tracking-tight text-slate-950">
+                                  Front 9
+                                </div>
+
+                                <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
+                                  Par {frontNinePar}
+                                </div>
+
                               </div>
 
                               <div className="text-sm font-black uppercase tracking-widest text-slate-400">
@@ -690,8 +811,16 @@ export default function MatchDetails() {
 
                             <div className="mb-3 flex items-end justify-between">
 
-                              <div className="text-2xl font-black tracking-tight text-slate-950">
-                                Back 9
+                              <div>
+
+                                <div className="text-2xl font-black tracking-tight text-slate-950">
+                                  Back 9
+                                </div>
+
+                                <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
+                                  Par {backNinePar}
+                                </div>
+
                               </div>
 
                               <div className="text-sm font-black uppercase tracking-widest text-slate-400">

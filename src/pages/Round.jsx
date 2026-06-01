@@ -42,6 +42,11 @@ export default function Round() {
     startMatch,
     activeMatchId,
     hasActiveMatch,
+
+    courses,
+    selectedCourseId,
+    setSelectedCourseId,
+    currentCourse,
   } = useGame()
 
   function normalizeName(
@@ -51,6 +56,47 @@ export default function Round() {
     return String(value || "")
       .trim()
       .toLowerCase()
+  }
+
+  function getCourseName(
+    course
+  ) {
+
+    return (
+      course?.name ||
+      "Erster Golfclub Westpfalz"
+    )
+  }
+
+  function getCourseLocation(
+    course
+  ) {
+
+    return (
+      course?.location ||
+      "Westpfalz"
+    )
+  }
+
+  function getCoursePar(
+    course
+  ) {
+
+    return (
+      course?.par ||
+      72
+    )
+  }
+
+  function getCourseMeta(
+    course
+  ) {
+
+    return `${getCourseLocation(
+      course
+    )} · Par ${getCoursePar(
+      course
+    )}`
   }
 
   function buildInitialPlayers() {
@@ -94,13 +140,6 @@ export default function Round() {
     stake,
     setStake,
   ] = useState(2)
-
-  const stakeOptions = [
-    1,
-    2,
-    5,
-    10,
-  ]
 
   const uniquePlayers =
     useMemo(() => {
@@ -212,7 +251,8 @@ export default function Round() {
     const didStart =
       startMatch(
         uniquePlayers,
-        stake
+        stake,
+        selectedCourseId
       )
 
     if (didStart) {
@@ -248,9 +288,9 @@ export default function Round() {
           </h1>
 
           <p className="mt-4 max-w-sm text-sm font-bold leading-relaxed text-slate-400">
-            Erstelle dein Match,
-            wähle deinen Flight und
-            starte direkt ins Live Scoring.
+            Wähle Golfplatz, Flight und
+            Einsatz. Danach geht es
+            direkt ins Live Scoring.
           </p>
 
         </motion.div>
@@ -326,7 +366,7 @@ export default function Round() {
 
         </motion.div>
 
-        {/* Course / Stake Hero */}
+        {/* Golfplatz / Einsatz Hero */}
         <motion.div
           initial={{
             opacity: 0,
@@ -347,10 +387,10 @@ export default function Round() {
 
           <div className="p-8">
 
-            {/* Course */}
-            <div className="flex items-start justify-between">
+            {/* Golfplatz */}
+            <div className="flex items-start justify-between gap-4">
 
-              <div>
+              <div className="min-w-0">
 
                 <div className="flex items-center gap-2 text-slate-500">
 
@@ -364,19 +404,27 @@ export default function Round() {
 
                 </div>
 
-                <div className="mt-4 text-5xl font-black tracking-tight">
-                  Westpfalz
+                <div className="mt-4 truncate text-5xl font-black tracking-tight">
+                  {getCourseName(
+                    currentCourse
+                  )}
+                </div>
+
+                <div className="mt-2 text-sm font-bold text-slate-400">
+                  {getCourseMeta(
+                    currentCourse
+                  )}
                 </div>
 
               </div>
 
-              <div className="rounded-full bg-emerald-500 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
+              <div className="shrink-0 rounded-full bg-emerald-500 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
                 Live
               </div>
 
             </div>
 
-            {/* Stake */}
+            {/* Einsatz */}
             <div className="mt-10 flex items-end justify-between">
 
               <div>
@@ -454,7 +502,7 @@ export default function Round() {
 
         </motion.div>
 
-        {/* Stake Presets */}
+        {/* Golfplatz Auswahl */}
         <motion.div
           initial={{
             opacity: 0,
@@ -467,45 +515,112 @@ export default function Round() {
           }}
 
           transition={{
-            delay: 0.08,
+            delay: 0.07,
           }}
 
-          className="mt-5 grid grid-cols-4 gap-3"
+          className="mt-8 rounded-[40px] bg-white p-6 shadow-sm"
         >
 
-          {stakeOptions.map(
-            (option) => {
+          <div className="flex items-center justify-between">
 
-              const isActive =
-                stake === option
+            <div>
 
-              return (
+              <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
+                Golfplatz
+              </div>
 
-                <motion.button
-                  key={option}
+              <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
+                Golfplatz wählen
+              </div>
 
-                  whileTap={{
-                    scale: 0.94,
-                  }}
+            </div>
 
-                  onClick={() =>
-                    setStake(option)
-                  }
+            <div className="text-3xl">
+              ⛳
+            </div>
 
-                  className={`rounded-[24px] border px-4 py-4 text-lg font-black shadow-sm transition-all ${
-                    isActive
-                      ? "border-slate-950 bg-slate-950 text-white"
-                      : "border-slate-100 bg-white text-slate-950"
-                  }`}
-                >
+          </div>
 
-                  {option}€
+          <div className="mt-6 space-y-3">
 
-                </motion.button>
+            {courses.map(
+              (course) => {
 
-              )
-            }
-          )}
+                const isActive =
+                  selectedCourseId ===
+                  course.id
+
+                return (
+
+                  <motion.button
+                    key={course.id}
+
+                    whileTap={{
+                      scale: 0.985,
+                    }}
+
+                    onClick={() =>
+                      setSelectedCourseId(
+                        course.id
+                      )
+                    }
+
+                    className={`w-full rounded-[28px] border px-5 py-4 text-left shadow-sm transition-all ${
+                      isActive
+                        ? "border-emerald-200 bg-emerald-50"
+                        : "border-slate-100 bg-white"
+                    }`}
+                  >
+
+                    <div className="flex items-center justify-between gap-4">
+
+                      <div className="min-w-0">
+
+                        <div className="truncate text-2xl font-black tracking-tight text-slate-950">
+                          {getCourseName(
+                            course
+                          )}
+                        </div>
+
+                        <div className="mt-1 text-sm font-bold text-slate-400">
+                          {getCourseLocation(
+                            course
+                          )}
+                        </div>
+
+                      </div>
+
+                      <div className="shrink-0 text-right">
+
+                        <div className="text-3xl font-black text-slate-950">
+                          {getCoursePar(
+                            course
+                          )}
+                        </div>
+
+                        <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
+                          Par
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                    {isActive && (
+
+                      <div className="mt-4 inline-flex rounded-full bg-emerald-500 px-3 py-1 text-xs font-black uppercase tracking-widest text-white">
+                        Ausgewählt
+                      </div>
+
+                    )}
+
+                  </motion.button>
+
+                )
+              }
+            )}
+
+          </div>
 
         </motion.div>
 

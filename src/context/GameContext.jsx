@@ -11,10 +11,154 @@ const GameContext =
 const STORAGE_KEY =
   "skinz-game"
 
-const holePars = [
-  4, 3, 5, 4, 4, 3, 5, 4, 4,
-  4, 5, 3, 4, 4, 5, 3, 4, 4,
+const courses = [
+  {
+    id: "westpfalz",
+
+    name:
+      "Erster Golfclub Westpfalz",
+
+    location:
+      "Westpfalz",
+
+    par:
+      72,
+
+    pars: [
+      4, 3, 5, 4, 4, 3, 5, 4, 4,
+      4, 5, 3, 4, 4, 5, 3, 4, 4,
+    ],
+  },
+
+  {
+    id: "kronberg",
+
+    name:
+      "Golf- & Landclub Kronberg",
+
+    location:
+      "Kronberg",
+
+    par:
+      72,
+
+    pars: [
+      4, 4, 3, 5, 4, 4, 3, 5, 4,
+      4, 5, 4, 3, 4, 5, 3, 4, 4,
+    ],
+  },
 ]
+
+const DEFAULT_COURSE_ID =
+  "westpfalz"
+
+function getCourseById(
+  courseId
+) {
+
+  return (
+    courses.find(
+      (course) =>
+        course.id === courseId
+    ) || courses[0]
+  )
+}
+
+function createCourseSnapshot(
+  course
+) {
+
+  return {
+    id:
+      course.id,
+
+    name:
+      course.name,
+
+    location:
+      course.location,
+
+    par:
+      course.par,
+
+    pars:
+      course.pars,
+  }
+}
+
+function normalizeCourseSnapshot(
+  course
+) {
+
+  if (!course) {
+    return createCourseSnapshot(
+      getCourseById(
+        DEFAULT_COURSE_ID
+      )
+    )
+  }
+
+  const courseId =
+    String(
+      course.id || ""
+    ).toLowerCase()
+
+  const courseName =
+    String(
+      course.name || ""
+    ).toLowerCase()
+
+  if (
+    courseId === "kronberg" ||
+    courseName.includes(
+      "kronberg"
+    )
+  ) {
+    return createCourseSnapshot(
+      getCourseById(
+        "kronberg"
+      )
+    )
+  }
+
+  if (
+    courseId === "westpfalz" ||
+    courseName.includes(
+      "westpfalz"
+    ) ||
+    courseName === "course" ||
+    courseName === "standard 18"
+  ) {
+    return createCourseSnapshot(
+      getCourseById(
+        "westpfalz"
+      )
+    )
+  }
+
+  return createCourseSnapshot(
+    getCourseById(
+      DEFAULT_COURSE_ID
+    )
+  )
+}
+
+function normalizeCompletedRounds(
+  rounds
+) {
+
+  return rounds.map(
+    (round) => ({
+
+      ...round,
+
+      course:
+        normalizeCourseSnapshot(
+          round.course
+        ),
+    })
+  )
+}
 
 function createMatchId(
   number
@@ -39,21 +183,32 @@ function createPlayer(
     score:
       initialScore,
 
-    total: 0,
+    total:
+      0,
 
-    totalToPar: 0,
+    totalToPar:
+      0,
 
-    skins: 0,
+    skins:
+      0,
 
-    winnings: 0,
+    winnings:
+      0,
 
-    holes: [],
+    holes:
+      [],
   }
 }
 
 const defaultPlayers = [
-  createPlayer("Lucas", 4),
-  createPlayer("Ben", 4),
+  createPlayer(
+    "Lucas",
+    4
+  ),
+  createPlayer(
+    "Ben",
+    4
+  ),
 ]
 
 function getGolfResult(
@@ -67,7 +222,9 @@ function getGolfResult(
   if (difference === -3) {
 
     return {
-      label: "Albatross",
+      label:
+        "Albatross",
+
       color:
         "bg-yellow-400 text-black",
     }
@@ -76,7 +233,9 @@ function getGolfResult(
   if (difference <= -2) {
 
     return {
-      label: "Eagle",
+      label:
+        "Eagle",
+
       color:
         "bg-orange-500 text-white",
     }
@@ -85,7 +244,9 @@ function getGolfResult(
   if (difference === -1) {
 
     return {
-      label: "Birdie",
+      label:
+        "Birdie",
+
       color:
         "bg-red-500 text-white",
     }
@@ -94,7 +255,9 @@ function getGolfResult(
   if (difference === 0) {
 
     return {
-      label: "Par",
+      label:
+        "Par",
+
       color:
         "bg-white text-slate-900 border border-slate-200",
     }
@@ -103,7 +266,9 @@ function getGolfResult(
   if (difference === 1) {
 
     return {
-      label: "Bogey",
+      label:
+        "Bogey",
+
       color:
         "bg-blue-500 text-white",
     }
@@ -112,14 +277,18 @@ function getGolfResult(
   if (difference === 2) {
 
     return {
-      label: "Double Bogey",
+      label:
+        "Double Bogey",
+
       color:
         "bg-blue-900 text-white",
     }
   }
 
   return {
-    label: "Triple+",
+    label:
+      "Triple+",
+
     color:
       "bg-purple-600 text-white",
   }
@@ -129,54 +298,92 @@ export function GameProvider({
   children,
 }) {
 
-  let savedGame = null
+  let savedGame =
+    null
 
   try {
 
-    savedGame = JSON.parse(
-      localStorage.getItem(
-        STORAGE_KEY
+    savedGame =
+      JSON.parse(
+        localStorage.getItem(
+          STORAGE_KEY
+        )
       )
-    )
 
   } catch {
 
-    savedGame = null
+    savedGame =
+      null
   }
 
   const savedCompletedRounds =
-    savedGame?.completedRounds || []
+    normalizeCompletedRounds(
+      savedGame?.completedRounds ||
+        []
+    )
 
   const initialMatchCounter =
     savedGame?.matchCounter ||
     savedCompletedRounds.length ||
     0
 
-  const [hole, setHole] =
-    useState(
-      savedGame?.hole || 1
+  const initialSelectedCourseId =
+    getCourseById(
+      savedGame?.selectedCourseId ||
+        DEFAULT_COURSE_ID
+    ).id
+
+  const [
+    selectedCourseId,
+    setSelectedCourseId,
+  ] = useState(
+    initialSelectedCourseId
+  )
+
+  const currentCourse =
+    getCourseById(
+      selectedCourseId
     )
 
-  const [carryover, setCarryover] =
-    useState(
-      savedGame?.carryover || 0
-    )
+  const currentPars =
+    currentCourse?.pars ||
+    courses[0].pars
 
-  const [history, setHistory] =
-    useState(
-      savedGame?.history || []
-    )
+  const [
+    hole,
+    setHole,
+  ] = useState(
+    savedGame?.hole || 1
+  )
 
-  const [players, setPlayers] =
-    useState(
-      savedGame?.players ||
-        defaultPlayers
-    )
+  const [
+    carryover,
+    setCarryover,
+  ] = useState(
+    savedGame?.carryover || 0
+  )
 
-  const [stake, setStake] =
-    useState(
-      savedGame?.stake || 2
-    )
+  const [
+    history,
+    setHistory,
+  ] = useState(
+    savedGame?.history || []
+  )
+
+  const [
+    players,
+    setPlayers,
+  ] = useState(
+    savedGame?.players ||
+      defaultPlayers
+  )
+
+  const [
+    stake,
+    setStake,
+  ] = useState(
+    savedGame?.stake || 2
+  )
 
   const [
     completedRounds,
@@ -224,7 +431,7 @@ export function GameProvider({
   )
 
   const currentPar =
-    holePars[hole - 1] || 4
+    currentPars[hole - 1] || 4
 
   const lowestScore =
     Math.min(
@@ -273,6 +480,8 @@ export function GameProvider({
         activeMatchId,
 
         matchCounter,
+
+        selectedCourseId,
       })
     )
 
@@ -297,6 +506,8 @@ export function GameProvider({
     activeMatchId,
 
     matchCounter,
+
+    selectedCourseId,
   ])
 
   function updateScore(
@@ -313,18 +524,25 @@ export function GameProvider({
 
     const updatedPlayers =
       players.map(
-        (player, playerIndex) => {
+        (
+          player,
+          playerIndex
+        ) => {
 
           if (
-            playerIndex !== index
+            playerIndex !==
+            index
           ) {
             return player
           }
 
           return {
             ...player,
+
             score:
-              Number(value),
+              Number(
+                value
+              ),
           }
         }
       )
@@ -336,7 +554,8 @@ export function GameProvider({
 
   function startMatch(
     playerNames,
-    selectedStake = 2
+    selectedStake = 2,
+    courseId = selectedCourseId
   ) {
 
     const cleanedNames =
@@ -359,6 +578,15 @@ export function GameProvider({
       return false
     }
 
+    const matchCourse =
+      getCourseById(
+        courseId
+      )
+
+    const matchPars =
+      matchCourse?.pars ||
+      courses[0].pars
+
     const nextCounter =
       matchCounter + 1
 
@@ -372,16 +600,22 @@ export function GameProvider({
         (name) =>
           createPlayer(
             name,
-            holePars[0] || 4
+            matchPars[0] || 4
           )
       )
+
+    setSelectedCourseId(
+      matchCourse.id
+    )
 
     setPlayers(
       formattedPlayers
     )
 
     setStake(
-      Number(selectedStake)
+      Number(
+        selectedStake
+      )
     )
 
     setHole(1)
@@ -416,6 +650,11 @@ export function GameProvider({
       return
     }
 
+    const courseSnapshot =
+      createCourseSnapshot(
+        currentCourse
+      )
+
     const holeResult = {
 
       hole,
@@ -435,6 +674,15 @@ export function GameProvider({
 
       winningScore:
         lowestScore,
+
+      course:
+        {
+          id:
+            courseSnapshot.id,
+
+          name:
+            courseSnapshot.name,
+        },
 
       players:
         players.map(
@@ -517,6 +765,9 @@ export function GameProvider({
 
                 toPar,
 
+                courseId:
+                  courseSnapshot.id,
+
                 result:
                   getGolfResult(
                     player.score,
@@ -526,7 +777,7 @@ export function GameProvider({
             ],
 
             score:
-              holePars[hole] ||
+              currentPars[hole] ||
               4,
           }
         }
@@ -624,6 +875,9 @@ export function GameProvider({
 
         createdAt:
           Date.now(),
+
+        course:
+          courseSnapshot,
 
         winner:
           champion.name,
@@ -887,6 +1141,13 @@ export function GameProvider({
 
     <GameContext.Provider
       value={{
+
+        courses,
+
+        selectedCourseId,
+        setSelectedCourseId,
+
+        currentCourse,
 
         hole,
         setHole,

@@ -12,6 +12,7 @@ import {
   Trophy,
   Crown,
   Plus,
+  MapPin,
 } from "lucide-react"
 
 import {
@@ -28,6 +29,7 @@ export default function Home() {
     hole,
 
     currentPot,
+    currentCourse,
 
     players,
 
@@ -103,6 +105,55 @@ export default function Home() {
     return "text-slate-950"
   }
 
+  function getCurrentCourseName() {
+
+    return (
+      currentCourse?.name ||
+      "Erster Golfclub Westpfalz"
+    )
+  }
+
+  function getRoundCourseName(
+    round
+  ) {
+
+    return (
+      round?.course?.name ||
+      "Erster Golfclub Westpfalz"
+    )
+  }
+
+  function getRoundCourseLocation(
+    round
+  ) {
+
+    return (
+      round?.course?.location ||
+      "Westpfalz"
+    )
+  }
+
+  function getRoundCoursePar(
+    round
+  ) {
+
+    return (
+      round?.course?.par ||
+      72
+    )
+  }
+
+  function getRoundCourseMeta(
+    round
+  ) {
+
+    return `${getRoundCourseLocation(
+      round
+    )} · Par ${getRoundCoursePar(
+      round
+    )}`
+  }
+
   return (
 
     <div className="min-h-screen bg-[#f5f5f7] pb-36 text-slate-900">
@@ -113,7 +164,6 @@ export default function Home() {
 
           {/* Hero */}
           <motion.div
-
             initial={{
               opacity: 0,
               y: 20,
@@ -147,7 +197,6 @@ export default function Home() {
           {hasActiveMatch ? (
 
             <motion.button
-
               whileTap={{
                 scale: 0.985,
               }}
@@ -176,28 +225,40 @@ export default function Home() {
               {/* Top */}
               <div className="flex items-start justify-between gap-4">
 
-                <div>
+                <div className="min-w-0">
 
                   <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
                     Aktives Match
                   </div>
 
                   <div className="mt-3 text-5xl font-black tracking-tight text-slate-950">
-
-                    Hole {hole}
-
+                    Loch {hole}
                   </div>
 
-                  <div className="mt-3 inline-flex rounded-full border border-slate-100 bg-white px-3 py-1 text-xs font-black uppercase tracking-widest text-slate-500 shadow-sm">
+                  <div className="mt-3 flex flex-wrap gap-2">
 
-                    {activeMatchId}
+                    <div className="inline-flex rounded-full border border-slate-100 bg-white px-3 py-1 text-xs font-black uppercase tracking-widest text-slate-500 shadow-sm">
+                      {activeMatchId}
+                    </div>
+
+                    <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-slate-100 bg-white px-3 py-1 text-xs font-black uppercase tracking-widest text-slate-500 shadow-sm">
+
+                      <MapPin
+                        size={13}
+                      />
+
+                      <span className="max-w-[170px] truncate">
+                        {getCurrentCourseName()}
+                      </span>
+
+                    </div>
 
                   </div>
 
                 </div>
 
                 <div
-                  className={`rounded-2xl px-4 py-2 text-xs font-black ${
+                  className={`shrink-0 rounded-2xl px-4 py-2 text-xs font-black ${
                     matchFinished
                       ? "bg-amber-100 text-amber-700"
                       : "bg-emerald-100 text-emerald-700"
@@ -220,9 +281,7 @@ export default function Home() {
                 </div>
 
                 <div className="mt-2 text-7xl font-black tracking-tight text-emerald-600">
-
                   {currentPot}€
-
                 </div>
 
               </div>
@@ -237,9 +296,7 @@ export default function Home() {
                   </div>
 
                   <div className="mt-1 text-3xl font-black text-slate-900">
-
                     {liveLeader?.name || "-"}
-
                   </div>
 
                 </div>
@@ -247,9 +304,7 @@ export default function Home() {
                 <div className="text-right">
 
                   <div className="text-4xl font-black text-emerald-600">
-
                     {liveLeader?.winnings || 0}€
-
                   </div>
 
                   <div className="text-xs font-bold text-slate-400">
@@ -282,7 +337,6 @@ export default function Home() {
           ) : (
 
             <motion.div
-
               initial={{
                 opacity: 0,
                 y: 20,
@@ -305,7 +359,7 @@ export default function Home() {
                 <div>
 
                   <div className="text-xs font-black uppercase tracking-[0.3em] text-slate-500">
-                    Ready
+                    Bereit
                   </div>
 
                   <div className="mt-4 text-5xl font-black tracking-tight">
@@ -313,9 +367,9 @@ export default function Home() {
                   </div>
 
                   <div className="mt-4 max-w-xs text-base font-bold leading-relaxed text-slate-400">
-                    Starte eine neue Runde
-                    und tracke Skins,
-                    Pot und Leader live.
+                    Starte eine neue Runde,
+                    wähle deinen Golfplatz und
+                    tracke Skins live.
                   </div>
 
                 </div>
@@ -337,8 +391,16 @@ export default function Home() {
                 className="mt-10 flex w-full items-center justify-between rounded-[30px] bg-white px-6 py-5 text-slate-950 shadow-lg"
               >
 
-                <div className="text-xl font-black">
-                  Runde starten
+                <div>
+
+                  <div className="text-xl font-black">
+                    Runde starten
+                  </div>
+
+                  <div className="mt-1 text-sm font-bold text-slate-400">
+                    Golfplatz &amp; Flight wählen
+                  </div>
+
                 </div>
 
                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500 text-white">
@@ -359,7 +421,6 @@ export default function Home() {
           {hasActiveMatch && (
 
             <motion.div
-
               initial={{
                 opacity: 0,
                 y: 20,
@@ -396,9 +457,7 @@ export default function Home() {
                 </div>
 
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-4xl text-white shadow-lg">
-
                   +
-
                 </div>
 
               </Link>
@@ -409,7 +468,6 @@ export default function Home() {
 
           {/* Stats */}
           <motion.div
-
             initial={{
               opacity: 0,
               y: 20,
@@ -431,19 +489,13 @@ export default function Home() {
             <div className="rounded-[28px] border border-slate-100 bg-white p-5 text-center shadow-sm">
 
               <div className="text-4xl font-black text-slate-950">
-
                 {hasActiveMatch
                   ? players.length
                   : playerStats.length}
-
               </div>
 
               <div className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-400">
-
-                {hasActiveMatch
-                  ? "Spieler"
-                  : "Players"}
-
+                Spieler
               </div>
 
             </div>
@@ -452,19 +504,15 @@ export default function Home() {
             <div className="rounded-[28px] border border-slate-100 bg-white p-5 text-center shadow-sm">
 
               <div className="text-4xl font-black text-slate-950">
-
                 {hasActiveMatch
                   ? hole
                   : totalRounds}
-
               </div>
 
               <div className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-400">
-
                 {hasActiveMatch
                   ? "Loch"
-                  : "Rounds"}
-
+                  : "Runden"}
               </div>
 
             </div>
@@ -473,19 +521,15 @@ export default function Home() {
             <div className="rounded-[28px] border border-slate-100 bg-white p-5 text-center shadow-sm">
 
               <div className="text-4xl font-black text-slate-950">
-
                 {hasActiveMatch
                   ? liveLeader?.skins || 0
                   : topPlayers[0]?.wins || 0}
-
               </div>
 
               <div className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-400">
-
                 {hasActiveMatch
                   ? "Skins"
-                  : "Wins"}
-
+                  : "Siege"}
               </div>
 
             </div>
@@ -496,7 +540,6 @@ export default function Home() {
           {latestRound && (
 
             <motion.div
-
               initial={{
                 opacity: 0,
                 y: 20,
@@ -516,27 +559,47 @@ export default function Home() {
 
               <div className="flex items-start justify-between">
 
-                <div>
+                <div className="min-w-0">
 
                   <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-500">
                     Letzter Sieger
                   </div>
 
-                  <div className="mt-4 text-5xl font-black tracking-tight">
-
+                  <div className="mt-4 truncate text-5xl font-black tracking-tight">
                     {latestRound.winner}
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+
+                    <div className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-widest text-slate-300">
+                      {latestRound.id}
+                    </div>
+
+                    <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-widest text-slate-300">
+
+                      <MapPin
+                        size={13}
+                      />
+
+                      <span className="max-w-[180px] truncate">
+                        {getRoundCourseName(
+                          latestRound
+                        )}
+                      </span>
+
+                    </div>
 
                   </div>
 
-                  <div className="mt-3 inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-widest text-slate-300">
-
-                    {latestRound.id}
-
+                  <div className="mt-3 text-sm font-bold text-slate-500">
+                    {getRoundCourseMeta(
+                      latestRound
+                    )}
                   </div>
 
                 </div>
 
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-yellow-400 text-black shadow-lg">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-yellow-400 text-black shadow-lg">
 
                   <Trophy
                     size={24}
@@ -556,9 +619,7 @@ export default function Home() {
                   </div>
 
                   <div className="mt-2 text-5xl font-black text-emerald-400">
-
                     +{latestRound.winnings}€
-
                   </div>
 
                 </div>
@@ -575,11 +636,9 @@ export default function Home() {
                       latestRound.totalToPar
                     )}`}
                   >
-
                     {formatToPar(
                       latestRound.totalToPar
                     )}
-
                   </div>
 
                 </div>
@@ -592,7 +651,6 @@ export default function Home() {
 
           {/* Rankings Preview */}
           <motion.div
-
             initial={{
               opacity: 0,
               y: 20,
@@ -620,7 +678,7 @@ export default function Home() {
                 </div>
 
                 <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-                  Top Players
+                  Top Spieler
                 </div>
 
               </div>
@@ -662,7 +720,6 @@ export default function Home() {
                 ) => (
 
                   <motion.button
-
                     whileTap={{
                       scale: 0.985,
                     }}
@@ -686,12 +743,12 @@ export default function Home() {
                             ? "bg-yellow-400 text-black"
                             : index === 1
                             ? "bg-white text-slate-900 border border-slate-200"
-                            : "bg-orange-400 text-white"
+                            : index === 2
+                            ? "bg-orange-400 text-white"
+                            : "bg-white text-slate-900 border border-slate-200"
                         }`}
                       >
-
                         {index + 1}
-
                       </div>
 
                       {/* Name */}
@@ -700,9 +757,7 @@ export default function Home() {
                         <div className="flex items-center gap-2">
 
                           <div className="truncate text-xl font-black text-slate-950">
-
                             {player.name}
-
                           </div>
 
                           {index === 0 && (
@@ -722,9 +777,7 @@ export default function Home() {
                         </div>
 
                         <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-
-                          {player.wins} Wins
-
+                          {player.wins} Siege
                         </div>
 
                       </div>
@@ -735,9 +788,7 @@ export default function Home() {
                     <div className="shrink-0 text-right">
 
                       <div className="text-3xl font-black text-emerald-600">
-
                         {player.totalWinnings}€
-
                       </div>
 
                       <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">

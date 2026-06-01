@@ -33,6 +33,7 @@ export default function Live() {
 
     currentPot,
     currentPar,
+    currentCourse,
 
     players,
 
@@ -75,15 +76,27 @@ export default function Live() {
       (hole / 18) * 100
     )
 
+  function getCourseName() {
+
+    return (
+      currentCourse?.name ||
+      "Erster Golfclub Westpfalz"
+    )
+  }
+
   function formatToPar(
     value
   ) {
 
-    if (value === 0) {
+    if (
+      value === 0 ||
+      value === undefined ||
+      value === null
+    ) {
       return "E"
     }
 
-    if (value > 0) {
+    if (Number(value) > 0) {
       return `+${value}`
     }
 
@@ -94,11 +107,11 @@ export default function Live() {
     value
   ) {
 
-    if (value < 0) {
+    if (Number(value) < 0) {
       return "text-emerald-500"
     }
 
-    if (value > 0) {
+    if (Number(value) > 0) {
       return "text-red-500"
     }
 
@@ -203,14 +216,22 @@ export default function Live() {
 
           <div className="flex items-center justify-between">
 
-            <div>
+            <div className="min-w-0">
 
               <div className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">
                 Live Match
               </div>
 
+              <div className="mt-2 inline-flex max-w-full rounded-full border border-slate-100 bg-white px-3 py-1 text-xs font-black uppercase tracking-widest text-slate-500 shadow-sm">
+
+                <span className="truncate">
+                  {getCourseName()}
+                </span>
+
+              </div>
+
               <div className="mt-3 text-6xl font-black tracking-tight text-slate-950">
-                Hole {hole}
+                Loch {hole}
               </div>
 
               <div className="mt-2 text-lg font-bold text-slate-400">
@@ -230,7 +251,7 @@ export default function Live() {
                   handleCloseLive
                 }
 
-                className="flex h-14 w-14 items-center justify-center rounded-full border border-slate-100 bg-white text-slate-500 shadow-sm"
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-slate-100 bg-white text-slate-500 shadow-sm"
               >
 
                 <X
@@ -271,7 +292,7 @@ export default function Live() {
           <div className="mt-3 flex items-center justify-between px-1">
 
             <div className="text-xs font-black uppercase tracking-widest text-slate-400">
-              Progress
+              Fortschritt
             </div>
 
             <div className="text-xs font-black text-slate-400">
@@ -319,7 +340,7 @@ export default function Live() {
 
                 {hasTie
                   ? "Carryover"
-                  : "Current Pot"}
+                  : "Aktueller Pot"}
 
               </div>
 
@@ -486,7 +507,7 @@ export default function Live() {
                       </div>
 
                       <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                        Current Hole
+                        Aktuelles Loch
                       </div>
 
                     </div>
@@ -660,7 +681,7 @@ export default function Live() {
                     <div>
 
                       <div className="text-lg font-black text-slate-950">
-                        Hole {item.hole}
+                        Loch {item.hole}
                       </div>
 
                       <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">

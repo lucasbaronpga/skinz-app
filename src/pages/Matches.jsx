@@ -11,6 +11,7 @@ import {
   Trophy,
   Crown,
   Users,
+  MapPin,
 } from "lucide-react"
 
 import {
@@ -94,6 +95,47 @@ export default function Matches() {
     )
   }
 
+  function getCourseName(
+    round
+  ) {
+
+    return (
+      round.course?.name ||
+      "Erster Golfclub Westpfalz"
+    )
+  }
+
+  function getCourseLocation(
+    round
+  ) {
+
+    return (
+      round.course?.location ||
+      "Westpfalz"
+    )
+  }
+
+  function getCoursePar(
+    round
+  ) {
+
+    return (
+      round.course?.par ||
+      72
+    )
+  }
+
+  function getCourseMeta(
+    round
+  ) {
+
+    return `${getCourseLocation(
+      round
+    )} · Par ${getCoursePar(
+      round
+    )}`
+  }
+
   return (
 
     <div className="min-h-screen bg-[#f5f5f7] pb-36 pt-8 text-slate-950">
@@ -118,7 +160,7 @@ export default function Matches() {
         >
 
           <div className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">
-            Match Archive
+            Match Archiv
           </div>
 
           <h1 className="mt-3 text-5xl font-black tracking-tight">
@@ -127,8 +169,8 @@ export default function Matches() {
 
           <p className="mt-4 max-w-sm text-sm font-bold leading-relaxed text-slate-400">
             Vergangene Runden,
-            Gewinner und Scorecards
-            im Überblick.
+            Golfplätze, Gewinner und
+            Scorekarten im Überblick.
           </p>
 
         </motion.div>
@@ -187,6 +229,16 @@ export default function Matches() {
                   round
                 )
 
+              const courseName =
+                getCourseName(
+                  round
+                )
+
+              const courseMeta =
+                getCourseMeta(
+                  round
+                )
+
               return (
 
                 <motion.button
@@ -230,15 +282,13 @@ export default function Matches() {
                       <div className="min-w-0">
 
                         <div className="text-xs font-black uppercase tracking-[0.3em] text-slate-500">
-                          Match Winner
+                          Match Gewinner
                         </div>
 
                         <div className="mt-4 flex items-center gap-3">
 
                           <div className="truncate text-5xl font-black tracking-tight">
-
                             {round.winner}
-
                           </div>
 
                           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-yellow-400 text-black shadow-lg">
@@ -255,10 +305,24 @@ export default function Matches() {
 
                     </div>
 
-                    {/* Match ID */}
-                    <div className="mt-5 inline-flex rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
+                    {/* Match / Golfplatz Chips */}
+                    <div className="mt-5 flex flex-wrap gap-2">
 
-                      {round.id}
+                      <div className="inline-flex rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
+                        {round.id}
+                      </div>
+
+                      <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
+
+                        <MapPin
+                          size={13}
+                        />
+
+                        <span className="max-w-[220px] truncate">
+                          {courseName}
+                        </span>
+
+                      </div>
 
                     </div>
 
@@ -313,38 +377,36 @@ export default function Matches() {
                   <div className="p-6">
 
                     {/* Meta */}
-                    <div className="flex items-center justify-between">
+                    <div className="grid grid-cols-2 gap-3">
 
                       {/* Date */}
-                      <div>
+                      <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
 
                         <div className="text-xs font-black uppercase tracking-widest text-slate-400">
-                          Date
+                          Datum
                         </div>
 
-                        <div className="mt-2 text-2xl font-black tracking-tight">
-
+                        <div className="mt-2 text-xl font-black tracking-tight text-slate-950">
                           {round.date}
-
                         </div>
 
                         <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                          Completed Round
+                          Abgeschlossen
                         </div>
 
                       </div>
 
                       {/* Players */}
-                      <div className="text-right">
+                      <div className="rounded-[24px] border border-slate-100 bg-white p-4 text-right shadow-sm">
 
                         <div className="text-xs font-black uppercase tracking-widest text-slate-400">
-                          Players
+                          Spieler
                         </div>
 
-                        <div className="mt-2 flex items-center justify-end gap-2 text-2xl font-black tracking-tight">
+                        <div className="mt-2 flex items-center justify-end gap-2 text-xl font-black tracking-tight text-slate-950">
 
                           <Users
-                            size={20}
+                            size={18}
                           />
 
                           {
@@ -352,6 +414,47 @@ export default function Matches() {
                               .length
                           }
 
+                        </div>
+
+                        <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
+                          Flight
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                    {/* Golfplatz Meta */}
+                    <div className="mt-4 rounded-[26px] border border-slate-100 bg-white p-5 shadow-sm">
+
+                      <div className="flex items-center justify-between gap-4">
+
+                        <div className="min-w-0">
+
+                          <div className="flex items-center gap-2 text-slate-400">
+
+                            <MapPin
+                              size={16}
+                            />
+
+                            <div className="text-xs font-black uppercase tracking-[0.25em]">
+                              Golfplatz
+                            </div>
+
+                          </div>
+
+                          <div className="mt-2 truncate text-2xl font-black tracking-tight text-slate-950">
+                            {courseName}
+                          </div>
+
+                          <div className="mt-1 text-sm font-bold text-slate-400">
+                            {courseMeta}
+                          </div>
+
+                        </div>
+
+                        <div className="text-3xl">
+                          ⛳
                         </div>
 
                       </div>
@@ -397,7 +500,9 @@ export default function Matches() {
                                         ? "bg-yellow-400 text-black"
                                         : playerIndex === 1
                                         ? "border border-slate-200 bg-white text-slate-900"
-                                        : "bg-orange-400 text-white"
+                                        : playerIndex === 2
+                                        ? "bg-orange-400 text-white"
+                                        : "border border-slate-200 bg-white text-slate-900"
                                     }`}
                                   >
 
@@ -487,7 +592,7 @@ export default function Matches() {
                     <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
 
                       <div className="text-sm font-black uppercase tracking-widest text-slate-400">
-                        Scorecard
+                        Scorekarte
                       </div>
 
                       <div className="flex items-center gap-2 text-sm font-black text-slate-950">
