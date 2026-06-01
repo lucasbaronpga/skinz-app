@@ -223,7 +223,7 @@ export default function Leaderboard() {
             </div>
 
             <div className="mt-2 text-2xl font-black tracking-tight text-slate-950">
-              Rankings
+              Leaderboard
             </div>
 
           </div>
@@ -250,8 +250,8 @@ export default function Leaderboard() {
           </h1>
 
           <p className="mt-4 max-w-sm text-sm font-bold leading-relaxed text-slate-400">
-            Lifetime Rankings,
-            Earnings und Performance
+            Season Rankings,
+            Winnings und Performance
             aller Spieler.
           </p>
 
@@ -279,12 +279,13 @@ export default function Leaderboard() {
             </div>
 
             <div className="mt-6 text-3xl font-black tracking-tight text-slate-950">
-              Noch keine Daten
+              Noch kein Leaderboard
             </div>
 
             <div className="mt-3 text-sm font-bold text-slate-400">
-              Spiele Matches um
-              Rankings zu sehen.
+              Spiele deine erste Runde,
+              um Rankings und Scorecards
+              zu sehen.
             </div>
 
           </motion.div>
@@ -347,7 +348,7 @@ export default function Leaderboard() {
                 <div>
 
                   <div className="text-xs font-black uppercase tracking-widest text-slate-500">
-                    Earnings
+                    Winnings
                   </div>
 
                   <div className="mt-2 text-6xl font-black text-emerald-400">
@@ -359,7 +360,7 @@ export default function Leaderboard() {
                 <div className="text-right">
 
                   <div className="text-xs font-black uppercase tracking-widest text-slate-500">
-                    Siege
+                    Wins
                   </div>
 
                   <div className="mt-2 text-5xl font-black text-white">
@@ -390,13 +391,13 @@ export default function Leaderboard() {
                 </div>
 
                 <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-                  Spieler
+                  Players
                 </h2>
 
               </div>
 
               <div className="text-sm font-black uppercase tracking-widest text-slate-400">
-                Earnings
+                Winnings
               </div>
 
             </div>
@@ -514,7 +515,7 @@ export default function Leaderboard() {
 
                               <div className="mt-2 text-sm font-bold text-slate-400">
 
-                                {player.wins} Siege •{" "}
+                                {player.wins} Wins •{" "}
                                 {player.birdies} Birdies
 
                               </div>
@@ -580,7 +581,7 @@ export default function Leaderboard() {
                             </div>
 
                             <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                              Runden
+                              Rounds
                             </div>
 
                           </div>
@@ -658,11 +659,11 @@ export default function Leaderboard() {
                                 <div>
 
                                   <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
-                                    Details
+                                    Scorecards
                                   </div>
 
                                   <div className="mt-2 text-2xl font-black tracking-tight text-slate-950">
-                                    Letzte Matches
+                                    Recent Rounds
                                   </div>
 
                                 </div>
@@ -678,7 +679,7 @@ export default function Leaderboard() {
                                 {recentMatches.length === 0 && (
 
                                   <div className="rounded-[24px] border border-slate-100 bg-white p-5 text-center text-sm font-bold text-slate-400 shadow-sm">
-                                    Noch keine Matches.
+                                    Noch keine Runden gespielt.
                                   </div>
 
                                 )}
@@ -799,7 +800,7 @@ export default function Leaderboard() {
                                 <div className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm">
 
                                   <div className="text-sm font-bold text-slate-400">
-                                    Earnings
+                                    Winnings
                                   </div>
 
                                   <div className="mt-2 text-5xl font-black text-emerald-600">

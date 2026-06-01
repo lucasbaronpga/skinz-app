@@ -162,7 +162,7 @@ export default function Profile() {
           </div>
 
           <h1 className="mt-3 text-5xl font-black tracking-tight">
-            Profil
+            Player Profile
           </h1>
 
         </motion.div>
@@ -212,7 +212,7 @@ export default function Profile() {
 
             {/* Subtitle */}
             <div className="mt-3 text-lg text-slate-400">
-              Premium Golf Player
+              Skinz Player
             </div>
 
             {/* Hero Stats */}
@@ -222,7 +222,7 @@ export default function Profile() {
               <div className="rounded-[26px] bg-white/10 p-4 backdrop-blur-xl">
 
                 <div className="text-sm font-bold text-slate-400">
-                  Siege
+                  Wins
                 </div>
 
                 <div className="mt-2 text-3xl font-black text-white">
@@ -237,7 +237,7 @@ export default function Profile() {
               <div className="rounded-[26px] bg-white/10 p-4 backdrop-blur-xl">
 
                 <div className="text-sm font-bold text-slate-400">
-                  Runden
+                  Rounds
                 </div>
 
                 <div className="mt-2 text-3xl font-black text-white">
@@ -248,11 +248,11 @@ export default function Profile() {
 
               </div>
 
-              {/* Earnings */}
+              {/* Winnings */}
               <div className="rounded-[26px] bg-white/10 p-4 backdrop-blur-xl">
 
                 <div className="text-sm font-bold text-slate-400">
-                  Earnings
+                  Winnings
                 </div>
 
                 <div className="mt-2 text-3xl font-black text-emerald-400">
@@ -303,7 +303,7 @@ export default function Profile() {
             </div>
 
             <div className="mt-2 text-2xl font-black tracking-tight text-slate-950">
-              Full Rankings
+              Season Leaderboard
             </div>
 
           </div>
@@ -418,7 +418,7 @@ export default function Profile() {
 
             </div>
 
-            {/* Total Earnings */}
+            {/* Total Winnings */}
             <div className="rounded-[26px] border border-slate-100 bg-white p-5 shadow-sm">
 
               <div className="flex items-center gap-2 text-slate-400">
@@ -428,7 +428,7 @@ export default function Profile() {
                 />
 
                 <div className="text-sm font-bold">
-                  Total €
+                  Winnings
                 </div>
 
               </div>
@@ -445,7 +445,7 @@ export default function Profile() {
 
         </motion.div>
 
-        {/* Recent Matches */}
+        {/* Recent Rounds */}
         <motion.div
           initial={{
             opacity: 0,
@@ -469,11 +469,11 @@ export default function Profile() {
             <div>
 
               <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
-                History
+                Scorecards
               </div>
 
               <div className="mt-2 text-2xl font-black tracking-tight text-slate-950">
-                Letzte Matches
+                Recent Rounds
               </div>
 
             </div>
@@ -489,7 +489,7 @@ export default function Profile() {
             {recentMatches.length === 0 && (
 
               <div className="rounded-[24px] border border-slate-100 bg-white p-5 text-center text-sm font-bold text-slate-400 shadow-sm">
-                Noch keine Matches gespielt.
+                Noch keine Runden gespielt.
               </div>
 
             )}
@@ -569,7 +569,7 @@ export default function Profile() {
                                 size={10}
                               />
 
-                              Win
+                              Winner
 
                             </div>
 
