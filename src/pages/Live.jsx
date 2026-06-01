@@ -219,7 +219,7 @@ export default function Live() {
 
   return (
 
-    <div className="min-h-screen bg-[#f5f5f7] pb-52 text-slate-950">
+    <div className="min-h-screen bg-[#f5f5f7] pb-56 text-slate-950">
 
       {/* Header */}
       <motion.div
@@ -238,12 +238,12 @@ export default function Live() {
 
         <div className="mx-auto max-w-md">
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between gap-5">
 
             <div className="min-w-0">
 
               <div className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">
-                Live Match
+                Auf der Runde
               </div>
 
               <div className="mt-2 inline-flex max-w-full rounded-full border border-slate-100 bg-white px-3 py-1 text-xs font-black uppercase tracking-widest text-slate-500 shadow-sm">
@@ -254,7 +254,7 @@ export default function Live() {
 
               </div>
 
-              <div className="mt-3 text-6xl font-black tracking-tight text-slate-950">
+              <div className="mt-4 text-6xl font-black tracking-tight text-slate-950">
                 Loch {hole}
               </div>
 
@@ -316,7 +316,7 @@ export default function Live() {
           <div className="mt-3 flex items-center justify-between px-1">
 
             <div className="text-xs font-black uppercase tracking-widest text-slate-400">
-              Fortschritt
+              Rundenfortschritt
             </div>
 
             <div className="text-xs font-black text-slate-400">
@@ -350,9 +350,9 @@ export default function Live() {
           }`}
         >
 
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between gap-4">
 
-            <div>
+            <div className="min-w-0">
 
               <div
                 className={`text-xs font-black uppercase tracking-[0.3em] ${
@@ -364,7 +364,7 @@ export default function Live() {
 
                 {hasTie
                   ? "Carryover"
-                  : "Aktueller Pot"}
+                  : "Skins-Pot"}
 
               </div>
 
@@ -391,7 +391,7 @@ export default function Live() {
             </div>
 
             <div
-              className={`flex h-16 w-16 items-center justify-center rounded-full text-3xl ${
+              className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-3xl ${
                 hasTie
                   ? "bg-white/20"
                   : "bg-emerald-500"
@@ -415,8 +415,8 @@ export default function Live() {
           >
 
             {hasTie
-              ? `Gleichstand auf Loch ${hole}`
-              : `${winners[0]?.name || "-"} führt aktuell`}
+              ? `Carryover auf Loch ${hole}`
+              : `${winners[0]?.name || "-"} führt am Loch`}
 
           </div>
 
@@ -531,7 +531,7 @@ export default function Live() {
                       </div>
 
                       <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                        Aktuelles Loch
+                        Hole Score
                       </div>
 
                     </div>
@@ -620,7 +620,7 @@ export default function Live() {
                     <div>
 
                       <div className="text-xs font-black uppercase tracking-widest text-slate-400">
-                        Earnings
+                        Winnings
                       </div>
 
                       <div className="mt-1 text-3xl font-black text-emerald-600">
@@ -655,7 +655,7 @@ export default function Live() {
 
       </div>
 
-      {/* Timeline */}
+      {/* Scorecard */}
       <div className="mx-auto mt-10 max-w-md px-5">
 
         <div className="rounded-[38px] bg-white p-6 shadow-sm">
@@ -665,11 +665,11 @@ export default function Live() {
             <div>
 
               <div className="text-xs font-black uppercase tracking-[0.3em] text-slate-400">
-                Match History
+                Scorekarte
               </div>
 
               <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-                Timeline
+                Lochverlauf
               </div>
 
             </div>
@@ -685,7 +685,7 @@ export default function Live() {
             {history.length === 0 && (
 
               <div className="rounded-[24px] border border-slate-100 bg-white p-5 text-center text-sm font-bold text-slate-400 shadow-sm">
-                Noch keine gespielten Löcher.
+                Noch kein Score auf der Karte.
               </div>
 
             )}
@@ -856,7 +856,7 @@ export default function Live() {
               </div>
 
               <div className="mt-4 text-lg font-bold text-slate-400">
-                gewinnt den Skin
+                holt den Skin
               </div>
 
               <div className="mt-6 text-7xl font-black tracking-tight text-emerald-600">
@@ -929,7 +929,7 @@ export default function Live() {
               </motion.div>
 
               <div className="mt-6 text-xs font-black uppercase tracking-[0.3em] text-emerald-600">
-                Match beendet
+                Am 19. Loch
               </div>
 
               <h2 className="mt-4 text-5xl font-black tracking-tight text-slate-950">
@@ -969,7 +969,7 @@ export default function Live() {
                 <div className="rounded-[26px] border border-slate-100 bg-white p-5 shadow-sm">
 
                   <div className="text-sm font-bold text-slate-400">
-                    Earnings
+                    Winnings
                   </div>
 
                   <div className="mt-2 text-4xl font-black text-emerald-600">
@@ -1006,11 +1006,11 @@ export default function Live() {
                   <div>
 
                     <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
-                      Final Ranking
+                      Final Scores
                     </div>
 
                     <div className="mt-1 text-2xl font-black tracking-tight text-slate-950">
-                      Rangliste
+                      Leaderboard
                     </div>
 
                   </div>
@@ -1152,7 +1152,7 @@ export default function Live() {
                   className="w-full rounded-[30px] border border-slate-100 bg-white py-5 text-lg font-black text-slate-500 shadow-sm"
                 >
 
-                  Zurück zur Home
+                  Home
 
                 </motion.button>
 
