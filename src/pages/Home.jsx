@@ -178,7 +178,7 @@ export default function Home() {
           >
 
             <div className="text-sm font-black uppercase tracking-[0.3em] text-emerald-600">
-              Modern Golf Skins
+              Golf Skins Live
             </div>
 
             <h1 className="mt-4 text-7xl font-black tracking-tight text-slate-950">
@@ -186,9 +186,8 @@ export default function Home() {
             </h1>
 
             <p className="mt-5 max-w-xs text-lg leading-relaxed text-slate-500">
-              Premium Livescoring
-              für moderne Golf
-              Matches.
+              Live Scoring für Skins,
+              Flights und Scorecards.
             </p>
 
           </motion.div>
@@ -228,7 +227,7 @@ export default function Home() {
                 <div className="min-w-0">
 
                   <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
-                    Aktives Match
+                    Auf der Runde
                   </div>
 
                   <div className="mt-3 text-5xl font-black tracking-tight text-slate-950">
@@ -277,7 +276,7 @@ export default function Home() {
               <div className="mt-8">
 
                 <div className="text-sm font-bold text-slate-400">
-                  Aktueller Pot
+                  Skins-Pot
                 </div>
 
                 <div className="mt-2 text-7xl font-black tracking-tight text-emerald-600">
@@ -308,7 +307,7 @@ export default function Home() {
                   </div>
 
                   <div className="text-xs font-bold text-slate-400">
-                    Gewinn
+                    Winnings
                   </div>
 
                 </div>
@@ -319,7 +318,7 @@ export default function Home() {
               <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
 
                 <div className="text-sm font-black uppercase tracking-widest text-slate-400">
-                  Match öffnen
+                  Runde öffnen
                 </div>
 
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-950 text-white shadow-lg">
@@ -359,17 +358,17 @@ export default function Home() {
                 <div>
 
                   <div className="text-xs font-black uppercase tracking-[0.3em] text-slate-500">
-                    Bereit
+                    Bereit am Tee
                   </div>
 
                   <div className="mt-4 text-5xl font-black tracking-tight">
-                    Neues Match
+                    Neue Runde
                   </div>
 
                   <div className="mt-4 max-w-xs text-base font-bold leading-relaxed text-slate-400">
-                    Starte eine neue Runde,
-                    wähle deinen Golfplatz und
-                    tracke Skins live.
+                    Wähle Golfplatz,
+                    Flight und Einsatz —
+                    dann geht es auf die Runde.
                   </div>
 
                 </div>
@@ -451,7 +450,7 @@ export default function Home() {
                   </div>
 
                   <div className="mt-1 text-sm text-slate-500">
-                    Neues Match starten
+                    Neuen Flight starten
                   </div>
 
                 </div>
@@ -485,7 +484,7 @@ export default function Home() {
             className="mt-10 grid grid-cols-3 gap-3"
           >
 
-            {/* Players */}
+            {/* Flight / Players */}
             <div className="rounded-[28px] border border-slate-100 bg-white p-5 text-center shadow-sm">
 
               <div className="text-4xl font-black text-slate-950">
@@ -495,7 +494,9 @@ export default function Home() {
               </div>
 
               <div className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-400">
-                Spieler
+                {hasActiveMatch
+                  ? "Flight"
+                  : "Spieler"}
               </div>
 
             </div>
@@ -512,7 +513,7 @@ export default function Home() {
               <div className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-400">
                 {hasActiveMatch
                   ? "Loch"
-                  : "Runden"}
+                  : "Rounds"}
               </div>
 
             </div>
@@ -529,7 +530,7 @@ export default function Home() {
               <div className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-400">
                 {hasActiveMatch
                   ? "Skins"
-                  : "Siege"}
+                  : "Wins"}
               </div>
 
             </div>
@@ -562,7 +563,7 @@ export default function Home() {
                 <div className="min-w-0">
 
                   <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-500">
-                    Letzter Sieger
+                    Last Round Winner
                   </div>
 
                   <div className="mt-4 truncate text-5xl font-black tracking-tight">
@@ -611,11 +612,11 @@ export default function Home() {
 
               <div className="mt-8 flex items-end justify-between">
 
-                {/* Earnings */}
+                {/* Winnings */}
                 <div>
 
                   <div className="text-xs font-black uppercase tracking-widest text-slate-500">
-                    Earnings
+                    Winnings
                   </div>
 
                   <div className="mt-2 text-5xl font-black text-emerald-400">
@@ -624,11 +625,11 @@ export default function Home() {
 
                 </div>
 
-                {/* Score */}
+                {/* To Par */}
                 <div className="text-right">
 
                   <div className="text-xs font-black uppercase tracking-widest text-slate-500">
-                    Score
+                    To Par
                   </div>
 
                   <div
@@ -674,7 +675,7 @@ export default function Home() {
               <div>
 
                 <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
-                  Season Ranking
+                  Season Leaderboard
                 </div>
 
                 <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
@@ -705,7 +706,7 @@ export default function Home() {
             {topPlayers.length === 0 && (
 
               <div className="mt-6 rounded-[24px] border border-slate-100 bg-white p-5 text-center text-sm font-bold text-slate-400 shadow-sm">
-                Noch keine Rankings vorhanden.
+                Noch kein Leaderboard vorhanden.
               </div>
 
             )}
@@ -777,7 +778,7 @@ export default function Home() {
                         </div>
 
                         <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                          {player.wins} Siege
+                          {player.wins} Wins
                         </div>
 
                       </div>
@@ -792,7 +793,7 @@ export default function Home() {
                       </div>
 
                       <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                        Earnings
+                        Winnings
                       </div>
 
                     </div>
