@@ -74,7 +74,7 @@ function getMoneyColor(value) {
   const amount = toNumber(value, 0)
 
   if (amount > 0) {
-    return "text-emerald-600"
+    return "text-yellow-500"
   }
 
   if (amount < 0) {
@@ -88,7 +88,7 @@ function getMoneyColorDark(value) {
   const amount = toNumber(value, 0)
 
   if (amount > 0) {
-    return "text-emerald-400"
+    return "text-yellow-400"
   }
 
   if (amount < 0) {
@@ -98,20 +98,20 @@ function getMoneyColorDark(value) {
   return "text-white"
 }
 
-function formatSkinSaldo(value) {
-  return Math.abs(
-    toNumber(value, 0)
-  )
-}
-
-function getSkinColor(value) {
-  const amount = toNumber(value, 0)
-
-  if (amount < 0) {
-    return "text-red-500"
+function getRankStyle(index) {
+  if (index === 0) {
+    return "bg-yellow-400 text-black"
   }
 
-  return "text-slate-950"
+  if (index === 1) {
+    return "bg-slate-300 text-slate-950"
+  }
+
+  if (index === 2) {
+    return "bg-[#cd7f32] text-white"
+  }
+
+  return "border border-slate-200 bg-white text-slate-900"
 }
 
 function getCurrentCourseName(course) {
@@ -126,24 +126,6 @@ function getRoundCourseName(round) {
     round?.course?.name ||
     "Erster Golfclub Westpfalz"
   )
-}
-
-function getRoundCourseLocation(round) {
-  return (
-    round?.course?.location ||
-    "Westpfalz"
-  )
-}
-
-function getRoundCoursePar(round) {
-  return (
-    round?.course?.par ||
-    72
-  )
-}
-
-function getRoundCourseMeta(round) {
-  return `${getRoundCourseLocation(round)} · Par ${getRoundCoursePar(round)}`
 }
 
 function getRoundPlayers(round) {
@@ -238,9 +220,6 @@ export default function Home() {
       )
       .slice(0, 3)
 
-  const totalRounds =
-    completedRounds.length
-
   return (
     <div className="min-h-screen bg-[#f5f5f7] pb-[calc(9rem+env(safe-area-inset-bottom))] text-slate-900">
       <div className="px-6 pt-12">
@@ -261,17 +240,9 @@ export default function Home() {
             }}
             className="pt-8"
           >
-            <div className="text-sm font-black uppercase tracking-[0.3em] text-emerald-600">
-              Golf Skins Live
-            </div>
-
-            <h1 className="mt-4 text-7xl font-black tracking-tight text-slate-950">
+            <h1 className="text-7xl font-black tracking-tight text-slate-950">
               Skinz
             </h1>
-
-            <p className="mt-5 max-w-xs text-lg leading-relaxed text-slate-500">
-              Live Scoring für Skins, Flights und Scorecards.
-            </p>
           </motion.div>
 
           {/* Active Match OR Start Match */}
@@ -297,7 +268,6 @@ export default function Home() {
               onClick={() => navigate("/live")}
               className="mt-10 w-full overflow-hidden rounded-[42px] border border-white/70 bg-white/90 p-8 text-left shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl"
             >
-              {/* Top */}
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
@@ -324,7 +294,7 @@ export default function Home() {
                     {specialScoringEnabled && (
                       <div className="inline-flex items-center gap-1 rounded-full bg-orange-500 px-3 py-1 text-xs font-black uppercase tracking-widest text-white shadow-sm">
                         <Sparkles size={13} />
-                        Sonderform
+                        Skinz Professional
                       </div>
                     )}
                   </div>
@@ -342,12 +312,11 @@ export default function Home() {
                   {matchFinished
                     ? "Beendet"
                     : specialScoringEnabled
-                    ? "Sonderform"
+                    ? "Pro"
                     : "Live"}
                 </div>
               </div>
 
-              {/* Pot */}
               <div className="mt-8">
                 <div className="text-sm font-bold text-slate-400">
                   Skins-Pot
@@ -357,14 +326,13 @@ export default function Home() {
                   className={`mt-2 text-7xl font-black tracking-tight ${
                     specialScoringEnabled
                       ? "text-orange-500"
-                      : "text-emerald-600"
+                      : "text-yellow-500"
                   }`}
                 >
                   {toNumber(currentPot, 0)}€
                 </div>
               </div>
 
-              {/* Active Skin Info */}
               <div className="mt-6 grid grid-cols-2 gap-3">
                 <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
                   <div className="text-xs font-black uppercase tracking-widest text-slate-400">
@@ -395,7 +363,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Leader */}
               <div className="mt-8 flex items-center justify-between rounded-[30px] border border-slate-100 bg-white p-5 shadow-sm">
                 <div>
                   <div className="text-xs font-black uppercase tracking-widest text-slate-400">
@@ -415,12 +382,11 @@ export default function Home() {
                   </div>
 
                   <div className="text-xs font-bold text-slate-400">
-                    Winnings
+                    Earnings
                   </div>
                 </div>
               </div>
 
-              {/* Footer */}
               <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
                 <div className="text-sm font-black uppercase tracking-widest text-slate-400">
                   Runde öffnen
@@ -450,11 +416,7 @@ export default function Home() {
             >
               <div className="flex items-start justify-between gap-5">
                 <div>
-                  <div className="text-xs font-black uppercase tracking-[0.3em] text-slate-500">
-                    Bereit am Tee
-                  </div>
-
-                  <div className="mt-4 text-5xl font-black tracking-tight">
+                  <div className="text-5xl font-black tracking-tight">
                     Neue Runde
                   </div>
 
@@ -531,69 +493,6 @@ export default function Home() {
             </motion.div>
           )}
 
-          {/* Stats */}
-          <motion.div
-            initial={{
-              opacity: 0,
-              y: 20,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              delay: 0.1,
-              duration: 0.35,
-              ease: "easeOut",
-            }}
-            className="mt-10 grid grid-cols-3 gap-3"
-          >
-            {/* Flight / Players */}
-            <div className="rounded-[28px] border border-slate-100 bg-white p-5 text-center shadow-sm">
-              <div className="text-4xl font-black text-slate-950">
-                {hasActiveMatch
-                  ? players.length
-                  : playerStats.length}
-              </div>
-
-              <div className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-400">
-                {hasActiveMatch ? "Flight" : "Spieler"}
-              </div>
-            </div>
-
-            {/* Hole / Rounds */}
-            <div className="rounded-[28px] border border-slate-100 bg-white p-5 text-center shadow-sm">
-              <div className="text-4xl font-black text-slate-950">
-                {hasActiveMatch
-                  ? hole
-                  : totalRounds}
-              </div>
-
-              <div className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-400">
-                {hasActiveMatch ? "Loch" : "Rounds"}
-              </div>
-            </div>
-
-            {/* Skin-Saldo / Wins */}
-            <div className="rounded-[28px] border border-slate-100 bg-white p-5 text-center shadow-sm">
-              <div
-                className={`text-4xl font-black ${
-                  hasActiveMatch
-                    ? getSkinColor(liveLeader?.skins)
-                    : "text-slate-950"
-                }`}
-              >
-                {hasActiveMatch
-                  ? formatSkinSaldo(liveLeader?.skins)
-                  : topPlayers[0]?.wins || 0}
-              </div>
-
-              <div className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-400">
-                {hasActiveMatch ? "Skin-Saldo" : "Wins"}
-              </div>
-            </div>
-          </motion.div>
-
           {/* Last Winner */}
           {latestRound && (
             <motion.div
@@ -638,13 +537,9 @@ export default function Home() {
                     {latestRoundHasSpecialScoring && (
                       <div className="inline-flex items-center gap-1 rounded-full bg-orange-500 px-3 py-1 text-xs font-black uppercase tracking-widest text-white">
                         <Sparkles size={13} />
-                        Sonderform
+                        Skinz Professional
                       </div>
                     )}
-                  </div>
-
-                  <div className="mt-3 text-sm font-bold text-slate-500">
-                    {getRoundCourseMeta(latestRound)}
                   </div>
                 </div>
 
@@ -654,10 +549,9 @@ export default function Home() {
               </div>
 
               <div className="mt-8 flex items-end justify-between gap-5">
-                {/* Winnings */}
                 <div>
                   <div className="text-xs font-black uppercase tracking-widest text-slate-500">
-                    Winnings
+                    Earnings
                   </div>
 
                   <div
@@ -667,7 +561,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* To Par */}
                 <div className="text-right">
                   <div className="text-xs font-black uppercase tracking-widest text-slate-500">
                     To Par
@@ -700,7 +593,6 @@ export default function Home() {
             }}
             className="mt-10 rounded-[40px] bg-white/90 p-6 shadow-sm backdrop-blur-xl"
           >
-            {/* Header */}
             <div className="flex items-center justify-between gap-4">
               <div>
                 <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
@@ -708,7 +600,7 @@ export default function Home() {
                 </div>
 
                 <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-                  Top Spieler
+                  Hot Players
                 </div>
               </div>
 
@@ -722,14 +614,12 @@ export default function Home() {
               </button>
             </div>
 
-            {/* Empty Ranking */}
             {topPlayers.length === 0 && (
               <div className="mt-6 rounded-[24px] border border-slate-100 bg-white p-5 text-center text-sm font-bold text-slate-400 shadow-sm">
                 Noch kein Leaderboard vorhanden.
               </div>
             )}
 
-            {/* Players */}
             <div className="mt-6 space-y-3">
               {topPlayers.map((player, index) => (
                 <motion.button
@@ -741,24 +631,13 @@ export default function Home() {
                   onClick={() => navigate("/leaderboard")}
                   className="flex w-full items-center justify-between rounded-[24px] border border-slate-100 bg-white px-5 py-4 text-left shadow-sm"
                 >
-                  {/* Left */}
                   <div className="flex min-w-0 items-center gap-4">
-                    {/* Rank */}
                     <div
-                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-black ${
-                        index === 0
-                          ? "bg-yellow-400 text-black"
-                          : index === 1
-                          ? "border border-slate-200 bg-white text-slate-900"
-                          : index === 2
-                          ? "bg-orange-400 text-white"
-                          : "border border-slate-200 bg-white text-slate-900"
-                      }`}
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-black ${getRankStyle(index)}`}
                     >
                       {index + 1}
                     </div>
 
-                    {/* Name */}
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <div className="truncate text-xl font-black text-slate-950">
@@ -779,7 +658,6 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Right */}
                   <div className="shrink-0 text-right">
                     <div
                       className={`text-3xl font-black ${getMoneyColor(player.totalWinnings)}`}
@@ -788,7 +666,7 @@ export default function Home() {
                     </div>
 
                     <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                      Winnings
+                      Earnings
                     </div>
                   </div>
                 </motion.button>

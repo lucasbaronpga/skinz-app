@@ -1,11 +1,16 @@
-import { NavLink } from "react-router-dom"
+import {
+  NavLink,
+} from "react-router-dom"
 
-import { motion } from "framer-motion"
+import {
+  motion,
+} from "framer-motion"
 
 import {
   Home,
-  History,
+  ClipboardList,
   Plus,
+  Trophy,
   User,
 } from "lucide-react"
 
@@ -18,14 +23,19 @@ const navItems = [
   },
   {
     to: "/matches",
-    label: "Matches",
-    icon: History,
+    label: "Verlauf",
+    icon: ClipboardList,
   },
   {
     to: "/round",
     label: "Neue Runde",
     icon: Plus,
     primary: true,
+  },
+  {
+    to: "/leaderboard",
+    label: "Leaderboard",
+    icon: Trophy,
   },
   {
     to: "/profile",
@@ -55,7 +65,7 @@ export default function BottomNav() {
           duration: 0.35,
           ease: "easeOut",
         }}
-        className="pointer-events-auto flex w-full max-w-xs items-center justify-between rounded-full border border-white/60 bg-white/85 px-5 py-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur-2xl"
+        className="pointer-events-auto grid w-full max-w-md grid-cols-5 items-center rounded-full border border-white/60 bg-white/85 px-4 py-4 shadow-[0_20px_60px_rgba(15,23,42,0.14)] backdrop-blur-2xl"
       >
         {navItems.map((item) => {
           const Icon = item.icon
@@ -67,7 +77,7 @@ export default function BottomNav() {
               end={item.end}
               aria-label={item.label}
               title={item.label}
-              className="outline-none"
+              className="flex justify-center outline-none"
             >
               {({ isActive }) => {
                 const isPrimaryActive =
@@ -103,7 +113,6 @@ export default function BottomNav() {
                           ].join(" "),
                     ].join(" ")}
                   >
-                    {/* Active Glow for Primary Button */}
                     {isPrimaryActive && (
                       <motion.div
                         layoutId="primaryActiveGlow"
@@ -116,7 +125,6 @@ export default function BottomNav() {
                       />
                     )}
 
-                    {/* Active Dot */}
                     {isActive && !item.primary && (
                       <motion.div
                         layoutId="activeDot"
@@ -130,7 +138,7 @@ export default function BottomNav() {
                     )}
 
                     <Icon
-                      size={item.primary ? 30 : 23}
+                      size={item.primary ? 31 : 23}
                       strokeWidth={2.6}
                       aria-hidden="true"
                     />

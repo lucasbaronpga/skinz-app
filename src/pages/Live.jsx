@@ -17,6 +17,7 @@ import {
   Crown,
   ChevronRight,
   Sparkles,
+  Check,
 } from "lucide-react"
 
 import {
@@ -51,7 +52,7 @@ function getMoneyColor(value) {
   const amount = toNumber(value, 0)
 
   if (amount > 0) {
-    return "text-emerald-600"
+    return "text-yellow-500"
   }
 
   if (amount < 0) {
@@ -230,13 +231,8 @@ export default function Live() {
   const {
     hole,
 
-    carryover,
-    currentPot,
     currentPar,
     currentCourse,
-    currentBaseSkins,
-    currentBonusSkins,
-    currentSkinsAtStake,
 
     players,
     history,
@@ -247,7 +243,6 @@ export default function Live() {
     hasActiveMatch,
 
     lowestScore,
-    winners,
     hasTie,
 
     specialScoringEnabled,
@@ -261,6 +256,11 @@ export default function Live() {
   const [
     showAbortModal,
     setShowAbortModal,
+  ] = useState(false)
+
+  const [
+    showSavedFeedback,
+    setShowSavedFeedback,
   ] = useState(false)
 
   const sortedPlayers =
@@ -289,27 +289,6 @@ export default function Live() {
           (safeHole / HOLE_COUNT) * 100
         )
 
-  const liveSpecialLabel =
-    winners[0]
-      ? getSpecialLabelForScore(
-          winners[0].score,
-          currentPar,
-          specialScoringEnabled
-        )
-      : null
-
-  const visibleBaseSkins =
-    currentBaseSkins || 1
-
-  const visibleBonusSkins =
-    currentBonusSkins || 0
-
-  const visibleCarryover =
-    carryover || 0
-
-  const visibleSkinsAtStake =
-    currentSkinsAtStake || 1
-
   function handleCloseLive() {
     navigate("/")
   }
@@ -327,6 +306,15 @@ export default function Live() {
 
   function handleGoHome() {
     navigate("/")
+  }
+
+  function handleFinishHole() {
+    setShowSavedFeedback(true)
+    finishHole()
+
+    window.setTimeout(() => {
+      setShowSavedFeedback(false)
+    }, 650)
   }
 
   if (!hasActiveMatch && !matchFinished) {
@@ -403,7 +391,7 @@ export default function Live() {
                 {specialScoringEnabled && (
                   <div className="inline-flex items-center gap-1 rounded-full bg-orange-500 px-3 py-1 text-xs font-black uppercase tracking-widest text-white shadow-sm">
                     <Sparkles size={12} />
-                    Sonderform
+                    Skinz Professional
                   </div>
                 )}
               </div>
@@ -432,7 +420,6 @@ export default function Live() {
             )}
           </div>
 
-          {/* Progress */}
           <div className="mt-8 rounded-full border border-slate-100 bg-white p-2 shadow-sm">
             <div className="h-3 overflow-hidden rounded-full bg-[#f5f5f7]">
               <motion.div
@@ -466,146 +453,6 @@ export default function Live() {
           </div>
         </div>
       </motion.div>
-
-      {/* Pot Hero */}
-      <div className="mx-auto mt-8 max-w-md px-5">
-        <motion.div
-          initial={{
-            opacity: 0,
-            y: 20,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            duration: 0.3,
-            ease: "easeOut",
-          }}
-          className={`overflow-hidden rounded-[42px] p-8 shadow-2xl ${
-            hasTie || specialScoringEnabled
-              ? "bg-orange-500 text-white"
-              : "bg-slate-950 text-white"
-          }`}
-        >
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <div
-                className={`text-xs font-black uppercase tracking-[0.3em] ${
-                  hasTie || specialScoringEnabled
-                    ? "text-orange-100"
-                    : "text-slate-500"
-                }`}
-              >
-                {hasTie
-                  ? "Carryover"
-                  : specialScoringEnabled
-                  ? "Sonderform Pot"
-                  : "Skins-Pot"}
-              </div>
-
-              <motion.div
-                key={currentPot}
-                initial={{
-                  scale: 0.92,
-                  opacity: 0,
-                }}
-                animate={{
-                  scale: 1,
-                  opacity: 1,
-                }}
-                className="mt-5 text-7xl font-black tracking-tight"
-              >
-                {currentPot}€
-              </motion.div>
-            </div>
-
-            <div
-              className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-3xl ${
-                hasTie || specialScoringEnabled
-                  ? "bg-white/20"
-                  : "bg-emerald-500"
-              }`}
-              aria-hidden="true"
-            >
-              {hasTie
-                ? "🔥"
-                : specialScoringEnabled
-                ? "✨"
-                : "💰"}
-            </div>
-          </div>
-
-          <div
-            className={`mt-6 text-lg font-bold ${
-              hasTie || specialScoringEnabled
-                ? "text-orange-100"
-                : "text-slate-400"
-            }`}
-          >
-            {hasTie
-              ? `Carryover auf Loch ${safeHole}`
-              : `${winners[0]?.name || "-"} führt am Loch`}
-          </div>
-
-          {specialScoringEnabled && liveSpecialLabel && (
-            <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-black uppercase tracking-widest text-orange-500 shadow-sm">
-              <Sparkles size={13} />
-              {liveSpecialLabel}
-            </div>
-          )}
-
-          <div className="mt-5 grid grid-cols-3 gap-3">
-            <div className="rounded-[22px] bg-white/10 p-4 backdrop-blur-xl">
-              <div className="text-xs font-black uppercase tracking-widest opacity-70">
-                Base
-              </div>
-
-              <div className="mt-1 text-3xl font-black">
-                {visibleBaseSkins}
-              </div>
-
-              <div className="mt-1 text-xs font-bold opacity-70">
-                Skins
-              </div>
-            </div>
-
-            <div className="rounded-[22px] bg-white/10 p-4 text-center backdrop-blur-xl">
-              <div className="text-xs font-black uppercase tracking-widest opacity-70">
-                Carry
-              </div>
-
-              <div className="mt-1 text-3xl font-black">
-                {visibleCarryover}
-              </div>
-
-              <div className="mt-1 text-xs font-bold opacity-70">
-                Skins
-              </div>
-            </div>
-
-            <div className="rounded-[22px] bg-white/10 p-4 text-right backdrop-blur-xl">
-              <div className="text-xs font-black uppercase tracking-widest opacity-70">
-                At Stake
-              </div>
-
-              <div className="mt-1 text-3xl font-black">
-                {visibleSkinsAtStake}
-              </div>
-
-              <div className="mt-1 text-xs font-bold opacity-70">
-                Skins
-              </div>
-            </div>
-          </div>
-
-          {specialScoringEnabled && visibleBonusSkins > 0 && !hasTie && (
-            <div className="mt-4 rounded-[22px] bg-white/15 px-4 py-3 text-xs font-black uppercase tracking-widest text-white">
-              Bonus: +{visibleBonusSkins} Skin{visibleBonusSkins === 1 ? "" : "s"} durch Sonderform
-            </div>
-          )}
-        </motion.div>
-      </div>
 
       {/* Players */}
       <div className="mx-auto mt-8 max-w-md space-y-5 px-5">
@@ -657,7 +504,6 @@ export default function Live() {
                 }`}
               >
                 <div className="flex items-start justify-between gap-5">
-                  {/* Player Info */}
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="truncate text-4xl font-black tracking-tight text-slate-950">
@@ -704,7 +550,6 @@ export default function Live() {
                     </div>
                   </div>
 
-                  {/* Score Controls */}
                   <div className="flex flex-col items-center gap-4">
                     <motion.button
                       type="button"
@@ -770,11 +615,10 @@ export default function Live() {
                   </div>
                 </div>
 
-                {/* Footer */}
                 <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
                   <div>
                     <div className="text-xs font-black uppercase tracking-widest text-slate-400">
-                      Winnings
+                      Earnings
                     </div>
 
                     <div
@@ -887,7 +731,7 @@ export default function Live() {
                           : item.winner}
                       </div>
 
-                      <div className="mt-1 text-xs font-black uppercase tracking-widest text-emerald-600">
+                      <div className="mt-1 text-xs font-black uppercase tracking-widest text-yellow-500">
                         {getSkinsLabel(item.skins || 0)} · {item.pot || 0}€
                       </div>
                     </div>
@@ -898,7 +742,6 @@ export default function Live() {
         </div>
       </div>
 
-      {/* Abort Button */}
       {!matchFinished && (
         <div className="mx-auto mt-6 max-w-md px-5">
           <motion.button
@@ -914,16 +757,47 @@ export default function Live() {
         </div>
       )}
 
-      {/* Finish Button */}
       {!matchFinished && (
         <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center px-5 pb-[calc(2rem+env(safe-area-inset-bottom))]">
-          <div className="w-full max-w-md">
+          <div className="relative w-full max-w-md">
+            <AnimatePresence>
+              {showSavedFeedback && (
+                <motion.div
+                  initial={{
+                    opacity: 0,
+                    scale: 0.6,
+                    y: 12,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    scale: 1,
+                    y: -18,
+                  }}
+                  exit={{
+                    opacity: 0,
+                    scale: 0.7,
+                    y: -34,
+                  }}
+                  transition={{
+                    duration: 0.24,
+                    ease: "easeOut",
+                  }}
+                  className="absolute left-1/2 top-0 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-full items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_18px_40px_rgba(16,185,129,0.35)]"
+                >
+                  <Check
+                    size={30}
+                    strokeWidth={3.4}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <motion.button
               type="button"
               whileTap={{
                 scale: 0.98,
               }}
-              onClick={finishHole}
+              onClick={handleFinishHole}
               className={`flex w-full items-center justify-between rounded-[32px] px-6 py-5 text-xl font-black text-white ${
                 specialScoringEnabled
                   ? "bg-orange-500 shadow-[0_20px_50px_rgba(249,115,22,0.35)]"
@@ -1002,7 +876,7 @@ export default function Live() {
                   : "Skins"}
               </div>
 
-              <div className="mt-6 text-7xl font-black tracking-tight text-emerald-600">
+              <div className="mt-6 text-7xl font-black tracking-tight text-yellow-500">
                 {formatMoney(celebration.pot)}
               </div>
             </motion.div>
@@ -1096,7 +970,7 @@ export default function Live() {
 
                 <div className="rounded-[26px] border border-slate-100 bg-white p-5 shadow-sm">
                   <div className="text-sm font-bold text-slate-400">
-                    Winnings
+                    Earnings
                   </div>
 
                   <div
@@ -1119,7 +993,6 @@ export default function Live() {
                 </div>
               </div>
 
-              {/* Final Ranking */}
               <div className="mt-8 rounded-[32px] bg-[#f5f5f7] p-4 text-left">
                 <div className="flex items-center justify-between px-1">
                   <div>
@@ -1210,7 +1083,6 @@ export default function Live() {
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="mt-8 space-y-3">
                 <motion.button
                   type="button"
