@@ -17,6 +17,7 @@ import {
   MapPin,
   Minus,
   Plus,
+  Sparkles,
   Users,
   X,
 } from "lucide-react"
@@ -29,10 +30,87 @@ import {
   useGame,
 } from "../context/GameContext"
 
-export default function Round() {
+const MIN_STAKE = 1
+const MAX_STAKE = 100
 
-  const navigate =
-    useNavigate()
+function normalizeName(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+}
+
+function getCourseName(course) {
+  return course?.name || "Erster Golfclub Westpfalz"
+}
+
+function getCourseLocation(course) {
+  return course?.location || "Westpfalz"
+}
+
+function getCoursePar(course) {
+  return course?.par || 72
+}
+
+function getFrontNinePar(course) {
+  return (
+    course?.pars
+      ?.slice(0, 9)
+      .reduce((total, par) => total + par, 0) || 0
+  )
+}
+
+function getBackNinePar(course) {
+  return (
+    course?.pars
+      ?.slice(9, 18)
+      .reduce((total, par) => total + par, 0) || 0
+  )
+}
+
+function getCourseMeta(course) {
+  return `${getCourseLocation(course)} · Par ${getCoursePar(course)}`
+}
+
+function getCourseNineMeta(course) {
+  return `Front 9 Par ${getFrontNinePar(course)} · Back 9 Par ${getBackNinePar(course)}`
+}
+
+function clampStake(value) {
+  const number = Number(value)
+
+  if (!Number.isFinite(number)) {
+    return MIN_STAKE
+  }
+
+  return Math.min(
+    Math.max(number, MIN_STAKE),
+    MAX_STAKE
+  )
+}
+
+function buildInitialPlayers(userName) {
+  const cleanedUserName = userName?.trim()
+
+  if (!cleanedUserName) {
+    return [
+      "Lucas",
+      "Ben",
+    ]
+  }
+
+  const defaultOpponent =
+    normalizeName(cleanedUserName) === "ben"
+      ? "Lucas"
+      : "Ben"
+
+  return [
+    cleanedUserName,
+    defaultOpponent,
+  ]
+}
+
+export default function Round() {
+  const navigate = useNavigate()
 
   const {
     user,
@@ -49,139 +127,11 @@ export default function Round() {
     currentCourse,
   } = useGame()
 
-  function normalizeName(
-    value
-  ) {
-
-    return String(value || "")
-      .trim()
-      .toLowerCase()
-  }
-
-  function getCourseName(
-    course
-  ) {
-
-    return (
-      course?.name ||
-      "Erster Golfclub Westpfalz"
-    )
-  }
-
-  function getCourseLocation(
-    course
-  ) {
-
-    return (
-      course?.location ||
-      "Westpfalz"
-    )
-  }
-
-  function getCoursePar(
-    course
-  ) {
-
-    return (
-      course?.par ||
-      72
-    )
-  }
-
-  function getFrontNinePar(
-    course
-  ) {
-
-    return (
-      course?.pars
-        ?.slice(
-          0,
-          9
-        )
-        .reduce(
-          (
-            total,
-            par
-          ) =>
-            total + par,
-          0
-        ) || 0
-    )
-  }
-
-  function getBackNinePar(
-    course
-  ) {
-
-    return (
-      course?.pars
-        ?.slice(
-          9,
-          18
-        )
-        .reduce(
-          (
-            total,
-            par
-          ) =>
-            total + par,
-          0
-        ) || 0
-    )
-  }
-
-  function getCourseMeta(
-    course
-  ) {
-
-    return `${getCourseLocation(
-      course
-    )} · Par ${getCoursePar(
-      course
-    )}`
-  }
-
-  function getCourseNineMeta(
-    course
-  ) {
-
-    return `Front 9 Par ${getFrontNinePar(
-      course
-    )} · Back 9 Par ${getBackNinePar(
-      course
-    )}`
-  }
-
-  function buildInitialPlayers() {
-
-    const userName =
-      user?.name?.trim()
-
-    if (!userName) {
-
-      return [
-        "Lucas",
-        "Ben",
-      ]
-    }
-
-    const defaultOpponent =
-      normalizeName(userName) ===
-      "ben"
-        ? "Lucas"
-        : "Ben"
-
-    return [
-      userName,
-      defaultOpponent,
-    ]
-  }
-
   const [
     players,
     setPlayers,
-  ] = useState(
-    buildInitialPlayers
+  ] = useState(() =>
+    buildInitialPlayers(user?.name)
   )
 
   const [
@@ -194,103 +144,110 @@ export default function Round() {
     setStake,
   ] = useState(2)
 
+  const [
+    specialScoringEnabled,
+    setSpecialScoringEnabled,
+  ] = useState(false)
+
   const uniquePlayers =
     useMemo(() => {
+      const playerMap = new Map()
 
-      const playerMap =
-        new Map()
+      players.forEach((player) => {
+        const trimmedName =
+          String(player || "").trim()
 
-      players.forEach(
-        (player) => {
-
-          const trimmedName =
-            player.trim()
-
-          if (!trimmedName) {
-            return
-          }
-
-          const key =
-            normalizeName(
-              trimmedName
-            )
-
-          if (!playerMap.has(key)) {
-
-            playerMap.set(
-              key,
-              trimmedName
-            )
-          }
-
+        if (!trimmedName) {
+          return
         }
-      )
+
+        const key =
+          normalizeName(trimmedName)
+
+        if (!playerMap.has(key)) {
+          playerMap.set(
+            key,
+            trimmedName
+          )
+        }
+      })
 
       return Array.from(
         playerMap.values()
       )
-
     }, [
       players,
     ])
+
+  const cleanedNewPlayer =
+    newPlayer.trim()
+
+  const newPlayerAlreadyExists =
+    uniquePlayers.some(
+      (player) =>
+        normalizeName(player) ===
+        normalizeName(cleanedNewPlayer)
+    )
+
+  const canAddPlayer =
+    cleanedNewPlayer.length > 0 &&
+    !newPlayerAlreadyExists
 
   const canStart =
     uniquePlayers.length >= 2
 
   function addPlayer() {
-
-    const name =
-      newPlayer.trim()
-
-    if (!name) {
+    if (!cleanedNewPlayer) {
       return
     }
 
-    const alreadyExists =
-      uniquePlayers.some(
-        (player) =>
-          normalizeName(player) ===
-          normalizeName(name)
-      )
-
-    if (alreadyExists) {
-
+    if (newPlayerAlreadyExists) {
       setNewPlayer("")
       return
     }
 
-    setPlayers(
-      (currentPlayers) => [
-        ...currentPlayers,
-        name,
-      ]
-    )
+    setPlayers((currentPlayers) => [
+      ...currentPlayers,
+      cleanedNewPlayer,
+    ])
 
     setNewPlayer("")
   }
 
-  function removePlayer(
-    name
-  ) {
+  function removePlayer(name) {
+    setPlayers((currentPlayers) =>
+      currentPlayers.filter(
+        (player) =>
+          normalizeName(player) !==
+          normalizeName(name)
+      )
+    )
+  }
 
-    setPlayers(
-      (currentPlayers) =>
-        currentPlayers.filter(
-          (player) =>
-            normalizeName(player) !==
-            normalizeName(name)
-        )
+  function decreaseStake() {
+    setStake((currentStake) =>
+      clampStake(currentStake - 1)
+    )
+  }
+
+  function increaseStake() {
+    setStake((currentStake) =>
+      clampStake(currentStake + 1)
+    )
+  }
+
+  function toggleSpecialScoring() {
+    setSpecialScoringEnabled(
+      (currentValue) => !currentValue
     )
   }
 
   function handleStartMatch() {
-
     if (!canStart) {
       return
     }
 
     if (hasActiveMatch) {
-
       const confirmed =
         window.confirm(
           "Du bist noch auf der Runde. Neue Runde starten und aktuelle Runde überschreiben?"
@@ -305,7 +262,8 @@ export default function Round() {
       startMatch(
         uniquePlayers,
         stake,
-        selectedCourseId
+        selectedCourseId,
+        specialScoringEnabled
       )
 
     if (didStart) {
@@ -314,24 +272,23 @@ export default function Round() {
   }
 
   return (
-
-    <div className="min-h-screen bg-[#f5f5f7] pb-36 pt-8 text-slate-950">
-
+    <div className="min-h-screen bg-[#f5f5f7] pb-[calc(9rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
       <div className="mx-auto max-w-md px-5">
-
         {/* Header */}
         <motion.div
           initial={{
             opacity: 0,
             y: 20,
           }}
-
           animate={{
             opacity: 1,
             y: 0,
           }}
+          transition={{
+            duration: 0.3,
+            ease: "easeOut",
+          }}
         >
-
           <div className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">
             Tee Time Setup
           </div>
@@ -341,34 +298,28 @@ export default function Round() {
           </h1>
 
           <p className="mt-4 max-w-sm text-sm font-bold leading-relaxed text-slate-400">
-            Wähle Course, Flight und
-            Skin pro Loch. Danach geht
-            es direkt auf die Runde.
+            Wähle Course, Flight, €/Skin und optional die Birdie-/Eagle-Sonderform.
           </p>
-
         </motion.div>
 
         {/* Active Match Warning */}
         {hasActiveMatch && (
-
           <motion.div
             initial={{
               opacity: 0,
               y: 20,
             }}
-
             animate={{
               opacity: 1,
               y: 0,
             }}
-
             transition={{
               delay: 0.03,
+              duration: 0.3,
+              ease: "easeOut",
             }}
-
-            className="mt-8 rounded-[30px] border border-amber-100 bg-white p-5 shadow-sm"
+            className="mt-8 rounded-[30px] border border-amber-100 bg-white/90 p-5 shadow-sm backdrop-blur-xl"
           >
-
             <div className="text-xs font-black uppercase tracking-[0.25em] text-amber-500">
               Auf der Runde
             </div>
@@ -378,12 +329,9 @@ export default function Round() {
             </div>
 
             <div className="mt-2 text-sm font-bold leading-relaxed text-slate-400">
-              Wenn du eine neue Runde startest,
-              wird die aktuelle Runde überschrieben.
+              Wenn du eine neue Runde startest, wird die aktuelle Runde überschrieben.
             </div>
-
           </motion.div>
-
         )}
 
         {/* Match ID */}
@@ -392,19 +340,17 @@ export default function Round() {
             opacity: 0,
             y: 20,
           }}
-
           animate={{
             opacity: 1,
             y: 0,
           }}
-
           transition={{
             delay: 0.04,
+            duration: 0.3,
+            ease: "easeOut",
           }}
-
-          className="mt-8 rounded-[34px] border border-slate-100 bg-white p-5 shadow-sm"
+          className="mt-8 rounded-[34px] border border-white/70 bg-white/90 p-5 shadow-sm backdrop-blur-xl"
         >
-
           <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
             Nächste Scorecard
           </div>
@@ -416,7 +362,6 @@ export default function Round() {
           <div className="mt-2 text-sm font-bold text-slate-400">
             Diese ID wird für deine neue Runde verwendet.
           </div>
-
         </motion.div>
 
         {/* Course / Skin Hero */}
@@ -425,140 +370,249 @@ export default function Round() {
             opacity: 0,
             y: 20,
           }}
-
           animate={{
             opacity: 1,
             y: 0,
           }}
-
           transition={{
             delay: 0.06,
+            duration: 0.3,
+            ease: "easeOut",
           }}
-
           className="mt-6 overflow-hidden rounded-[42px] bg-slate-950 text-white shadow-2xl"
         >
-
           <div className="p-8">
-
             {/* Course */}
             <div className="flex items-start justify-between gap-4">
-
               <div className="min-w-0">
-
                 <div className="flex items-center gap-2 text-slate-500">
-
-                  <MapPin
-                    size={16}
-                  />
+                  <MapPin size={16} />
 
                   <div className="text-xs font-black uppercase tracking-[0.3em]">
                     Course
                   </div>
-
                 </div>
 
                 <div className="mt-4 max-w-[250px] text-4xl font-black leading-none tracking-tight sm:max-w-none">
-                  {getCourseName(
-                    currentCourse
-                  )}
+                  {getCourseName(currentCourse)}
                 </div>
 
                 <div className="mt-3 text-sm font-bold text-slate-400">
-                  {getCourseMeta(
-                    currentCourse
-                  )}
+                  {getCourseMeta(currentCourse)}
                 </div>
 
                 <div className="mt-3 inline-flex rounded-full bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-300">
-                  {getCourseNineMeta(
-                    currentCourse
-                  )}
+                  {getCourseNineMeta(currentCourse)}
                 </div>
-
               </div>
 
-              <div className="shrink-0 rounded-full bg-emerald-500 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
-                Ready
+              <div
+                className={`shrink-0 rounded-full px-4 py-2 text-xs font-black uppercase tracking-widest text-white ${
+                  specialScoringEnabled
+                    ? "bg-orange-500"
+                    : "bg-emerald-500"
+                }`}
+              >
+                {specialScoringEnabled
+                  ? "Sonderform"
+                  : "Standard"}
               </div>
-
             </div>
 
             {/* Stake */}
-            <div className="mt-10 flex items-end justify-between">
-
+            <div className="mt-10 flex items-end justify-between gap-5">
               <div>
-
                 <div className="flex items-center gap-2 text-slate-500">
-
-                  <Euro
-                    size={16}
-                  />
+                  <Euro size={16} />
 
                   <div className="text-xs font-black uppercase tracking-widest">
-                    Skin pro Loch
+                    €/Skin
                   </div>
-
                 </div>
 
                 <div className="mt-3 text-7xl font-black tracking-tight text-emerald-400">
                   {stake}€
                 </div>
 
+                <div className="mt-2 text-xs font-bold text-slate-500">
+                  Einsatz pro gewonnenem oder verlorenem Skin
+                </div>
               </div>
 
               <div className="flex items-center gap-3">
-
                 <motion.button
+                  type="button"
                   whileTap={{
                     scale: 0.9,
                   }}
-
-                  onClick={() =>
-                    setStake(
-                      Math.max(
-                        1,
-                        stake - 1
-                      )
-                    )
-                  }
-
-                  className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-xl"
+                  onClick={decreaseStake}
+                  disabled={stake <= MIN_STAKE}
+                  aria-label="Einsatz verringern"
+                  className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-xl transition disabled:opacity-30"
                 >
-
                   <Minus
                     size={22}
                     strokeWidth={3}
                   />
-
                 </motion.button>
 
                 <motion.button
+                  type="button"
                   whileTap={{
                     scale: 0.9,
                   }}
-
-                  onClick={() =>
-                    setStake(
-                      stake + 1
-                    )
-                  }
-
-                  className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg"
+                  onClick={increaseStake}
+                  disabled={stake >= MAX_STAKE}
+                  aria-label="Einsatz erhöhen"
+                  className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg transition disabled:opacity-40"
                 >
-
                   <Plus
                     size={22}
                     strokeWidth={3}
                   />
-
                 </motion.button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
 
+        {/* Rules / Special Mode */}
+        <motion.div
+          initial={{
+            opacity: 0,
+            y: 20,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            delay: 0.065,
+            duration: 0.3,
+            ease: "easeOut",
+          }}
+          className={`mt-6 overflow-hidden rounded-[38px] border shadow-sm backdrop-blur-xl ${
+            specialScoringEnabled
+              ? "border-orange-200 bg-orange-50"
+              : "border-white/70 bg-white/90"
+          }`}
+        >
+          <button
+            type="button"
+            onClick={toggleSpecialScoring}
+            aria-pressed={specialScoringEnabled}
+            className={`w-full p-6 text-left transition ${
+              specialScoringEnabled
+                ? "bg-orange-500 text-white"
+                : "bg-white text-slate-950"
+            }`}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div
+                  className={`flex items-center gap-2 ${
+                    specialScoringEnabled
+                      ? "text-orange-100"
+                      : "text-orange-500"
+                  }`}
+                >
+                  <Sparkles size={18} />
+
+                  <div className="text-xs font-black uppercase tracking-[0.25em]">
+                    Sonderform
+                  </div>
+                </div>
+
+                <div className="mt-3 text-3xl font-black tracking-tight">
+                  Birdie & Eagle zählen mehr
+                </div>
+
+                <div
+                  className={`mt-2 text-sm font-bold leading-relaxed ${
+                    specialScoringEnabled
+                      ? "text-orange-100"
+                      : "text-slate-400"
+                  }`}
+                >
+                  Aktiviert für die komplette Runde. Birdies und Eagles verändern die Skin-Anzahl.
+                </div>
               </div>
 
+              <div
+                className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-xl font-black shadow-lg ${
+                  specialScoringEnabled
+                    ? "bg-white text-orange-500"
+                    : "bg-orange-100 text-orange-500"
+                }`}
+              >
+                {specialScoringEnabled ? "✓" : "Off"}
+              </div>
+            </div>
+          </button>
+
+          <div className="grid grid-cols-3 gap-3 p-5">
+            <div className="rounded-[24px] border border-slate-100 bg-white p-4 text-center shadow-sm">
+              <div className="text-xs font-black uppercase tracking-widest text-slate-400">
+                Par+
+              </div>
+
+              <div className="mt-2 text-4xl font-black text-slate-950">
+                1
+              </div>
+
+              <div className="mt-1 text-xs font-bold text-slate-400">
+                Skin
+              </div>
             </div>
 
+            <div className="rounded-[24px] border border-red-100 bg-white p-4 text-center shadow-sm">
+              <div className="text-xs font-black uppercase tracking-widest text-red-400">
+                Birdie
+              </div>
+
+              <div
+                className={`mt-2 text-4xl font-black ${
+                  specialScoringEnabled
+                    ? "text-red-500"
+                    : "text-slate-400"
+                }`}
+              >
+                {specialScoringEnabled ? 2 : 1}
+              </div>
+
+              <div className="mt-1 text-xs font-bold text-slate-400">
+                Skins
+              </div>
+            </div>
+
+            <div className="rounded-[24px] border border-orange-100 bg-orange-50 p-4 text-center shadow-sm">
+              <div className="text-xs font-black uppercase tracking-widest text-orange-500">
+                Eagle+
+              </div>
+
+              <div
+                className={`mt-2 text-4xl font-black ${
+                  specialScoringEnabled
+                    ? "text-orange-500"
+                    : "text-slate-400"
+                }`}
+              >
+                {specialScoringEnabled ? 3 : 1}
+              </div>
+
+              <div className="mt-1 text-xs font-bold text-orange-400">
+                Skins
+              </div>
+            </div>
           </div>
 
+          <div className="border-t border-slate-100 px-5 pb-5 pt-1">
+            <div className="rounded-[24px] bg-white px-4 py-3 text-xs font-bold leading-relaxed text-slate-500 shadow-sm">
+              {specialScoringEnabled
+                ? "Sonderform aktiv: Lochgewinn mit Par oder schlechter zählt 1 Skin, Birdie zählt 2 Skins, Eagle oder besser zählt 3 Skins. Bei geteiltem Birdie werden 2 Skins carried, bei geteiltem Eagle oder besser 3 Skins."
+                : "Standard aktiv: Jeder eindeutige Lochgewinn zählt 1 Skin. Jedes geteilte Loch addiert 1 Skin Carryover — unabhängig vom Score."}
+            </div>
+          </div>
         </motion.div>
 
         {/* Course Selection */}
@@ -567,23 +621,19 @@ export default function Round() {
             opacity: 0,
             y: 20,
           }}
-
           animate={{
             opacity: 1,
             y: 0,
           }}
-
           transition={{
             delay: 0.07,
+            duration: 0.3,
+            ease: "easeOut",
           }}
-
-          className="mt-8 rounded-[40px] bg-white p-6 shadow-sm"
+          className="mt-8 rounded-[40px] bg-white/90 p-6 shadow-sm backdrop-blur-xl"
         >
-
           <div className="flex items-center justify-between">
-
             <div>
-
               <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
                 Course
               </div>
@@ -591,112 +641,86 @@ export default function Round() {
               <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
                 Course wählen
               </div>
-
             </div>
 
-            <div className="text-3xl">
+            <div
+              className="text-3xl"
+              aria-hidden="true"
+            >
               ⛳
             </div>
-
           </div>
 
           <div className="mt-6 space-y-3">
-
-            {courses.map(
-              (course) => {
-
-                const isActive =
-                  selectedCourseId ===
-                  course.id
-
-                return (
-
-                  <motion.button
-                    key={course.id}
-
-                    whileTap={{
-                      scale: 0.985,
-                    }}
-
-                    onClick={() =>
-                      setSelectedCourseId(
-                        course.id
-                      )
-                    }
-
-                    className={`w-full rounded-[30px] border px-5 py-5 text-left shadow-sm transition-all ${
-                      isActive
-                        ? "border-emerald-200 bg-emerald-50"
-                        : "border-slate-100 bg-white"
-                    }`}
-                  >
-
-                    <div className="flex items-start justify-between gap-4">
-
-                      <div className="min-w-0">
-
-                        <div className="text-2xl font-black leading-tight tracking-tight text-slate-950">
-                          {getCourseName(
-                            course
-                          )}
-                        </div>
-
-                        <div className="mt-2 text-sm font-bold text-slate-400">
-                          {getCourseMeta(
-                            course
-                          )}
-                        </div>
-
-                        <div className="mt-3 flex flex-wrap gap-2">
-
-                          <div className="rounded-full border border-slate-100 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 shadow-sm">
-                            Front 9 Par {getFrontNinePar(
-                              course
-                            )}
-                          </div>
-
-                          <div className="rounded-full border border-slate-100 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 shadow-sm">
-                            Back 9 Par {getBackNinePar(
-                              course
-                            )}
-                          </div>
-
-                        </div>
-
-                      </div>
-
-                      <div className="shrink-0 text-right">
-
-                        <div className="text-4xl font-black text-slate-950">
-                          {getCoursePar(
-                            course
-                          )}
-                        </div>
-
-                        <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                          Par
-                        </div>
-
-                      </div>
-
-                    </div>
-
-                    {isActive && (
-
-                      <div className="mt-4 inline-flex rounded-full bg-emerald-500 px-3 py-1 text-xs font-black uppercase tracking-widest text-white">
-                        Selected
-                      </div>
-
-                    )}
-
-                  </motion.button>
-
-                )
-              }
+            {courses.length === 0 && (
+              <div className="rounded-[28px] border border-slate-100 bg-white p-5 text-center text-sm font-bold text-slate-400 shadow-sm">
+                Keine Courses verfügbar.
+              </div>
             )}
 
-          </div>
+            {courses.map((course) => {
+              const isActive =
+                selectedCourseId === course.id
 
+              return (
+                <motion.button
+                  key={course.id}
+                  type="button"
+                  whileTap={{
+                    scale: 0.985,
+                  }}
+                  onClick={() =>
+                    setSelectedCourseId(course.id)
+                  }
+                  aria-pressed={isActive}
+                  className={[
+                    "w-full rounded-[30px] border px-5 py-5 text-left shadow-sm transition-all",
+                    isActive
+                      ? "border-emerald-200 bg-emerald-50"
+                      : "border-slate-100 bg-white hover:border-slate-200",
+                  ].join(" ")}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="text-2xl font-black leading-tight tracking-tight text-slate-950">
+                        {getCourseName(course)}
+                      </div>
+
+                      <div className="mt-2 text-sm font-bold text-slate-400">
+                        {getCourseMeta(course)}
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <div className="rounded-full border border-slate-100 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 shadow-sm">
+                          Front 9 Par {getFrontNinePar(course)}
+                        </div>
+
+                        <div className="rounded-full border border-slate-100 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 shadow-sm">
+                          Back 9 Par {getBackNinePar(course)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 text-right">
+                      <div className="text-4xl font-black text-slate-950">
+                        {getCoursePar(course)}
+                      </div>
+
+                      <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
+                        Par
+                      </div>
+                    </div>
+                  </div>
+
+                  {isActive && (
+                    <div className="mt-4 inline-flex rounded-full bg-emerald-500 px-3 py-1 text-xs font-black uppercase tracking-widest text-white">
+                      Selected
+                    </div>
+                  )}
+                </motion.button>
+              )
+            })}
+          </div>
         </motion.div>
 
         {/* Flight */}
@@ -705,232 +729,185 @@ export default function Round() {
             opacity: 0,
             y: 20,
           }}
-
           animate={{
             opacity: 1,
             y: 0,
           }}
-
           transition={{
             delay: 0.1,
+            duration: 0.3,
+            ease: "easeOut",
           }}
-
-          className="mt-8 rounded-[40px] bg-white p-6 shadow-sm"
+          className="mt-8 rounded-[40px] bg-white/90 p-6 shadow-sm backdrop-blur-xl"
         >
-
           {/* Header */}
-          <div className="flex items-center justify-between">
-
+          <div className="flex items-center justify-between gap-4">
             <div>
-
               <div className="flex items-center gap-2 text-slate-400">
-
-                <Users
-                  size={18}
-                />
+                <Users size={18} />
 
                 <div className="text-xs font-black uppercase tracking-[0.25em]">
                   Flight
                 </div>
-
               </div>
 
               <h2 className="mt-3 text-4xl font-black tracking-tight text-slate-950">
                 Mitspieler
               </h2>
-
             </div>
 
             <div className="rounded-full border border-slate-100 bg-white px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-500 shadow-sm">
-
               {uniquePlayers.length} aktiv
-
             </div>
-
           </div>
 
           {/* Add Player */}
           <div className="mt-6 flex gap-3">
-
             <input
+              id="new-player"
               value={newPlayer}
-
               onChange={(event) =>
-                setNewPlayer(
-                  event.target.value
-                )
+                setNewPlayer(event.target.value)
               }
-
               onKeyDown={(event) => {
-
-                if (
-                  event.key ===
-                  "Enter"
-                ) {
+                if (event.key === "Enter") {
                   addPlayer()
                 }
               }}
-
               placeholder="Mitspieler"
-
-              className="h-16 min-w-0 flex-1 rounded-[26px] border border-slate-100 bg-white px-5 text-lg font-black text-slate-950 shadow-sm outline-none placeholder:text-slate-300 focus:border-emerald-400"
+              autoComplete="given-name"
+              enterKeyHint="done"
+              aria-label="Mitspieler hinzufügen"
+              className="h-16 min-w-0 flex-1 rounded-[26px] border border-slate-100 bg-white px-5 text-lg font-black text-slate-950 shadow-sm outline-none placeholder:text-slate-300 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
             />
 
             <motion.button
+              type="button"
               whileTap={{
-                scale: 0.92,
+                scale: canAddPlayer ? 0.92 : 1,
               }}
-
               onClick={addPlayer}
-
-              className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[26px] bg-emerald-500 text-white shadow-[0_12px_30px_rgba(16,185,129,0.28)]"
+              disabled={!cleanedNewPlayer}
+              aria-label="Mitspieler hinzufügen"
+              className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[26px] bg-emerald-500 text-white shadow-[0_12px_30px_rgba(16,185,129,0.28)] transition disabled:cursor-not-allowed disabled:opacity-40"
             >
-
               <Plus
                 size={28}
                 strokeWidth={3}
               />
-
             </motion.button>
-
           </div>
+
+          {cleanedNewPlayer && newPlayerAlreadyExists && (
+            <div className="mt-3 rounded-[22px] border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-600">
+              Dieser Spieler ist bereits im Flight.
+            </div>
+          )}
 
           {/* Player List */}
           <div className="mt-6 space-y-3">
-
             {uniquePlayers.length === 0 && (
-
               <div className="rounded-[28px] border border-slate-100 bg-white p-5 text-center text-sm font-bold text-slate-400 shadow-sm">
                 Noch kein Flight zusammengestellt.
               </div>
-
             )}
 
-            {uniquePlayers.map(
-              (player) => {
+            {uniquePlayers.map((player) => {
+              const isCurrentUser =
+                normalizeName(player) ===
+                normalizeName(user?.name)
 
-                const isCurrentUser =
-                  normalizeName(player) ===
-                  normalizeName(user?.name)
-
-                return (
-
-                  <div
-                    key={player}
-
-                    className="flex items-center justify-between rounded-[30px] border border-slate-100 bg-white p-4 shadow-sm"
-                  >
-
-                    {/* Left */}
-                    <div className="flex min-w-0 items-center gap-4">
-
-                      <div
-                        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-xl font-black shadow-sm ${
-                          isCurrentUser
-                            ? "bg-emerald-500 text-white"
-                            : "bg-slate-950 text-white"
-                        }`}
-                      >
-
-                        {player.charAt(0)}
-
-                      </div>
-
-                      <div className="min-w-0">
-
-                        <div className="truncate text-2xl font-black tracking-tight text-slate-950">
-                          {player}
-                        </div>
-
-                        <div className="mt-1 text-sm font-bold text-slate-400">
-
-                          {isCurrentUser
-                            ? "Du"
-                            : "Im Flight"}
-
-                        </div>
-
-                      </div>
-
+              return (
+                <div
+                  key={player}
+                  className="flex items-center justify-between rounded-[30px] border border-slate-100 bg-white p-4 shadow-sm"
+                >
+                  {/* Left */}
+                  <div className="flex min-w-0 items-center gap-4">
+                    <div
+                      className={[
+                        "flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-xl font-black uppercase shadow-sm",
+                        isCurrentUser
+                          ? "bg-emerald-500 text-white"
+                          : "bg-slate-950 text-white",
+                      ].join(" ")}
+                    >
+                      {player.charAt(0)}
                     </div>
 
-                    {/* Remove */}
-                    <motion.button
-                      whileTap={{
-                        scale: 0.9,
-                      }}
+                    <div className="min-w-0">
+                      <div className="truncate text-2xl font-black tracking-tight text-slate-950">
+                        {player}
+                      </div>
 
-                      onClick={() =>
-                        removePlayer(
-                          player
-                        )
-                      }
-
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-red-100 bg-white text-red-500 shadow-sm"
-                    >
-
-                      <X
-                        size={20}
-                        strokeWidth={3}
-                      />
-
-                    </motion.button>
-
+                      <div className="mt-1 text-sm font-bold text-slate-400">
+                        {isCurrentUser
+                          ? "Du"
+                          : "Im Flight"}
+                      </div>
+                    </div>
                   </div>
 
-                )
-              }
-            )}
-
+                  {/* Remove */}
+                  <motion.button
+                    type="button"
+                    whileTap={{
+                      scale: 0.9,
+                    }}
+                    onClick={() =>
+                      removePlayer(player)
+                    }
+                    aria-label={`${player} entfernen`}
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-red-100 bg-white text-red-500 shadow-sm transition hover:bg-red-50"
+                  >
+                    <X
+                      size={20}
+                      strokeWidth={3}
+                    />
+                  </motion.button>
+                </div>
+              )
+            })}
           </div>
-
         </motion.div>
 
         {/* Hint */}
         {!canStart && (
-
           <div className="mt-5 rounded-[28px] border border-red-100 bg-white p-5 text-center text-sm font-bold text-red-500 shadow-sm">
             Mindestens zwei Mitspieler werden für eine Runde benötigt.
           </div>
-
         )}
 
         {/* Start Button */}
         <motion.button
+          type="button"
           whileTap={{
-            scale: 0.98,
+            scale: canStart ? 0.98 : 1,
           }}
-
-          disabled={
-            !canStart
-          }
-
-          onClick={
-            handleStartMatch
-          }
-
-          className="mt-8 flex w-full items-center justify-between rounded-[34px] bg-emerald-500 px-6 py-6 text-xl font-black text-white shadow-[0_18px_45px_rgba(16,185,129,0.3)] disabled:opacity-40"
+          disabled={!canStart}
+          onClick={handleStartMatch}
+          className={`mt-8 flex w-full items-center justify-between rounded-[34px] px-6 py-6 text-xl font-black text-white transition disabled:cursor-not-allowed disabled:opacity-40 ${
+            specialScoringEnabled
+              ? "bg-orange-500 shadow-[0_18px_45px_rgba(249,115,22,0.28)]"
+              : "bg-emerald-500 shadow-[0_18px_45px_rgba(16,185,129,0.3)]"
+          }`}
         >
-
           <span>
             {hasActiveMatch
               ? "Neue Runde starten"
+              : specialScoringEnabled
+              ? "Runde mit Sonderform starten"
               : "Runde starten"}
           </span>
 
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
-
             <ArrowRight
               size={24}
               strokeWidth={3}
             />
-
           </div>
-
         </motion.button>
-
       </div>
-
     </div>
   )
 }

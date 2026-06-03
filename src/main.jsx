@@ -1,33 +1,35 @@
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 
-import "./index.css"
-
 import App from "./App.jsx"
 
-import {
-  AuthProvider,
-} from "./context/AuthContext.jsx"
+import "./index.css"
 
-import {
-  GameProvider,
-} from "./context/GameContext.jsx"
+import { AuthProvider } from "./context/AuthContext.jsx"
+import { GameProvider } from "./context/GameContext.jsx"
 
-createRoot(
-  document.getElementById("root")
-).render(
+const rootElement = document.getElementById("root")
 
+if (!rootElement) {
+  throw new Error("Root element with id 'root' was not found.")
+}
+
+createRoot(rootElement).render(
   <StrictMode>
-
     <AuthProvider>
-
       <GameProvider>
-
         <App />
-
       </GameProvider>
-
     </AuthProvider>
-
   </StrictMode>
 )
+
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/sw.js")
+      .catch((error) => {
+        console.error("Service Worker registration failed:", error)
+      })
+  })
+}

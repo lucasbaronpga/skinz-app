@@ -27,21 +27,15 @@ import Profile from "./pages/Profile"
 import BottomNav from "./components/BottomNav"
 
 export default function App() {
-
   return (
-
     <BrowserRouter>
-
       <AppShell />
-
     </BrowserRouter>
   )
 }
 
 function AppShell() {
-
-  const location =
-    useLocation()
+  const location = useLocation()
 
   const {
     isAuthenticated,
@@ -49,35 +43,22 @@ function AppShell() {
   } = useAuth()
 
   const hideBottomNav =
-    location.pathname ===
-      "/login" ||
-    location.pathname ===
-      "/live"
+    location.pathname === "/login" ||
+    location.pathname.startsWith("/live")
 
   if (isLoading) {
-
-    return (
-
-      <SplashScreen />
-
-    )
+    return <SplashScreen />
   }
 
   return (
-
     <div className="min-h-screen bg-[#f5f5f7]">
-
       <AnimatedRoutes
-        isAuthenticated={
-          isAuthenticated
-        }
+        isAuthenticated={isAuthenticated}
       />
 
-      {isAuthenticated &&
-        !hideBottomNav && (
-          <BottomNav />
-        )}
-
+      {isAuthenticated && !hideBottomNav && (
+        <BottomNav />
+      )}
     </div>
   )
 }
@@ -85,38 +66,30 @@ function AppShell() {
 function AnimatedRoutes({
   isAuthenticated,
 }) {
+  const location = useLocation()
 
-  const location =
-    useLocation()
+  const routeKey =
+    `${location.pathname}${location.search}`
 
   return (
-
-    <AnimatePresence
-      mode="wait"
-    >
-
+    <AnimatePresence mode="wait">
       <Routes
         location={location}
-        key={location.pathname}
+        key={routeKey}
       >
-
         {/* Login */}
         <Route
           path="/login"
           element={
             isAuthenticated ? (
-
               <Navigate
                 to="/"
                 replace
               />
-
             ) : (
-
               <PageTransition>
                 <Login />
               </PageTransition>
-
             )
           }
         />
@@ -126,15 +99,11 @@ function AnimatedRoutes({
           path="/"
           element={
             <ProtectedRoute
-              isAuthenticated={
-                isAuthenticated
-              }
+              isAuthenticated={isAuthenticated}
             >
-
               <PageTransition>
                 <Home />
               </PageTransition>
-
             </ProtectedRoute>
           }
         />
@@ -144,15 +113,11 @@ function AnimatedRoutes({
           path="/round"
           element={
             <ProtectedRoute
-              isAuthenticated={
-                isAuthenticated
-              }
+              isAuthenticated={isAuthenticated}
             >
-
               <PageTransition>
                 <Round />
               </PageTransition>
-
             </ProtectedRoute>
           }
         />
@@ -162,15 +127,11 @@ function AnimatedRoutes({
           path="/live"
           element={
             <ProtectedRoute
-              isAuthenticated={
-                isAuthenticated
-              }
+              isAuthenticated={isAuthenticated}
             >
-
               <PageTransition>
                 <Live />
               </PageTransition>
-
             </ProtectedRoute>
           }
         />
@@ -180,15 +141,11 @@ function AnimatedRoutes({
           path="/matches"
           element={
             <ProtectedRoute
-              isAuthenticated={
-                isAuthenticated
-              }
+              isAuthenticated={isAuthenticated}
             >
-
               <PageTransition>
                 <Matches />
               </PageTransition>
-
             </ProtectedRoute>
           }
         />
@@ -198,15 +155,11 @@ function AnimatedRoutes({
           path="/matches/:id"
           element={
             <ProtectedRoute
-              isAuthenticated={
-                isAuthenticated
-              }
+              isAuthenticated={isAuthenticated}
             >
-
               <PageTransition>
                 <MatchDetails />
               </PageTransition>
-
             </ProtectedRoute>
           }
         />
@@ -216,15 +169,11 @@ function AnimatedRoutes({
           path="/leaderboard"
           element={
             <ProtectedRoute
-              isAuthenticated={
-                isAuthenticated
-              }
+              isAuthenticated={isAuthenticated}
             >
-
               <PageTransition>
                 <Leaderboard />
               </PageTransition>
-
             </ProtectedRoute>
           }
         />
@@ -234,15 +183,11 @@ function AnimatedRoutes({
           path="/profile"
           element={
             <ProtectedRoute
-              isAuthenticated={
-                isAuthenticated
-              }
+              isAuthenticated={isAuthenticated}
             >
-
               <PageTransition>
                 <Profile />
               </PageTransition>
-
             </ProtectedRoute>
           }
         />
@@ -261,9 +206,7 @@ function AnimatedRoutes({
             />
           }
         />
-
       </Routes>
-
     </AnimatePresence>
   )
 }
@@ -272,14 +215,16 @@ function ProtectedRoute({
   children,
   isAuthenticated,
 }) {
+  const location = useLocation()
 
   if (!isAuthenticated) {
-
     return (
-
       <Navigate
         to="/login"
         replace
+        state={{
+          from: location,
+        }}
       />
     )
   }
@@ -290,67 +235,51 @@ function ProtectedRoute({
 function PageTransition({
   children,
 }) {
-
   return (
-
     <motion.div
       initial={{
         opacity: 0,
         y: 12,
       }}
-
       animate={{
         opacity: 1,
         y: 0,
       }}
-
       exit={{
         opacity: 0,
         y: -12,
       }}
-
       transition={{
         duration: 0.24,
         ease: "easeOut",
       }}
-
       className="min-h-screen"
     >
-
       {children}
-
     </motion.div>
   )
 }
 
 function SplashScreen() {
-
   return (
-
     <div className="flex min-h-screen items-center justify-center bg-[#f5f5f7] px-6">
-
       <motion.div
-
         initial={{
           opacity: 0,
           y: 16,
           scale: 0.96,
         }}
-
         animate={{
           opacity: 1,
           y: 0,
           scale: 1,
         }}
-
         transition={{
           duration: 0.35,
           ease: "easeOut",
         }}
-
         className="text-center"
       >
-
         <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[32px] bg-slate-950 text-4xl font-black text-white shadow-2xl">
           S
         </div>
@@ -362,9 +291,7 @@ function SplashScreen() {
         <div className="mt-3 text-6xl font-black tracking-tight text-slate-950">
           Skinz
         </div>
-
       </motion.div>
-
     </div>
   )
 }

@@ -1,47 +1,36 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from "react"
 
-const GameContext =
-  createContext()
+const GameContext = createContext(null)
 
-const STORAGE_KEY =
-  "skinz-game"
+const STORAGE_KEY = "skinz-game"
+const DEFAULT_COURSE_ID = "westpfalz"
+const DEFAULT_STAKE = 2
+const DEFAULT_SCORE = 4
+const HOLE_COUNT = 18
 
 const courses = [
   {
     id: "westpfalz",
-
-    name:
-      "Erster Golfclub Westpfalz",
-
-    location:
-      "Westpfalz",
-
-    par:
-      72,
-
+    name: "Erster Golfclub Westpfalz",
+    location: "Westpfalz",
+    par: 72,
     pars: [
       4, 4, 3, 5, 4, 5, 4, 3, 4,
       4, 3, 5, 4, 4, 3, 5, 4, 4,
     ],
   },
-
   {
     id: "kronberg",
-
-    name:
-      "Golf- & Landclub Kronberg",
-
-    location:
-      "Kronberg",
-
-    par:
-      68,
-
+    name: "Golf- & Landclub Kronberg",
+    location: "Kronberg",
+    par: 68,
     pars: [
       4, 3, 4, 4, 4, 3, 4, 4, 4,
       4, 3, 4, 4, 3, 4, 3, 5, 4,
@@ -49,1099 +38,1188 @@ const courses = [
   },
 ]
 
-const DEFAULT_COURSE_ID =
-  "westpfalz"
+function toNumber(value, fallback = 0) {
+  const number = Number(value)
 
-function getCourseById(
-  courseId
-) {
+  return Number.isFinite(number)
+    ? number
+    : fallback
+}
 
+function getCourseById(courseId) {
   return (
-    courses.find(
-      (course) =>
-        course.id === courseId
-    ) || courses[0]
+    courses.find((course) => course.id === courseId) ||
+    courses[0]
   )
 }
 
-function createCourseSnapshot(
-  course
-) {
+function createCourseSnapshot(course) {
+  const fallbackCourse =
+    getCourseById(DEFAULT_COURSE_ID)
+
+  const safeCourse =
+    course || fallbackCourse
 
   return {
-    id:
-      course.id,
-
-    name:
-      course.name,
-
-    location:
-      course.location,
-
-    par:
-      course.par,
-
-    pars:
-      course.pars,
+    id: safeCourse.id,
+    name: safeCourse.name,
+    location: safeCourse.location,
+    par: safeCourse.par,
+    pars: [...safeCourse.pars],
   }
 }
 
-function normalizeCourseSnapshot(
-  course
-) {
-
+function normalizeCourseSnapshot(course) {
   if (!course) {
     return createCourseSnapshot(
-      getCourseById(
-        DEFAULT_COURSE_ID
-      )
+      getCourseById(DEFAULT_COURSE_ID)
     )
   }
 
   const courseId =
-    String(
-      course.id || ""
-    ).toLowerCase()
+    String(course.id || "").toLowerCase()
 
   const courseName =
-    String(
-      course.name || ""
-    ).toLowerCase()
+    String(course.name || "").toLowerCase()
 
   if (
     courseId === "kronberg" ||
-    courseName.includes(
-      "kronberg"
-    )
+    courseName.includes("kronberg")
   ) {
     return createCourseSnapshot(
-      getCourseById(
-        "kronberg"
-      )
+      getCourseById("kronberg")
     )
   }
 
   if (
     courseId === "westpfalz" ||
-    courseName.includes(
-      "westpfalz"
-    ) ||
-    courseName === "course" ||
-    courseName === "standard 18"
+    courseName.includes("westpfalz")
   ) {
     return createCourseSnapshot(
-      getCourseById(
-        "westpfalz"
-      )
+      getCourseById("westpfalz")
     )
   }
 
   return createCourseSnapshot(
-    getCourseById(
-      DEFAULT_COURSE_ID
-    )
+    getCourseById(DEFAULT_COURSE_ID)
   )
 }
 
-function normalizeCompletedRounds(
-  rounds
-) {
-
-  return rounds.map(
-    (round) => ({
-
-      ...round,
-
-      course:
-        normalizeCourseSnapshot(
-          round.course
-        ),
-    })
-  )
+function createMatchId(number) {
+  return `SKZ-${String(number).padStart(4, "0")}`
 }
 
-function createMatchId(
-  number
-) {
-
-  return `SKZ-${String(
-    number
-  ).padStart(
-    4,
-    "0"
-  )}`
-}
-
-function createPlayer(
-  name,
-  initialScore = 4
-) {
-
+function createPlayer(name, initialScore = DEFAULT_SCORE) {
   return {
-    name,
-
-    score:
-      initialScore,
-
-    total:
-      0,
-
-    totalToPar:
-      0,
-
-    skins:
-      0,
-
-    winnings:
-      0,
-
-    holes:
-      [],
+    name: String(name || "Player").trim() || "Player",
+    score: toNumber(initialScore, DEFAULT_SCORE),
+    total: 0,
+    totalToPar: 0,
+    skins: 0,
+    winnings: 0,
+    holes: [],
   }
 }
 
-const defaultPlayers = [
-  createPlayer(
-    "Lucas",
-    4
-  ),
-  createPlayer(
-    "Ben",
-    4
-  ),
-]
+function createDefaultPlayers() {
+  return [
+    createPlayer("Lucas", DEFAULT_SCORE),
+    createPlayer("Ben", DEFAULT_SCORE),
+  ]
+}
 
-function getGolfResult(
-  score,
-  par
-) {
+function normalizePlayer(player, fallbackScore = DEFAULT_SCORE) {
+  return {
+    name:
+      String(player?.name || "Player").trim() ||
+      "Player",
 
+    score:
+      toNumber(player?.score, fallbackScore),
+
+    total:
+      toNumber(player?.total, 0),
+
+    totalToPar:
+      toNumber(player?.totalToPar, 0),
+
+    skins:
+      toNumber(player?.skins, 0),
+
+    winnings:
+      toNumber(player?.winnings, 0),
+
+    holes:
+      Array.isArray(player?.holes)
+        ? player.holes
+        : [],
+  }
+}
+
+function normalizeCompletedRounds(rounds) {
+  if (!Array.isArray(rounds)) {
+    return []
+  }
+
+  return rounds.map((round) => ({
+    ...round,
+
+    course:
+      normalizeCourseSnapshot(round.course),
+
+    players:
+      Array.isArray(round.players)
+        ? round.players.map((player) =>
+            normalizePlayer(player)
+          )
+        : [],
+
+    history:
+      Array.isArray(round.history)
+        ? round.history
+        : [],
+
+    stake:
+      toNumber(round.stake, DEFAULT_STAKE),
+
+    winnings:
+      toNumber(round.winnings, 0),
+
+    skins:
+      toNumber(round.skins, 0),
+
+    totalToPar:
+      toNumber(round.totalToPar, 0),
+
+    specialScoringEnabled:
+      Boolean(
+        round.specialScoringEnabled ||
+        round.bonusSkinsEnabled ||
+        round.eagleBonusEnabled
+      ),
+
+    bonusSkinsEnabled:
+      Boolean(
+        round.specialScoringEnabled ||
+        round.bonusSkinsEnabled ||
+        round.eagleBonusEnabled
+      ),
+  }))
+}
+
+function getGolfResult(score, par) {
   const difference =
-    score - par
+    toNumber(score, DEFAULT_SCORE) -
+    toNumber(par, DEFAULT_SCORE)
 
   if (difference === -3) {
-
     return {
-      label:
-        "Albatross",
-
-      color:
-        "bg-yellow-400 text-black",
+      label: "Albatross",
+      color: "bg-yellow-400 text-black",
     }
   }
 
   if (difference <= -2) {
-
     return {
-      label:
-        "Eagle",
-
-      color:
-        "bg-orange-500 text-white",
+      label: "Eagle",
+      color: "bg-orange-500 text-white",
     }
   }
 
   if (difference === -1) {
-
     return {
-      label:
-        "Birdie",
-
-      color:
-        "bg-red-500 text-white",
+      label: "Birdie",
+      color: "bg-red-500 text-white",
     }
   }
 
   if (difference === 0) {
-
     return {
-      label:
-        "Par",
-
-      color:
-        "bg-white text-slate-900 border border-slate-200",
+      label: "Par",
+      color: "bg-white text-slate-900 border border-slate-200",
     }
   }
 
   if (difference === 1) {
-
     return {
-      label:
-        "Bogey",
-
-      color:
-        "bg-blue-500 text-white",
+      label: "Bogey",
+      color: "bg-blue-500 text-white",
     }
   }
 
   if (difference === 2) {
-
     return {
-      label:
-        "Double Bogey",
-
-      color:
-        "bg-blue-900 text-white",
+      label: "Double Bogey",
+      color: "bg-blue-900 text-white",
     }
   }
 
   return {
-    label:
-      "Triple+",
-
-    color:
-      "bg-purple-600 text-white",
+    label: "Triple+",
+    color: "bg-purple-600 text-white",
   }
 }
 
-export function GameProvider({
-  children,
-}) {
-
-  let savedGame =
-    null
-
-  try {
-
-    savedGame =
-      JSON.parse(
-        localStorage.getItem(
-          STORAGE_KEY
-        )
-      )
-
-  } catch {
-
-    savedGame =
-      null
+function getBaseSkinsForScore(
+  score,
+  par,
+  isSpecialScoringEnabled = false
+) {
+  if (!isSpecialScoringEnabled) {
+    return 1
   }
 
-  const savedCompletedRounds =
-    normalizeCompletedRounds(
-      savedGame?.completedRounds ||
-        []
+  const difference =
+    toNumber(score, DEFAULT_SCORE) -
+    toNumber(par, DEFAULT_SCORE)
+
+  if (difference <= -2) {
+    return 3
+  }
+
+  if (difference === -1) {
+    return 2
+  }
+
+  return 1
+}
+
+function getBonusSkinsForScore(
+  score,
+  par,
+  isSpecialScoringEnabled = false
+) {
+  const baseSkins =
+    getBaseSkinsForScore(
+      score,
+      par,
+      isSpecialScoringEnabled
     )
 
-  const initialMatchCounter =
-    savedGame?.matchCounter ||
-    savedCompletedRounds.length ||
-    0
+  return Math.max(baseSkins - 1, 0)
+}
 
-  const initialSelectedCourseId =
+function getSpecialScoringLabel(
+  score,
+  par,
+  isSpecialScoringEnabled = false
+) {
+  if (!isSpecialScoringEnabled) {
+    return null
+  }
+
+  const difference =
+    toNumber(score, DEFAULT_SCORE) -
+    toNumber(par, DEFAULT_SCORE)
+
+  if (difference <= -2) {
+    return "Eagle 3 Skins"
+  }
+
+  if (difference === -1) {
+    return "Birdie 2 Skins"
+  }
+
+  return null
+}
+
+function getSavedGame() {
+  try {
+    const savedGame =
+      localStorage.getItem(STORAGE_KEY)
+
+    if (!savedGame) {
+      return null
+    }
+
+    return JSON.parse(savedGame)
+  } catch {
+    localStorage.removeItem(STORAGE_KEY)
+
+    return null
+  }
+}
+
+function createInitialGameState() {
+  const savedGame = getSavedGame()
+
+  const completedRounds =
+    normalizeCompletedRounds(
+      savedGame?.completedRounds || []
+    )
+
+  const matchCounter =
+    toNumber(
+      savedGame?.matchCounter,
+      completedRounds.length || 0
+    )
+
+  const selectedCourseId =
     getCourseById(
-      savedGame?.selectedCourseId ||
-        DEFAULT_COURSE_ID
+      savedGame?.selectedCourseId || DEFAULT_COURSE_ID
     ).id
 
-  const [
-    selectedCourseId,
-    setSelectedCourseId,
-  ] = useState(
-    initialSelectedCourseId
-  )
-
   const currentCourse =
-    getCourseById(
-      selectedCourseId
-    )
+    getCourseById(selectedCourseId)
 
   const currentPars =
-    currentCourse?.pars ||
-    courses[0].pars
+    currentCourse?.pars || courses[0].pars
 
-  const [
-    hole,
-    setHole,
-  ] = useState(
-    savedGame?.hole || 1
-  )
+  const players =
+    Array.isArray(savedGame?.players) &&
+    savedGame.players.length > 0
+      ? savedGame.players.map((player) =>
+          normalizePlayer(
+            player,
+            currentPars[0] || DEFAULT_SCORE
+          )
+        )
+      : createDefaultPlayers()
 
-  const [
-    carryover,
-    setCarryover,
-  ] = useState(
-    savedGame?.carryover || 0
-  )
+  const specialScoringEnabled =
+    Boolean(
+      savedGame?.specialScoringEnabled ||
+      savedGame?.bonusSkinsEnabled ||
+      savedGame?.eagleBonusEnabled
+    )
 
-  const [
-    history,
-    setHistory,
-  ] = useState(
-    savedGame?.history || []
-  )
+  return {
+    selectedCourseId,
 
-  const [
+    hole:
+      Math.min(
+        Math.max(toNumber(savedGame?.hole, 1), 1),
+        HOLE_COUNT
+      ),
+
+    carryover:
+      toNumber(savedGame?.carryover, 0),
+
+    history:
+      Array.isArray(savedGame?.history)
+        ? savedGame.history
+        : [],
+
     players,
-    setPlayers,
-  ] = useState(
-    savedGame?.players ||
-      defaultPlayers
-  )
 
-  const [
-    stake,
-    setStake,
-  ] = useState(
-    savedGame?.stake || 2
-  )
+    stake:
+      toNumber(savedGame?.stake, DEFAULT_STAKE),
 
-  const [
     completedRounds,
-    setCompletedRounds,
-  ] = useState(
-    savedCompletedRounds
-  )
 
-  const [
-    activeMatchId,
-    setActiveMatchId,
-  ] = useState(
-    savedGame?.activeMatchId ||
-      createMatchId(
-        initialMatchCounter + 1
-      )
-  )
+    activeMatchId:
+      savedGame?.activeMatchId ||
+      createMatchId(matchCounter + 1),
 
-  const [
     matchCounter,
-    setMatchCounter,
-  ] = useState(
-    initialMatchCounter
-  )
+
+    matchFinished:
+      Boolean(savedGame?.matchFinished),
+
+    hasActiveMatch:
+      Boolean(savedGame?.hasActiveMatch),
+
+    specialScoringEnabled,
+  }
+}
+
+export function GameProvider({ children }) {
+  const initialState =
+    useMemo(
+      () => createInitialGameState(),
+      []
+    )
+
+  const [selectedCourseId, setSelectedCourseId] =
+    useState(initialState.selectedCourseId)
+
+  const [hole, setHole] =
+    useState(initialState.hole)
+
+  const [carryover, setCarryover] =
+    useState(initialState.carryover)
+
+  const [history, setHistory] =
+    useState(initialState.history)
+
+  const [players, setPlayers] =
+    useState(initialState.players)
+
+  const [stake, setStake] =
+    useState(initialState.stake)
+
+  const [completedRounds, setCompletedRounds] =
+    useState(initialState.completedRounds)
+
+  const [activeMatchId, setActiveMatchId] =
+    useState(initialState.activeMatchId)
+
+  const [matchCounter, setMatchCounter] =
+    useState(initialState.matchCounter)
+
+  const [celebration, setCelebration] =
+    useState(null)
+
+  const [matchFinished, setMatchFinished] =
+    useState(initialState.matchFinished)
+
+  const [hasActiveMatch, setHasActiveMatch] =
+    useState(initialState.hasActiveMatch)
 
   const [
-    celebration,
-    setCelebration,
-  ] = useState(null)
+    specialScoringEnabled,
+    setSpecialScoringEnabled,
+  ] = useState(initialState.specialScoringEnabled)
 
-  const [
-    matchFinished,
-    setMatchFinished,
-  ] = useState(
-    savedGame?.matchFinished ||
-      false
-  )
+  const currentCourse =
+    getCourseById(selectedCourseId)
 
-  const [
-    hasActiveMatch,
-    setHasActiveMatch,
-  ] = useState(
-    savedGame?.hasActiveMatch ||
-      false
-  )
+  const currentPars =
+    currentCourse?.pars || courses[0].pars
 
   const currentPar =
-    currentPars[hole - 1] || 4
+    currentPars[hole - 1] || DEFAULT_SCORE
 
   const lowestScore =
-    Math.min(
-      ...players.map(
-        (player) =>
-          player.score
-      )
-    )
+    players.length > 0
+      ? Math.min(
+          ...players.map((player) =>
+            toNumber(player.score, 0)
+          )
+        )
+      : 0
 
   const winners =
     players.filter(
       (player) =>
-        player.score ===
-        lowestScore
+        toNumber(player.score, 0) === lowestScore
     )
 
   const hasTie =
     winners.length > 1
 
+  const currentBaseSkins =
+    players.length > 0
+      ? getBaseSkinsForScore(
+          lowestScore,
+          currentPar,
+          specialScoringEnabled
+        )
+      : 1
+
+  const currentBonusSkins =
+    !hasTie && winners[0]
+      ? getBonusSkinsForScore(
+          winners[0].score,
+          currentPar,
+          specialScoringEnabled
+        )
+      : 0
+
+  const currentSkinsAtStake =
+    carryover + currentBaseSkins
+
   const currentPot =
-    stake + carryover
+    currentSkinsAtStake *
+    stake *
+    Math.max(players.length - 1, 1)
 
   useEffect(() => {
-
-    localStorage.setItem(
-      STORAGE_KEY,
-
-      JSON.stringify({
-
-        hole,
-
-        carryover,
-
-        history,
-
-        players,
-
-        stake,
-
-        matchFinished,
-
-        hasActiveMatch,
-
-        completedRounds,
-
-        activeMatchId,
-
-        matchCounter,
-
-        selectedCourseId,
-      })
-    )
-
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          hole,
+          carryover,
+          history,
+          players,
+          stake,
+          matchFinished,
+          hasActiveMatch,
+          completedRounds,
+          activeMatchId,
+          matchCounter,
+          selectedCourseId,
+          specialScoringEnabled,
+          bonusSkinsEnabled: specialScoringEnabled,
+        })
+      )
+    } catch {
+      // localStorage kann z. B. im Private Mode oder bei vollem Speicher fehlschlagen.
+    }
   }, [
-
     hole,
-
     carryover,
-
     history,
-
     players,
-
     stake,
-
     matchFinished,
-
     hasActiveMatch,
-
     completedRounds,
-
     activeMatchId,
-
     matchCounter,
-
     selectedCourseId,
+    specialScoringEnabled,
   ])
 
-  function updateScore(
-    index,
-    value
-  ) {
+  const updateScore = useCallback(
+    (index, value) => {
+      if (matchFinished || !hasActiveMatch) {
+        return
+      }
 
-    if (
-      matchFinished ||
-      !hasActiveMatch
-    ) {
-      return
-    }
-
-    const updatedPlayers =
-      players.map(
-        (
-          player,
-          playerIndex
-        ) => {
-
-          if (
-            playerIndex !==
-            index
-          ) {
+      setPlayers((currentPlayers) =>
+        currentPlayers.map((player, playerIndex) => {
+          if (playerIndex !== index) {
             return player
           }
 
           return {
             ...player,
-
-            score:
-              Number(
-                value
-              ),
+            score: toNumber(value, currentPar),
           }
-        }
+        })
       )
+    },
+    [
+      matchFinished,
+      hasActiveMatch,
+      currentPar,
+    ]
+  )
 
-    setPlayers(
-      updatedPlayers
-    )
-  }
+  const startMatch = useCallback(
+    (
+      playerNames,
+      selectedStake = DEFAULT_STAKE,
+      courseId = selectedCourseId,
+      selectedSpecialScoringEnabled = false
+    ) => {
+      const cleanedNames =
+        Array.isArray(playerNames)
+          ? playerNames
+              .map((name) => String(name || "").trim())
+              .filter(Boolean)
+          : []
 
-  function startMatch(
-    playerNames,
-    selectedStake = 2,
-    courseId = selectedCourseId
-  ) {
+      const uniqueNames =
+        [...new Set(cleanedNames)]
 
-    const cleanedNames =
-      playerNames
-        .map((name) =>
-          name.trim()
-        )
-        .filter(Boolean)
+      if (uniqueNames.length < 2) {
+        return false
+      }
 
-    const uniqueNames =
-      [
-        ...new Set(
-          cleanedNames
-        ),
-      ]
+      const matchCourse =
+        getCourseById(courseId)
 
-    if (
-      uniqueNames.length < 2
-    ) {
-      return false
-    }
+      const matchPars =
+        matchCourse?.pars || courses[0].pars
 
-    const matchCourse =
-      getCourseById(
-        courseId
-      )
+      const nextCounter =
+        matchCounter + 1
 
-    const matchPars =
-      matchCourse?.pars ||
-      courses[0].pars
+      const newMatchId =
+        createMatchId(nextCounter)
 
-    const nextCounter =
-      matchCounter + 1
-
-    const newMatchId =
-      createMatchId(
-        nextCounter
-      )
-
-    const formattedPlayers =
-      uniqueNames.map(
-        (name) =>
+      const formattedPlayers =
+        uniqueNames.map((name) =>
           createPlayer(
             name,
-            matchPars[0] || 4
+            matchPars[0] || DEFAULT_SCORE
           )
+        )
+
+      setSelectedCourseId(matchCourse.id)
+      setPlayers(formattedPlayers)
+      setStake(toNumber(selectedStake, DEFAULT_STAKE))
+      setHole(1)
+      setCarryover(0)
+      setHistory([])
+      setCelebration(null)
+      setMatchFinished(false)
+      setHasActiveMatch(true)
+      setSpecialScoringEnabled(
+        Boolean(selectedSpecialScoringEnabled)
       )
+      setActiveMatchId(newMatchId)
+      setMatchCounter(nextCounter)
 
-    setSelectedCourseId(
-      matchCourse.id
-    )
+      return true
+    },
+    [
+      selectedCourseId,
+      matchCounter,
+    ]
+  )
 
-    setPlayers(
-      formattedPlayers
-    )
+  const finishHole = useCallback(
+    () => {
+      if (matchFinished || !hasActiveMatch) {
+        return
+      }
 
-    setStake(
-      Number(
-        selectedStake
-      )
-    )
+      const courseSnapshot =
+        createCourseSnapshot(currentCourse)
 
-    setHole(1)
+      const winner =
+        !hasTie ? winners[0] : null
 
-    setCarryover(0)
+      const winningResult =
+        getGolfResult(
+          lowestScore,
+          currentPar
+        )
 
-    setHistory([])
+      const tieBaseSkins =
+        getBaseSkinsForScore(
+          lowestScore,
+          currentPar,
+          specialScoringEnabled
+        )
 
-    setCelebration(null)
+      const winnerBaseSkins =
+        winner
+          ? getBaseSkinsForScore(
+              winner.score,
+              currentPar,
+              specialScoringEnabled
+            )
+          : 1
 
-    setMatchFinished(false)
-
-    setHasActiveMatch(true)
-
-    setActiveMatchId(
-      newMatchId
-    )
-
-    setMatchCounter(
-      nextCounter
-    )
-
-    return true
-  }
-
-  function finishHole() {
-
-    if (
-      matchFinished ||
-      !hasActiveMatch
-    ) {
-      return
-    }
-
-    const courseSnapshot =
-      createCourseSnapshot(
-        currentCourse
-      )
-
-    const holeResult = {
-
-      hole,
-
-      par:
-        currentPar,
-
-      pot:
-        currentPot,
-
-      hasTie,
-
-      winner:
+      const baseSkins =
         hasTie
-          ? "Carryover"
-          : winners[0]?.name,
+          ? tieBaseSkins
+          : winnerBaseSkins
 
-      winningScore:
-        lowestScore,
+      const bonusSkins =
+        !hasTie && winner
+          ? getBonusSkinsForScore(
+              winner.score,
+              currentPar,
+              specialScoringEnabled
+            )
+          : 0
 
-      course:
-        {
-          id:
-            courseSnapshot.id,
+      const specialScoringLabel =
+        getSpecialScoringLabel(
+          lowestScore,
+          currentPar,
+          specialScoringEnabled
+        )
 
-          name:
-            courseSnapshot.name,
+      const bonusResult =
+        specialScoringLabel
+
+      const specialScoringApplied =
+        Boolean(
+          specialScoringEnabled &&
+            !hasTie &&
+            specialScoringLabel &&
+            bonusSkins > 0
+        )
+
+      const nextCarryover =
+        hasTie
+          ? carryover + baseSkins
+          : 0
+
+      const totalSkins =
+        hasTie
+          ? 0
+          : winnerBaseSkins + carryover
+
+      const opponentCount =
+        Math.max(players.length - 1, 1)
+
+      const totalWinnerPot =
+        totalSkins * stake * opponentCount
+
+      const carryoverPot =
+        nextCarryover * stake * opponentCount
+
+      const holeResult = {
+        hole,
+        par: currentPar,
+
+        pot:
+          hasTie
+            ? carryoverPot
+            : totalWinnerPot,
+
+        skins:
+          hasTie
+            ? nextCarryover
+            : totalSkins,
+
+        baseSkins,
+
+        bonusSkins:
+          hasTie
+            ? 0
+            : bonusSkins,
+
+        carryoverSkins: carryover,
+
+        carryoverAdded:
+          hasTie
+            ? baseSkins
+            : 0,
+
+        hasTie,
+
+        specialScoringEnabled,
+        specialScoringApplied,
+        specialScoringLabel,
+
+        bonusSkinsEnabled:
+          specialScoringEnabled,
+
+        bonusResult,
+
+        winningResult:
+          winningResult.label,
+
+        eagleBonusApplied:
+          specialScoringApplied &&
+          specialScoringLabel === "Eagle 3 Skins",
+
+        winner:
+          hasTie
+            ? "Carryover"
+            : winner?.name,
+
+        winningScore: lowestScore,
+
+        course: {
+          id: courseSnapshot.id,
+          name: courseSnapshot.name,
         },
 
-      players:
-        players.map(
-          (player) => ({
-
-            name:
-              player.name,
-
-            score:
+        players:
+          players.map((player) => ({
+            name: player.name,
+            score: player.score,
+            result: getGolfResult(
               player.score,
+              currentPar
+            ),
+          })),
+      }
 
-            result:
-              getGolfResult(
-                player.score,
-                currentPar
-              ),
-          })
-        ),
-    }
+      const updatedHistory = [
+        ...history,
+        holeResult,
+      ]
 
-    const updatedHistory = [
-      ...history,
-      holeResult,
-    ]
+      const updatedPlayers =
+        players.map((player) => {
+          const playerScore =
+            toNumber(player.score, currentPar)
 
-    setHistory(
-      updatedHistory
-    )
-
-    const updatedPlayers =
-      players.map(
-        (player) => {
+          const toPar =
+            playerScore - currentPar
 
           const isWinner =
             !hasTie &&
-            player.name ===
-              winners[0]?.name
+            winner &&
+            player.name === winner.name
 
-          const toPar =
-            player.score -
-            currentPar
+          const skinDelta =
+            hasTie
+              ? 0
+              : isWinner
+              ? totalSkins * opponentCount
+              : -totalSkins
+
+          const winningsDelta =
+            skinDelta * stake
+
+          const playerSpecialScoringApplied =
+            Boolean(isWinner && specialScoringApplied)
+
+          const playerSpecialScoringLabel =
+            playerSpecialScoringApplied
+              ? specialScoringLabel
+              : null
+
+          const playerBonusSkins =
+            playerSpecialScoringApplied
+              ? bonusSkins
+              : 0
 
           return {
-
             ...player,
 
             total:
-              player.total +
-              player.score,
+              toNumber(player.total, 0) + playerScore,
 
             totalToPar:
-              (
-                player.totalToPar ||
-                0
-              ) + toPar,
+              toNumber(player.totalToPar, 0) + toPar,
 
             skins:
-              isWinner
-                ? player.skins + 1
-                : player.skins,
+              toNumber(player.skins, 0) + skinDelta,
 
             winnings:
-              isWinner
-                ? player.winnings +
-                  currentPot
-                : player.winnings,
+              toNumber(player.winnings, 0) + winningsDelta,
 
             holes: [
-
-              ...player.holes,
+              ...(Array.isArray(player.holes)
+                ? player.holes
+                : []),
 
               {
                 hole,
-
-                par:
-                  currentPar,
-
-                score:
-                  player.score,
-
+                par: currentPar,
+                score: playerScore,
                 toPar,
-
-                courseId:
-                  courseSnapshot.id,
+                courseId: courseSnapshot.id,
 
                 result:
                   getGolfResult(
-                    player.score,
+                    playerScore,
                     currentPar
                   ),
+
+                skinDelta,
+                winningsDelta,
+
+                totalSkins:
+                  hasTie
+                    ? 0
+                    : totalSkins,
+
+                baseSkins,
+
+                bonusSkins:
+                  playerBonusSkins,
+
+                carryoverAdded:
+                  hasTie
+                    ? baseSkins
+                    : 0,
+
+                specialScoringEnabled,
+
+                specialScoringApplied:
+                  playerSpecialScoringApplied,
+
+                specialScoringLabel:
+                  playerSpecialScoringLabel,
+
+                bonusSkinsEnabled:
+                  specialScoringEnabled,
+
+                bonusResult:
+                  playerSpecialScoringLabel,
+
+                winningResult:
+                  winningResult.label,
+
+                eagleBonusApplied:
+                  playerSpecialScoringApplied &&
+                  playerSpecialScoringLabel === "Eagle 3 Skins",
               },
             ],
 
             score:
-              currentPars[hole] ||
-              4,
+              currentPars[hole] || DEFAULT_SCORE,
           }
-        }
-      )
+        })
 
-    setPlayers(
-      updatedPlayers
-    )
+      setHistory(updatedHistory)
+      setPlayers(updatedPlayers)
 
-    const winningPlayer =
-      winners[0]
+      if (hasTie) {
+        setCarryover(nextCarryover)
+      } else {
+        setCarryover(0)
 
-    if (
-      !hasTie &&
-      winningPlayer
-    ) {
+        if (winner) {
+          const winnerResult =
+            getGolfResult(
+              winner.score,
+              currentPar
+            )
 
-      const winningResult =
-        getGolfResult(
-          winningPlayer.score,
-          currentPar
-        )
+          const winnerSpecialScoringLabel =
+            getSpecialScoringLabel(
+              winner.score,
+              currentPar,
+              specialScoringEnabled
+            )
 
-      setCelebration({
+          const winnerBonusSkins =
+            getBonusSkinsForScore(
+              winner.score,
+              currentPar,
+              specialScoringEnabled
+            )
 
-        player:
-          winningPlayer.name,
+          const winnerSpecialScoringApplied =
+            Boolean(
+              specialScoringEnabled &&
+                winnerSpecialScoringLabel &&
+                winnerBonusSkins > 0
+            )
 
-        result:
-          winningResult.label,
-
-        color:
-          winningResult.color,
-
-        pot:
-          currentPot,
-      })
-
-      setTimeout(() => {
-
-        setCelebration(null)
-
-      }, 2200)
-    }
-
-    if (hasTie) {
-
-      setCarryover(
-        carryover + stake
-      )
-
-    } else {
-
-      setCarryover(0)
-    }
-
-    if (hole >= 18) {
-
-      const finalPlayers =
-        updatedPlayers.map(
-          (player) => ({
-
-            ...player,
-
-            holes:
-              player.holes.map(
-                (hole) => ({
-                  ...hole,
-                })
-              ),
+          setCelebration({
+            player: winner.name,
+            result: winnerResult.label,
+            color: winnerResult.color,
+            pot: totalWinnerPot,
+            skins: totalSkins,
+            baseSkins: winnerBaseSkins,
+            bonusSkins: winnerBonusSkins,
+            specialScoringEnabled,
+            specialScoringApplied:
+              winnerSpecialScoringApplied,
+            specialScoringLabel:
+              winnerSpecialScoringApplied
+                ? winnerSpecialScoringLabel
+                : null,
+            bonusSkinsEnabled:
+              specialScoringEnabled,
+            bonusResult:
+              winnerSpecialScoringApplied
+                ? winnerSpecialScoringLabel
+                : null,
+            winningResult:
+              winnerResult.label,
+            eagleBonusApplied:
+              winnerSpecialScoringApplied &&
+              winnerSpecialScoringLabel === "Eagle 3 Skins",
           })
-        )
 
-      const sortedFinalPlayers =
-        [...finalPlayers].sort(
-          (a, b) =>
-            b.winnings -
-              a.winnings ||
-            a.totalToPar -
-              b.totalToPar
-        )
-
-      const champion =
-        sortedFinalPlayers[0]
-
-      const completedRound = {
-
-        id:
-          activeMatchId,
-
-        date:
-          new Date().toLocaleDateString(
-            "de-DE"
-          ),
-
-        createdAt:
-          Date.now(),
-
-        course:
-          courseSnapshot,
-
-        winner:
-          champion.name,
-
-        winnings:
-          champion.winnings,
-
-        skins:
-          champion.skins,
-
-        totalToPar:
-          champion.totalToPar,
-
-        stake,
-
-        history:
-          updatedHistory,
-
-        players:
-          finalPlayers,
+          window.setTimeout(() => {
+            setCelebration(null)
+          }, 2200)
+        }
       }
 
-      setCompletedRounds(
-        (prev) => [
+      if (hole >= HOLE_COUNT) {
+        const finalPlayers =
+          updatedPlayers.map((player) => ({
+            ...player,
+            holes:
+              Array.isArray(player.holes)
+                ? player.holes.map((playedHole) => ({
+                    ...playedHole,
+                  }))
+                : [],
+          }))
+
+        const sortedFinalPlayers =
+          [...finalPlayers].sort(
+            (a, b) =>
+              b.winnings - a.winnings ||
+              a.totalToPar - b.totalToPar
+          )
+
+        const champion =
+          sortedFinalPlayers[0]
+
+        const completedRound = {
+          id: activeMatchId,
+
+          date:
+            new Date().toLocaleDateString("de-DE"),
+
+          createdAt:
+            Date.now(),
+
+          course:
+            courseSnapshot,
+
+          winner:
+            champion?.name || "Unbekannt",
+
+          winnings:
+            champion?.winnings || 0,
+
+          skins:
+            champion?.skins || 0,
+
+          totalToPar:
+            champion?.totalToPar || 0,
+
+          stake,
+          specialScoringEnabled,
+          bonusSkinsEnabled: specialScoringEnabled,
+          history: updatedHistory,
+          players: finalPlayers,
+        }
+
+        setCompletedRounds((previousRounds) => [
           completedRound,
-          ...prev,
-        ]
-      )
+          ...previousRounds,
+        ])
 
-      setMatchFinished(true)
+        setMatchFinished(true)
+        setHasActiveMatch(false)
 
+        setActiveMatchId(
+          createMatchId(matchCounter + 1)
+        )
+
+        return
+      }
+
+      setHole(hole + 1)
+    },
+    [
+      matchFinished,
+      hasActiveMatch,
+      currentCourse,
+      hasTie,
+      winners,
+      currentPar,
+      specialScoringEnabled,
+      lowestScore,
+      carryover,
+      players,
+      stake,
+      history,
+      hole,
+      currentPars,
+      activeMatchId,
+      matchCounter,
+    ]
+  )
+
+  const resetGame = useCallback(
+    () => {
+      setHole(1)
+      setCarryover(0)
+      setHistory([])
+      setCelebration(null)
+      setMatchFinished(false)
       setHasActiveMatch(false)
+      setSpecialScoringEnabled(false)
+      setStake(DEFAULT_STAKE)
+      setPlayers(createDefaultPlayers())
 
       setActiveMatchId(
-        createMatchId(
-          matchCounter + 1
-        )
+        createMatchId(matchCounter + 1)
       )
-
-      return
-    }
-
-    setHole(
-      hole + 1
-    )
-  }
-
-  function resetGame() {
-
-    setHole(1)
-
-    setCarryover(0)
-
-    setHistory([])
-
-    setCelebration(null)
-
-    setMatchFinished(false)
-
-    setHasActiveMatch(false)
-
-    setStake(2)
-
-    setPlayers(
-      defaultPlayers
-    )
-
-    setActiveMatchId(
-      createMatchId(
-        matchCounter + 1
-      )
-    )
-  }
+    },
+    [
+      matchCounter,
+    ]
+  )
 
   const uniquePlayerNames =
-    [
-      ...new Set([
+    useMemo(() => {
+      return [
+        ...new Set([
+          ...completedRounds.flatMap((round) =>
+            Array.isArray(round.players)
+              ? round.players.map((player) => player.name)
+              : []
+          ),
 
-        ...completedRounds.flatMap(
-          (round) =>
-            round.players.map(
-              (player) =>
-                player.name
-            )
-        ),
-
-        ...players.map(
-          (player) =>
-            player.name
-        ),
-      ]),
-    ]
+          ...players.map((player) => player.name),
+        ]),
+      ].filter(Boolean)
+    }, [completedRounds, players])
 
   const playerStats =
-    uniquePlayerNames.map(
-      (playerName) => {
-
+    useMemo(() => {
+      return uniquePlayerNames.map((playerName) => {
         const playerRounds =
-          completedRounds.filter(
-            (round) =>
-              round.players.some(
-                (player) =>
-                  player.name ===
-                  playerName
-              )
+          completedRounds.filter((round) =>
+            round.players?.some(
+              (player) => player.name === playerName
+            )
           )
 
         const wins =
           completedRounds.filter(
-            (round) =>
-              round.winner ===
-              playerName
+            (round) => round.winner === playerName
           ).length
 
         const birdies =
-          completedRounds.reduce(
-            (
-              total,
-              round
-            ) => {
-
-              const roundPlayer =
-                round.players.find(
-                  (player) =>
-                    player.name ===
-                    playerName
-                )
-
-              const count =
-                roundPlayer?.holes?.filter(
-                  (hole) =>
-                    hole.result
-                      ?.label ===
-                    "Birdie"
-                ).length || 0
-
-              return (
-                total + count
+          completedRounds.reduce((total, round) => {
+            const roundPlayer =
+              round.players?.find(
+                (player) => player.name === playerName
               )
 
-            },
-            0
-          )
+            const count =
+              roundPlayer?.holes?.filter(
+                (playedHole) =>
+                  playedHole.result?.label === "Birdie"
+              ).length || 0
+
+            return total + count
+          }, 0)
 
         const eagles =
-          completedRounds.reduce(
-            (
-              total,
-              round
-            ) => {
-
-              const roundPlayer =
-                round.players.find(
-                  (player) =>
-                    player.name ===
-                    playerName
-                )
-
-              const count =
-                roundPlayer?.holes?.filter(
-                  (hole) =>
-                    hole.result
-                      ?.label ===
-                    "Eagle"
-                ).length || 0
-
-              return (
-                total + count
+          completedRounds.reduce((total, round) => {
+            const roundPlayer =
+              round.players?.find(
+                (player) => player.name === playerName
               )
 
-            },
-            0
-          )
+            const count =
+              roundPlayer?.holes?.filter(
+                (playedHole) =>
+                  playedHole.result?.label === "Eagle"
+              ).length || 0
+
+            return total + count
+          }, 0)
 
         const totalWinnings =
-          completedRounds.reduce(
-            (
-              total,
-              round
-            ) => {
-
-              const roundPlayer =
-                round.players.find(
-                  (player) =>
-                    player.name ===
-                    playerName
-                )
-
-              return (
-                total +
-                (
-                  roundPlayer?.winnings ||
-                  0
-                )
+          completedRounds.reduce((total, round) => {
+            const roundPlayer =
+              round.players?.find(
+                (player) => player.name === playerName
               )
 
-            },
-            0
-          )
+            return (
+              total +
+              toNumber(roundPlayer?.winnings, 0)
+            )
+          }, 0)
 
         const totalToPar =
-          completedRounds.reduce(
-            (
-              total,
-              round
-            ) => {
-
-              const roundPlayer =
-                round.players.find(
-                  (player) =>
-                    player.name ===
-                    playerName
-                )
-
-              return (
-                total +
-                (
-                  roundPlayer?.totalToPar ||
-                  0
-                )
+          completedRounds.reduce((total, round) => {
+            const roundPlayer =
+              round.players?.find(
+                (player) => player.name === playerName
               )
 
-            },
-            0
-          )
+            return (
+              total +
+              toNumber(roundPlayer?.totalToPar, 0)
+            )
+          }, 0)
 
         const avgToPar =
           playerRounds.length > 0
             ? Number(
                 (
-                  totalToPar /
-                  playerRounds.length
+                  totalToPar / playerRounds.length
                 ).toFixed(1)
               )
             : 0
 
         return {
-
-          name:
-            playerName,
-
+          name: playerName,
           wins,
-
           birdies,
-
           eagles,
-
           totalWinnings,
-
           totalToPar,
-
           avgToPar,
-
-          roundsPlayed:
-            playerRounds.length,
+          roundsPlayed: playerRounds.length,
         }
-      }
-    )
+      })
+    }, [completedRounds, uniquePlayerNames])
 
-  return (
-
-    <GameContext.Provider
-      value={{
-
+  const value =
+    useMemo(
+      () => ({
         courses,
 
         selectedCourseId,
@@ -1155,6 +1233,9 @@ export function GameProvider({
         currentPar,
 
         carryover,
+        currentBaseSkins,
+        currentBonusSkins,
+        currentSkinsAtStake,
         currentPot,
 
         players,
@@ -1180,6 +1261,24 @@ export function GameProvider({
         winners,
         hasTie,
 
+        specialScoringEnabled,
+        setSpecialScoringEnabled,
+
+        bonusSkinsEnabled:
+          specialScoringEnabled,
+
+        setBonusSkinsEnabled:
+          setSpecialScoringEnabled,
+
+        eagleBonusEnabled:
+          specialScoringEnabled,
+
+        setEagleBonusEnabled:
+          setSpecialScoringEnabled,
+
+        eagleBonusAvailable:
+          false,
+
         updateScore,
         finishHole,
 
@@ -1187,18 +1286,50 @@ export function GameProvider({
         resetGame,
 
         getGolfResult,
-      }}
-    >
+      }),
+      [
+        selectedCourseId,
+        currentCourse,
+        hole,
+        currentPar,
+        carryover,
+        currentBaseSkins,
+        currentBonusSkins,
+        currentSkinsAtStake,
+        currentPot,
+        players,
+        stake,
+        history,
+        celebration,
+        completedRounds,
+        playerStats,
+        activeMatchId,
+        hasActiveMatch,
+        matchFinished,
+        lowestScore,
+        winners,
+        hasTie,
+        specialScoringEnabled,
+        updateScore,
+        finishHole,
+        startMatch,
+        resetGame,
+      ]
+    )
 
+  return (
+    <GameContext.Provider value={value}>
       {children}
-
     </GameContext.Provider>
   )
 }
 
 export function useGame() {
+  const context = useContext(GameContext)
 
-  return useContext(
-    GameContext
-  )
+  if (!context) {
+    throw new Error("useGame must be used within a GameProvider.")
+  }
+
+  return context
 }
