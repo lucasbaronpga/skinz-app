@@ -15,7 +15,6 @@ import {
 import {
   ArrowLeft,
   Trophy,
-  Crown,
   ChevronDown,
   Flame,
   MapPin,
@@ -52,7 +51,7 @@ function getMoneyColor(value) {
   const amount = toNumber(value, 0)
 
   if (amount > 0) {
-    return "text-emerald-600"
+    return "text-yellow-500"
   }
 
   if (amount < 0) {
@@ -66,7 +65,7 @@ function getMoneyColorDark(value) {
   const amount = toNumber(value, 0)
 
   if (amount > 0) {
-    return "text-emerald-400"
+    return "text-yellow-400"
   }
 
   if (amount < 0) {
@@ -160,6 +159,22 @@ function getScoreStyle(label) {
   }
 
   return "bg-white border-slate-200 text-slate-950"
+}
+
+function getRankStyle(index) {
+  if (index === 0) {
+    return "bg-yellow-400 text-black"
+  }
+
+  if (index === 1) {
+    return "bg-slate-300 text-slate-950"
+  }
+
+  if (index === 2) {
+    return "bg-[#cd7f32] text-white"
+  }
+
+  return "border border-slate-200 bg-white text-slate-900"
 }
 
 function getRoundPlayers(round) {
@@ -327,6 +342,21 @@ function getHoleBonusLabel(hole) {
   return `Birdie +${bonusSkins}`
 }
 
+function getHoleBonusStyle(hole) {
+  const label =
+    getHoleBonusLabel(hole)
+
+  if (!label) {
+    return ""
+  }
+
+  if (label.includes("Birdie")) {
+    return "bg-red-500 text-white"
+  }
+
+  return "bg-orange-500 text-white"
+}
+
 function getHistoryBonusSkins(item) {
   if (item?.bonusSkins !== undefined) {
     return toNumber(item.bonusSkins, 0)
@@ -361,6 +391,21 @@ function getHistoryBonusLabel(item) {
   }
 
   return `Birdie +${bonusSkins}`
+}
+
+function getHistoryBonusStyle(item) {
+  const label =
+    getHistoryBonusLabel(item)
+
+  if (!label) {
+    return ""
+  }
+
+  if (label.includes("Birdie")) {
+    return "bg-red-500 text-white"
+  }
+
+  return "bg-orange-500 text-white"
 }
 
 function formatSkinsText(value) {
@@ -403,13 +448,16 @@ function SummaryCard({
 
 function BonusBadge({
   label,
+  className,
 }) {
   if (!label) {
     return null
   }
 
   return (
-    <div className="mt-3 flex items-center justify-center gap-1 rounded-full bg-orange-500 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white">
+    <div
+      className={`mt-3 flex items-center justify-center gap-1 rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-widest ${className}`}
+    >
       <Sparkles size={10} />
       {label}
     </div>
@@ -447,6 +495,9 @@ function HoleGrid({
 
         const bonusLabel =
           getHoleBonusLabel(hole)
+
+        const bonusStyle =
+          getHoleBonusStyle(hole)
 
         return (
           <div
@@ -487,7 +538,10 @@ function HoleGrid({
               {resultLabel}
             </div>
 
-            <BonusBadge label={bonusLabel} />
+            <BonusBadge
+              label={bonusLabel}
+              className={bonusStyle}
+            />
 
             {hole?.skinDelta !== undefined && (
               <div
@@ -557,9 +611,6 @@ export default function MatchDetails() {
     )
   }
 
-  const roundPlayers =
-    getRoundPlayers(round)
-
   const sortedPlayers =
     getSortedPlayers(round)
 
@@ -591,13 +642,14 @@ export default function MatchDetails() {
       ? round.history
       : []
 
-  const displayWinnings =
+  const displayEarnings =
     round.winnings ??
     winner?.winnings ??
     0
 
   const bonusModeWasEnabled =
     Boolean(
+      round.specialScoringEnabled ||
       round.bonusSkinsEnabled ||
       round.eagleBonusEnabled ||
       roundHistory.some((item) =>
@@ -653,7 +705,7 @@ export default function MatchDetails() {
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="text-xs font-black uppercase tracking-[0.3em] text-slate-500">
-                  Round Winner
+                  Winner
                 </div>
 
                 <div className="mt-4 flex items-center gap-3">
@@ -668,7 +720,6 @@ export default function MatchDetails() {
               </div>
             </div>
 
-            {/* Match / Golfplatz Chips */}
             <div className="mt-6 flex flex-wrap gap-2">
               <div className="inline-flex rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
                 Match {roundId}
@@ -683,9 +734,9 @@ export default function MatchDetails() {
               </div>
 
               {bonusModeWasEnabled && (
-                <div className="inline-flex items-center gap-2 rounded-full bg-orange-500/20 px-4 py-2 text-xs font-black uppercase tracking-widest text-orange-200">
+                <div className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
                   <Sparkles size={13} />
-                  Bonus-Skins
+                  Skinz Professional
                 </div>
               )}
             </div>
@@ -693,13 +744,13 @@ export default function MatchDetails() {
             <div className="mt-10 flex items-end justify-between gap-5">
               <div>
                 <div className="text-xs font-black uppercase tracking-widest text-slate-500">
-                  Winnings
+                  Earnings
                 </div>
 
                 <div
-                  className={`mt-2 text-6xl font-black ${getMoneyColorDark(displayWinnings)}`}
+                  className={`mt-2 text-6xl font-black ${getMoneyColorDark(displayEarnings)}`}
                 >
-                  {formatMoney(displayWinnings)}
+                  {formatMoney(displayEarnings)}
                 </div>
               </div>
 
@@ -766,48 +817,13 @@ export default function MatchDetails() {
           </div>
         </motion.div>
 
-        {/* Meta */}
-        <div className="mt-8 grid grid-cols-3 gap-3">
-          <div className="rounded-[28px] border border-slate-100 bg-white p-5 text-center shadow-sm">
-            <div className="text-4xl font-black text-slate-950">
-              {roundPlayers.length}
-            </div>
-
-            <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-              Flight
-            </div>
-          </div>
-
-          <div className="rounded-[28px] border border-slate-100 bg-white p-5 text-center shadow-sm">
-            <div className="text-4xl font-black text-slate-950">
-              18
-            </div>
-
-            <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-              Holes
-            </div>
-          </div>
-
-          <div className="rounded-[28px] border border-slate-100 bg-white p-5 text-center shadow-sm">
-            <div
-              className={`text-4xl font-black ${getSkinColor(winner?.skins)}`}
-            >
-              {formatSkinSaldo(winner?.skins)}
-            </div>
-
-            <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-              Skin-Saldo
-            </div>
-          </div>
-        </div>
-
         {/* Hole Results */}
         {roundHistory.length > 0 && (
           <div className="mt-8 rounded-[40px] bg-white/90 p-5 shadow-sm backdrop-blur-xl">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
-                  Skins Verlauf
+                  Match Details
                 </div>
 
                 <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
@@ -828,8 +844,8 @@ export default function MatchDetails() {
                 const bonusLabel =
                   getHistoryBonusLabel(item)
 
-                const baseSkins =
-                  toNumber(item.baseSkins, item.hasTie ? 1 : 1)
+                const bonusStyle =
+                  getHistoryBonusStyle(item)
 
                 const bonusSkins =
                   getHistoryBonusSkins(item)
@@ -849,7 +865,9 @@ export default function MatchDetails() {
                         </div>
 
                         {bonusLabel && (
-                          <div className="flex items-center gap-1 rounded-full bg-orange-500 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white">
+                          <div
+                            className={`flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-widest ${bonusStyle}`}
+                          >
                             <Sparkles size={10} />
                             {bonusLabel}
                           </div>
@@ -861,10 +879,6 @@ export default function MatchDetails() {
                       </div>
 
                       <div className="mt-2 flex flex-wrap gap-2">
-                        <div className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                          Base {formatSkinsText(baseSkins)}
-                        </div>
-
                         {carryoverSkins > 0 && (
                           <div className="rounded-full bg-orange-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-orange-600">
                             Carry {formatSkinsText(carryoverSkins)}
@@ -949,7 +963,6 @@ export default function MatchDetails() {
 
               return (
                 <div key={`${roundId}-${player.name}`}>
-                  {/* Player Row */}
                   <motion.button
                     type="button"
                     whileTap={{
@@ -970,41 +983,23 @@ export default function MatchDetails() {
                     }`}
                   >
                     <div className="flex items-center justify-between gap-4">
-                      {/* Left */}
                       <div className="flex min-w-0 items-center gap-4">
                         <div
-                          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-black ${
-                            index === 0
-                              ? "bg-yellow-400 text-black"
-                              : index === 1
-                              ? "bg-slate-200 text-slate-900"
-                              : index === 2
-                              ? "bg-orange-400 text-white"
-                              : "border border-slate-200 bg-white text-slate-900"
-                          }`}
+                          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-black ${getRankStyle(index)}`}
                         >
                           {index + 1}
                         </div>
 
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <div className="truncate text-3xl font-black tracking-tight text-slate-950">
-                              {player.name}
-                            </div>
-
-                            {isWinner && (
-                              <div className="flex shrink-0 items-center gap-1 rounded-full bg-yellow-400 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-black">
-                                <Crown size={10} />
-                                Winner
-                              </div>
-                            )}
+                          <div className="truncate text-3xl font-black tracking-tight text-slate-950">
+                            {player.name}
                           </div>
 
                           <div className="mt-2 flex flex-wrap gap-2">
                             <div
                               className={`text-sm font-black uppercase tracking-widest ${getSkinColor(player.skins)}`}
                             >
-                              {formatSkinSaldo(player.skins)} Skin-Saldo
+                              {formatSkinSaldo(player.skins)} Skinz
                             </div>
 
                             <div
@@ -1016,7 +1011,6 @@ export default function MatchDetails() {
                         </div>
                       </div>
 
-                      {/* Right */}
                       <div className="flex shrink-0 items-center gap-3">
                         <div className="text-right">
                           <div
@@ -1048,7 +1042,6 @@ export default function MatchDetails() {
                     </div>
                   </motion.button>
 
-                  {/* Expanded Scorecard */}
                   <AnimatePresence>
                     {isExpanded && (
                       <motion.div
@@ -1070,7 +1063,6 @@ export default function MatchDetails() {
                         }}
                         className="overflow-hidden"
                       >
-                        {/* Player Stats */}
                         <div className="mt-4 grid grid-cols-3 gap-3">
                           <div className="rounded-[24px] border border-slate-100 bg-white p-4 text-center shadow-sm">
                             <div className="flex justify-center">
@@ -1121,12 +1113,11 @@ export default function MatchDetails() {
                             </div>
 
                             <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                              Winnings
+                              Earnings
                             </div>
                           </div>
                         </div>
 
-                        {/* Score Summary */}
                         <div className="mt-5 grid grid-cols-3 gap-3">
                           <SummaryCard
                             label="Front 9"
@@ -1150,7 +1141,6 @@ export default function MatchDetails() {
                           />
                         </div>
 
-                        {/* Front 9 */}
                         <div className="mt-6">
                           <div className="mb-3 flex items-end justify-between">
                             <div>
@@ -1173,7 +1163,6 @@ export default function MatchDetails() {
                           <HoleGrid holes={frontNine} />
                         </div>
 
-                        {/* Back 9 */}
                         <div className="mt-8">
                           <div className="mb-3 flex items-end justify-between">
                             <div>
