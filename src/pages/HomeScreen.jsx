@@ -8,15 +8,6 @@ import {
 } from "framer-motion"
 
 import {
-  ArrowRight,
-  Trophy,
-  Crown,
-  Plus,
-  MapPin,
-  Sparkles,
-} from "lucide-react"
-
-import {
   GAME_MODES,
   useGame,
 } from "../context/GameContext"
@@ -49,34 +40,6 @@ function formatEuroAmount(value) {
   return amount.toFixed(0)
 }
 
-function formatToPar(value) {
-  const amount = toNumber(value, 0)
-
-  if (amount === 0) {
-    return "E"
-  }
-
-  if (amount > 0) {
-    return `+${amount}`
-  }
-
-  return amount
-}
-
-function getToParColorDark(value) {
-  const amount = toNumber(value, 0)
-
-  if (amount < 0) {
-    return "text-emerald-400"
-  }
-
-  if (amount > 0) {
-    return "text-red-400"
-  }
-
-  return "text-white"
-}
-
 function formatMoney(value) {
   const amount =
     roundMoney(value)
@@ -92,11 +55,27 @@ function formatMoney(value) {
   return "0€"
 }
 
-function getMoneyColor(value) {
-  const amount = toNumber(value, 0)
+function formatToPar(value) {
+  const amount =
+    toNumber(value, 0)
+
+  if (amount === 0) {
+    return "E"
+  }
 
   if (amount > 0) {
-    return "text-yellow-500"
+    return `+${amount}`
+  }
+
+  return amount
+}
+
+function getMoneyColor(value) {
+  const amount =
+    toNumber(value, 0)
+
+  if (amount > 0) {
+    return "text-amber-500"
   }
 
   if (amount < 0) {
@@ -107,45 +86,38 @@ function getMoneyColor(value) {
 }
 
 function getMoneyColorDark(value) {
-  const amount = toNumber(value, 0)
+  const amount =
+    toNumber(value, 0)
 
   if (amount > 0) {
-    return "text-yellow-400"
+    return "text-amber-300"
   }
 
   if (amount < 0) {
-    return "text-red-400"
+    return "text-red-300"
   }
 
   return "text-white"
 }
 
-function getRankStyle(index) {
-  if (index === 0) {
-    return "bg-yellow-400 text-black"
+function getToParColor(value) {
+  const amount =
+    toNumber(value, 0)
+
+  if (amount < 0) {
+    return "text-emerald-500"
   }
 
-  if (index === 1) {
-    return "bg-slate-300 text-slate-950"
+  if (amount > 0) {
+    return "text-red-500"
   }
 
-  if (index === 2) {
-    return "bg-[#cd7f32] text-white"
-  }
-
-  return "border border-slate-200 bg-white text-slate-900"
+  return "text-slate-950"
 }
 
 function getCurrentCourseName(course) {
   return (
     course?.name ||
-    "Erster Golfclub Westpfalz"
-  )
-}
-
-function getRoundCourseName(round) {
-  return (
-    round?.course?.name ||
     "Erster Golfclub Westpfalz"
   )
 }
@@ -259,6 +231,31 @@ function roundHasSpecialScoring(round) {
   return playerHoleHasSpecialScoring
 }
 
+function getModeLabel({
+  isWolffn,
+  isProfessional,
+}) {
+  if (isWolffn) {
+    return "🐺 Wolffn"
+  }
+
+  if (isProfessional) {
+    return "Pro"
+  }
+
+  return "Classic"
+}
+
+function DarkBadge({
+  children,
+}) {
+  return (
+    <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-200 backdrop-blur-xl">
+      {children}
+    </span>
+  )
+}
+
 export default function HomeScreen() {
   const navigate = useNavigate()
 
@@ -307,15 +304,33 @@ export default function HomeScreen() {
       )
       .slice(0, 3)
 
+  const currentModeLabel =
+    getModeLabel({
+      isWolffn: isWolffnMode,
+      isProfessional:
+        !isWolffnMode &&
+        specialScoringEnabled,
+    })
+
   return (
-    <div className="min-h-screen bg-[#f5f5f7] pb-[calc(9rem+env(safe-area-inset-bottom))] text-slate-900">
-      <div className="px-6 pt-12">
+    <div className="relative min-h-screen overflow-hidden bg-[#e8ebe5] pb-[calc(13rem+env(safe-area-inset-bottom))] text-slate-950">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(255,255,255,0.95),transparent_30%),radial-gradient(circle_at_85%_18%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_50%_78%,rgba(234,179,8,0.16),transparent_36%)]"
+      />
+
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-5 top-6 bottom-8 rounded-[56px] border border-white/70 bg-white/18 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_35px_90px_rgba(15,23,42,0.18)] backdrop-blur-3xl"
+      />
+
+      <div className="relative px-6 pt-12">
         <div className="mx-auto max-w-md">
-          {/* Hero */}
+          {/* Header */}
           <motion.div
             initial={{
               opacity: 0,
-              y: 20,
+              y: 18,
             }}
             animate={{
               opacity: 1,
@@ -327,12 +342,16 @@ export default function HomeScreen() {
             }}
             className="pt-8"
           >
-            <h1 className="text-7xl font-black tracking-tight text-slate-950">
+            <h1 className="text-[4.6rem] font-black leading-none tracking-[-0.075em] text-slate-950">
               Skinz
             </h1>
+
+            <div className="mt-3 text-[1.65rem] font-semibold tracking-[-0.04em] text-slate-600">
+              Private Golf Matches
+            </div>
           </motion.div>
 
-          {/* Active Match OR Start Match */}
+          {/* Live / Start Hero */}
           {hasActiveMatch ? (
             <motion.button
               type="button"
@@ -341,7 +360,7 @@ export default function HomeScreen() {
               }}
               initial={{
                 opacity: 0,
-                y: 20,
+                y: 22,
               }}
               animate={{
                 opacity: 1,
@@ -353,149 +372,89 @@ export default function HomeScreen() {
                 ease: "easeOut",
               }}
               onClick={() => navigate("/live")}
-              className="mt-10 w-full overflow-hidden rounded-[42px] border border-white/70 bg-white/90 p-8 text-left shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl"
+              className="mt-10 w-full overflow-hidden rounded-[38px] border border-white/20 bg-[#071819] text-left text-white shadow-[0_28px_70px_rgba(7,24,25,0.42)]"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
-                    Auf der Runde
-                  </div>
-
-                  <div className="mt-3 text-5xl font-black tracking-tight text-slate-950">
-                    Loch {hole}
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <div className="inline-flex rounded-full border border-slate-100 bg-white px-3 py-1 text-xs font-black uppercase tracking-widest text-slate-500 shadow-sm">
-                      {activeMatchId || "-"}
-                    </div>
-
-                    <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-slate-100 bg-white px-3 py-1 text-xs font-black uppercase tracking-widest text-slate-500 shadow-sm">
-                      <MapPin size={13} />
-
-                      <span className="max-w-[170px] truncate">
-                        {getCurrentCourseName(currentCourse)}
-                      </span>
-                    </div>
-
-                    {isWolffnMode && (
-                      <div className="inline-flex items-center gap-1 rounded-full bg-slate-950 px-3 py-1 text-xs font-black uppercase tracking-widest text-white shadow-sm">
-                        <span aria-hidden="true">
-                          🐺
-                        </span>
-                        Wolffn
-                      </div>
-                    )}
-
-                    {!isWolffnMode && specialScoringEnabled && (
-                      <div className="inline-flex items-center gap-1 rounded-full bg-orange-500 px-3 py-1 text-xs font-black uppercase tracking-widest text-white shadow-sm">
-                        <Sparkles size={13} />
-                        Skinz Professional
-                      </div>
-                    )}
-                  </div>
-                </div>
+              <div className="relative p-8">
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-emerald-400/32 via-emerald-500/8 to-transparent"
+                />
 
                 <div
-                  className={`shrink-0 rounded-2xl px-4 py-2 text-xs font-black ${
-                    matchFinished
-                      ? "bg-amber-100 text-amber-700"
-                      : isWolffnMode
-                      ? "bg-slate-950 text-white"
-                      : specialScoringEnabled
-                      ? "bg-orange-100 text-orange-700"
-                      : "bg-emerald-100 text-emerald-700"
-                  }`}
-                >
-                  {matchFinished
-                    ? "Beendet"
-                    : isWolffnMode
-                    ? "Wolffn"
-                    : specialScoringEnabled
-                    ? "Pro"
-                    : "Live"}
-                </div>
-              </div>
+                  aria-hidden="true"
+                  className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/8 blur-3xl"
+                />
 
-              <div className="mt-8">
-                <div className="text-sm font-bold text-slate-400">
-                  Skins-Pot
-                </div>
+                <div className="relative">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="text-[12px] font-black uppercase tracking-[0.22em] text-emerald-200/85">
+                        {currentModeLabel}
+                      </div>
 
-                <div
-                  className={`mt-2 text-7xl font-black tracking-tight ${
-                    isWolffnMode
-                      ? "text-yellow-500"
-                      : specialScoringEnabled
-                      ? "text-orange-500"
-                      : "text-yellow-500"
-                  }`}
-                >
-                  {formatMoney(currentPot)}
-                </div>
-              </div>
+                      <div className="mt-7 text-[3.7rem] font-black uppercase leading-none tracking-[-0.045em]">
+                        Loch {hole}
+                      </div>
+                    </div>
 
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
-                  <div className="text-xs font-black uppercase tracking-widest text-slate-400">
-                    Base
+                    <div className="shrink-0 text-right">
+                      <DarkBadge>
+                        {matchFinished
+                          ? "Beendet"
+                          : "Live"}
+                      </DarkBadge>
+                    </div>
                   </div>
 
-                  <div className="mt-1 text-3xl font-black text-slate-950">
-                    {toNumber(currentBaseSkins, 1)}
-                  </div>
-
-                  <div className="mt-1 text-xs font-bold text-slate-400">
-                    Skins
-                  </div>
-                </div>
-
-                <div className="rounded-[24px] border border-slate-100 bg-white p-4 text-right shadow-sm">
-                  <div className="text-xs font-black uppercase tracking-widest text-slate-400">
-                    At Stake
-                  </div>
-
-                  <div className="mt-1 text-3xl font-black text-slate-950">
-                    {toNumber(currentSkinsAtStake, 1)}
-                  </div>
-
-                  <div className="mt-1 text-xs font-bold text-slate-400">
-                    inkl. Carryover
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-8 flex items-center justify-between rounded-[30px] border border-slate-100 bg-white p-5 shadow-sm">
-                <div>
-                  <div className="text-xs font-black uppercase tracking-widest text-slate-400">
-                    Leader
-                  </div>
-
-                  <div className="mt-1 text-3xl font-black text-slate-900">
-                    {liveLeader?.name || "-"}
-                  </div>
-                </div>
-
-                <div className="text-right">
                   <div
-                    className={`text-4xl font-black ${getMoneyColor(liveLeader?.winnings)}`}
+                    className={`mt-5 text-[4.45rem] font-black leading-none tracking-[-0.07em] ${getMoneyColorDark(currentPot)}`}
                   >
-                    {formatMoney(liveLeader?.winnings)}
+                    {formatMoney(currentPot)}
                   </div>
 
-                  <div className="text-xs font-bold text-slate-400">
-                    Earnings
+                  <div className="mt-8 flex items-end justify-between gap-5">
+                    <div className="min-w-0">
+                      <div className="truncate text-2xl font-black tracking-[-0.035em]">
+                        {liveLeader?.name || "-"}
+                      </div>
+
+                      <div className="mt-2 truncate text-sm font-bold text-slate-400">
+                        {getCurrentCourseName(currentCourse)}
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 text-right">
+                      <div className="text-xl font-semibold tracking-[-0.03em] text-slate-300">
+                        Leading
+                      </div>
+
+                      <div className="mt-2 text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
+                        {activeMatchId || "-"}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
-                <div className="text-sm font-black uppercase tracking-widest text-slate-400">
-                  Runde öffnen
-                </div>
+                  <div className="mt-7 grid grid-cols-2 gap-3 border-t border-white/10 pt-5">
+                    <div>
+                      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                        Base
+                      </div>
 
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-950 text-white shadow-lg">
-                  <ArrowRight size={20} />
+                      <div className="mt-1 text-2xl font-black">
+                        {toNumber(currentBaseSkins, 1)}
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                        At Stake
+                      </div>
+
+                      <div className="mt-1 text-2xl font-black">
+                        {toNumber(currentSkinsAtStake, 1)}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </motion.button>
@@ -503,7 +462,7 @@ export default function HomeScreen() {
             <motion.div
               initial={{
                 opacity: 0,
-                y: 20,
+                y: 22,
               }}
               animate={{
                 opacity: 1,
@@ -514,54 +473,56 @@ export default function HomeScreen() {
                 duration: 0.35,
                 ease: "easeOut",
               }}
-              className="mt-10 overflow-hidden rounded-[42px] bg-slate-950 p-8 text-white shadow-2xl"
+              className="mt-10 overflow-hidden rounded-[38px] border border-white/20 bg-[#071819] text-white shadow-[0_28px_70px_rgba(7,24,25,0.42)]"
             >
-              <div className="flex items-start justify-between gap-5">
-                <div>
-                  <div className="text-5xl font-black tracking-tight">
+              <div className="relative p-8">
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-emerald-400/32 via-emerald-500/8 to-transparent"
+                />
+
+                <div className="relative">
+                  <div className="text-[12px] font-black uppercase tracking-[0.22em] text-emerald-200/85">
+                    Next Match
+                  </div>
+
+                  <div className="mt-7 text-[3.35rem] font-black uppercase leading-none tracking-[-0.045em]">
                     Neue Runde
                   </div>
 
-                  <div className="mt-4 max-w-xs text-base font-bold leading-relaxed text-slate-400">
-                    Wähle Golfplatz, Flight und €/Skin — dann geht es auf die Runde.
+                  <div className="mt-5 max-w-xs text-base font-semibold leading-relaxed text-slate-400">
+                    Course, Flight und Einsatz wählen. Danach direkt zur Score-Eingabe.
                   </div>
-                </div>
 
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg">
-                  <Plus
-                    size={32}
-                    strokeWidth={3}
-                  />
+                  <Link
+                    to="/round"
+                    className="mt-9 flex w-full items-center justify-between rounded-[28px] border border-white/90 bg-white px-6 py-5 text-slate-950 shadow-[0_18px_55px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-2xl transition active:scale-[0.985]"
+                  >
+                    <div>
+                      <div className="text-2xl font-black tracking-[-0.04em] text-slate-950">
+                        Runde starten
+                      </div>
+
+                      <div className="mt-1 text-sm font-black text-slate-500">
+                        Setup öffnen
+                      </div>
+                    </div>
+
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-950 text-xl font-black text-white shadow-sm">
+                      →
+                    </div>
+                  </Link>
                 </div>
               </div>
-
-              <Link
-                to="/round"
-                className="mt-10 flex w-full items-center justify-between rounded-[30px] bg-white px-6 py-5 text-slate-950 shadow-lg"
-              >
-                <div>
-                  <div className="text-xl font-black">
-                    Runde starten
-                  </div>
-
-                  <div className="mt-1 text-sm font-bold text-slate-400">
-                    Golfplatz & Flight wählen
-                  </div>
-                </div>
-
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500 text-white">
-                  <ArrowRight size={20} />
-                </div>
-              </Link>
             </motion.div>
           )}
 
-          {/* Quick Action */}
+          {/* New Round Shortcut */}
           {hasActiveMatch && (
             <motion.div
               initial={{
                 opacity: 0,
-                y: 20,
+                y: 18,
               }}
               animate={{
                 opacity: 1,
@@ -572,35 +533,35 @@ export default function HomeScreen() {
                 duration: 0.35,
                 ease: "easeOut",
               }}
-              className="mt-8"
+              className="mt-6"
             >
               <Link
                 to="/round"
-                className="flex items-center justify-between rounded-[38px] border border-white/70 bg-white/90 px-6 py-6 shadow-sm backdrop-blur-xl transition-all duration-300 hover:scale-[1.01]"
+                className="flex items-center justify-between rounded-[32px] border border-white/70 bg-white/46 px-6 py-5 shadow-[0_18px_48px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
               >
                 <div>
-                  <div className="text-3xl font-black text-slate-900">
+                  <div className="text-2xl font-black tracking-[-0.035em]">
                     Neue Runde
                   </div>
 
-                  <div className="mt-1 text-sm text-slate-500">
-                    Neuen Flight starten
+                  <div className="mt-1 text-sm font-semibold text-slate-500">
+                    Aktuelle Runde ersetzen
                   </div>
                 </div>
 
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-4xl text-white shadow-lg">
-                  +
+                <div className="text-2xl font-black">
+                  →
                 </div>
               </Link>
             </motion.div>
           )}
 
-          {/* Last Winner */}
+          {/* Last Round Compact Cards */}
           {latestRound && (
             <motion.div
               initial={{
                 opacity: 0,
-                y: 20,
+                y: 22,
               }}
               animate={{
                 opacity: 1,
@@ -611,87 +572,73 @@ export default function HomeScreen() {
                 duration: 0.35,
                 ease: "easeOut",
               }}
-              className="mt-10 overflow-hidden rounded-[40px] bg-slate-950 p-6 text-white shadow-2xl"
+              className="mt-7 grid grid-cols-2 gap-4"
             >
-              <div className="flex items-start justify-between gap-5">
-                <div className="min-w-0">
-                  <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-500">
-                    Last Round Winner
-                  </div>
+              <button
+                type="button"
+                onClick={() => navigate(`/matches/${latestRound.id}`)}
+                className="min-h-[14rem] rounded-[34px] border border-white/70 bg-white/46 p-6 text-left shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
+              >
+                <div className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">
+                  Last Round
+                </div>
 
-                  <div className="mt-4 truncate text-5xl font-black tracking-tight">
-                    {latestRound.winner || "Unbekannt"}
-                  </div>
+                <div className="mt-9 truncate text-[2.35rem] font-black leading-none tracking-[-0.06em]">
+                  {latestRound.winner || "Unbekannt"}
+                </div>
 
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <div className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-widest text-slate-300">
+                <div
+                  className={`mt-4 text-[2.4rem] font-black leading-none tracking-[-0.06em] ${getMoneyColor(latestRound.winnings)}`}
+                >
+                  {formatMoney(latestRound.winnings)}
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate(`/matches/${latestRound.id}`)}
+                className="min-h-[14rem] rounded-[34px] border border-white/70 bg-white/46 p-6 text-left shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
+              >
+                <div className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">
+                  Result
+                </div>
+
+                <div
+                  className={`mt-9 whitespace-nowrap text-[2.65rem] font-black leading-none tracking-[-0.06em] ${getMoneyColor(latestRound.winnings)}`}
+                >
+                  {formatMoney(latestRound.winnings)}
+                </div>
+
+                <div className="mt-8 flex items-end justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-black text-slate-950">
+                      {latestRoundIsWolffn
+                        ? "🐺 Wolffn"
+                        : latestRoundHasSpecialScoring
+                        ? "Pro"
+                        : "Classic"}
+                    </div>
+
+                    <div className="mt-1 truncate text-xs font-semibold text-slate-500">
                       {latestRound.id || "SKZ-0000"}
                     </div>
-
-                    <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-widest text-slate-300">
-                      <MapPin size={13} />
-
-                      <span className="max-w-[180px] truncate">
-                        {getRoundCourseName(latestRound)}
-                      </span>
-                    </div>
-
-                    {latestRoundIsWolffn && (
-                      <div className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-black uppercase tracking-widest text-slate-950">
-                        <span aria-hidden="true">
-                          🐺
-                        </span>
-                        Wolffn
-                      </div>
-                    )}
-
-                    {!latestRoundIsWolffn && latestRoundHasSpecialScoring && (
-                      <div className="inline-flex items-center gap-1 rounded-full bg-orange-500 px-3 py-1 text-xs font-black uppercase tracking-widest text-white">
-                        <Sparkles size={13} />
-                        Skinz Professional
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-yellow-400 text-black shadow-lg">
-                  <Trophy size={24} />
-                </div>
-              </div>
-
-              <div className="mt-8 flex items-end justify-between gap-5">
-                <div>
-                  <div className="text-xs font-black uppercase tracking-widest text-slate-500">
-                    Earnings
                   </div>
 
                   <div
-                    className={`mt-2 text-5xl font-black ${getMoneyColorDark(latestRound.winnings)}`}
-                  >
-                    {formatMoney(latestRound.winnings)}
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <div className="text-xs font-black uppercase tracking-widest text-slate-500">
-                    To Par
-                  </div>
-
-                  <div
-                    className={`mt-2 text-4xl font-black ${getToParColorDark(latestRound.totalToPar)}`}
+                    className={`shrink-0 text-2xl font-black ${getToParColor(latestRound.totalToPar)}`}
                   >
                     {formatToPar(latestRound.totalToPar)}
                   </div>
                 </div>
-              </div>
+              </button>
             </motion.div>
           )}
 
-          {/* Rankings Preview */}
+          {/* Season Leaderboard */}
           <motion.div
             initial={{
               opacity: 0,
-              y: 20,
+              y: 22,
             }}
             animate={{
               opacity: 1,
@@ -702,88 +649,82 @@ export default function HomeScreen() {
               duration: 0.35,
               ease: "easeOut",
             }}
-            className="mt-10 rounded-[40px] bg-white/90 p-6 shadow-sm backdrop-blur-xl"
+            className="mt-7 rounded-[34px] border border-white/70 bg-white/48 p-6 shadow-[0_18px_55px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
           >
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
+                <div className="text-[12px] font-black uppercase tracking-[0.24em] text-slate-600">
                   Season Leaderboard
-                </div>
-
-                <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-                  Hot Players
                 </div>
               </div>
 
               <button
                 type="button"
                 onClick={() => navigate("/leaderboard")}
-                className="flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-xs font-black uppercase tracking-widest text-white"
+                className="rounded-full border border-white/70 bg-white/46 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600 backdrop-blur-xl"
               >
                 Alle
-                <ArrowRight size={14} />
               </button>
             </div>
 
             {topPlayers.length === 0 && (
-              <div className="mt-6 rounded-[24px] border border-slate-100 bg-white p-5 text-center text-sm font-bold text-slate-400 shadow-sm">
+              <div className="mt-6 rounded-[24px] border border-white/70 bg-white/40 p-5 text-center text-sm font-bold text-slate-500 backdrop-blur-xl">
                 Noch kein Leaderboard vorhanden.
               </div>
             )}
 
             <div className="mt-6 space-y-3">
-              {topPlayers.map((player, index) => (
-                <motion.button
+              {topPlayers.map((player) => (
+                <button
                   type="button"
-                  whileTap={{
-                    scale: 0.985,
-                  }}
                   key={player.name}
                   onClick={() => navigate("/leaderboard")}
-                  className="flex w-full items-center justify-between rounded-[24px] border border-slate-100 bg-white px-5 py-4 text-left shadow-sm"
+                  className="flex w-full items-baseline justify-between gap-5 text-left"
                 >
-                  <div className="flex min-w-0 items-center gap-4">
-                    <div
-                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-black ${getRankStyle(index)}`}
-                    >
-                      {index + 1}
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <div className="truncate text-xl font-black text-slate-950">
-                          {player.name}
-                        </div>
-
-                        {index === 0 && (
-                          <div className="flex shrink-0 items-center gap-1 rounded-full bg-yellow-400 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-black">
-                            <Crown size={10} />
-                            Leader
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                        {player.wins || 0} Wins
-                      </div>
-                    </div>
+                  <div className="min-w-0 truncate text-[1.75rem] font-black leading-none tracking-[-0.045em]">
+                    {player.name}
                   </div>
 
-                  <div className="shrink-0 text-right">
-                    <div
-                      className={`text-3xl font-black ${getMoneyColor(player.totalWinnings)}`}
-                    >
-                      {formatMoney(player.totalWinnings)}
-                    </div>
-
-                    <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                      Earnings
-                    </div>
+                  <div
+                    className={`shrink-0 whitespace-nowrap text-[1.65rem] font-black leading-none tracking-[-0.045em] ${getMoneyColor(player.totalWinnings)}`}
+                  >
+                    {formatMoney(player.totalWinnings)}
                   </div>
-                </motion.button>
+                </button>
               ))}
             </div>
           </motion.div>
+
+          {!hasActiveMatch && !latestRound && topPlayers.length === 0 && (
+            <motion.div
+              initial={{
+                opacity: 0,
+                y: 18,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
+              transition={{
+                delay: 0.14,
+                duration: 0.35,
+                ease: "easeOut",
+              }}
+              className="mt-7 rounded-[34px] border border-white/70 bg-white/46 p-6 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
+            >
+              <div className="text-[12px] font-black uppercase tracking-[0.24em] text-slate-500">
+                Ready
+              </div>
+
+              <div className="mt-3 text-3xl font-black tracking-[-0.04em]">
+                Erste Runde starten
+              </div>
+
+              <div className="mt-3 text-sm font-semibold leading-relaxed text-slate-500">
+                Sobald eine Runde abgeschlossen ist, erscheinen hier Last Round und Season Leaderboard.
+              </div>
+            </motion.div>
+          )}
         </div>
       </div>
     </div>
