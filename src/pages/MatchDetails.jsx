@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 
 import {
+  GAME_MODES,
   useGame,
 } from "../context/GameContext"
 
@@ -306,7 +307,19 @@ function getPlayerTotalPar(player, fallbackPar) {
   )
 }
 
+function isWolffnItem(item) {
+  return item?.gameMode === GAME_MODES.WOLFFN
+}
+
+function isWolffnRound(round) {
+  return round?.gameMode === GAME_MODES.WOLFFN
+}
+
 function getHoleBonusSkins(hole) {
+  if (isWolffnItem(hole)) {
+    return 0
+  }
+
   if (hole?.bonusSkins !== undefined) {
     return toNumber(hole.bonusSkins, 0)
   }
@@ -358,6 +371,10 @@ function getHoleBonusStyle(hole) {
 }
 
 function getHistoryBonusSkins(item) {
+  if (isWolffnItem(item)) {
+    return 0
+  }
+
   if (item?.bonusSkins !== undefined) {
     return toNumber(item.bonusSkins, 0)
   }
@@ -415,6 +432,20 @@ function formatSkinsText(value) {
   return amount === 1
     ? "1 Skin"
     : `${amount} Skins`
+}
+
+function joinTeamNames(team) {
+  return Array.isArray(team) && team.length > 0
+    ? team.join(" + ")
+    : "-"
+}
+
+function getWolffnFormatLabel(item) {
+  if (item?.wolffnFormat === "2v2") {
+    return "2v2"
+  }
+
+  return "Wolffn"
 }
 
 function SummaryCard({
@@ -647,7 +678,11 @@ export default function MatchDetails() {
     winner?.winnings ??
     0
 
+  const wolffnRound =
+    isWolffnRound(round)
+
   const bonusModeWasEnabled =
+    !wolffnRound &&
     Boolean(
       round.specialScoringEnabled ||
       round.bonusSkinsEnabled ||
@@ -732,6 +767,15 @@ export default function MatchDetails() {
                   {courseName}
                 </span>
               </div>
+
+              {wolffnRound && (
+                <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-950">
+                  <span aria-hidden="true">
+                    🐺
+                  </span>
+                  Wolffn
+                </div>
+              )}
 
               {bonusModeWasEnabled && (
                 <div className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
@@ -835,12 +879,15 @@ export default function MatchDetails() {
                 className="text-4xl"
                 aria-hidden="true"
               >
-                💰
+                {wolffnRound ? "🐺" : "💰"}
               </div>
             </div>
 
             <div className="mt-6 space-y-3">
               {roundHistory.map((item) => {
+                const wolffnHole =
+                  isWolffnItem(item)
+
                 const bonusLabel =
                   getHistoryBonusLabel(item)
 
@@ -853,55 +900,117 @@ export default function MatchDetails() {
                 const carryoverSkins =
                   toNumber(item.carryoverSkins, 0)
 
+                const currentHoleValue =
+                  toNumber(item.currentHoleValue, 0)
+
+                const scoreMultiplierLabel =
+                  item.scoreMultiplierLabel ||
+                  item.bonusResult ||
+                  null
+
+                const wolffnMultiplier =
+                  toNumber(item.wolffnMultiplier, 1)
+
                 return (
                   <div
                     key={`${roundId}-history-${item.hole}-${item.winner}`}
-                    className="flex items-center justify-between rounded-[24px] border border-slate-100 bg-white px-5 py-4 shadow-sm"
+                    className="rounded-[24px] border border-slate-100 bg-white px-5 py-4 shadow-sm"
                   >
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="text-lg font-black text-slate-950">
-                          Loch {item.hole}
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="text-lg font-black text-slate-950">
+                            Loch {item.hole}
+                          </div>
+
+                          {wolffnHole && (
+                            <div className="flex items-center gap-1 rounded-full bg-slate-950 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white">
+                              <span aria-hidden="true">
+                                🐺
+                              </span>
+                              {getWolffnFormatLabel(item)}
+                            </div>
+                          )}
+
+                          {!wolffnHole && bonusLabel && (
+                            <div
+                              className={`flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-widest ${bonusStyle}`}
+                            >
+                              <Sparkles size={10} />
+                              {bonusLabel}
+                            </div>
+                          )}
                         </div>
 
-                        {bonusLabel && (
-                          <div
-                            className={`flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-widest ${bonusStyle}`}
-                          >
-                            <Sparkles size={10} />
-                            {bonusLabel}
+                        <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
+                          Par {item.par}
+                        </div>
+
+                        {wolffnHole && (
+                          <div className="mt-3 rounded-[20px] bg-slate-50 px-4 py-3">
+                            <div className="text-xs font-black uppercase tracking-widest text-slate-400">
+                              Teams
+                            </div>
+
+                            <div className="mt-2 text-sm font-black leading-relaxed text-slate-950">
+                              {joinTeamNames(item.wolffnTeamA)}
+                              <span className="mx-2 text-slate-400">
+                                vs
+                              </span>
+                              {joinTeamNames(item.wolffnTeamB)}
+                            </div>
                           </div>
                         )}
+
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {wolffnHole && wolffnMultiplier > 1 && (
+                            <div className="rounded-full bg-slate-950 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white">
+                              Wolffn x{wolffnMultiplier}
+                            </div>
+                          )}
+
+                          {wolffnHole && scoreMultiplierLabel && (
+                            <div
+                              className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-widest ${
+                                scoreMultiplierLabel.includes("Birdie")
+                                  ? "bg-red-500 text-white"
+                                  : "bg-orange-500 text-white"
+                              }`}
+                            >
+                              {scoreMultiplierLabel}
+                            </div>
+                          )}
+
+                          {wolffnHole && currentHoleValue > 0 && (
+                            <div className="rounded-full bg-yellow-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-yellow-600">
+                              Value {formatSkinsText(currentHoleValue)}
+                            </div>
+                          )}
+
+                          {carryoverSkins > 0 && (
+                            <div className="rounded-full bg-orange-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-orange-600">
+                              Carry {formatSkinsText(carryoverSkins)}
+                            </div>
+                          )}
+
+                          {!wolffnHole && bonusSkins > 0 && (
+                            <div className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                              Bonus {formatSkinsText(bonusSkins)}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                        Par {item.par}
-                      </div>
+                      <div className="shrink-0 text-right">
+                        <div className="text-lg font-black text-slate-950">
+                          {item.hasTie
+                            ? "Carryover"
+                            : item.winner}
+                        </div>
 
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {carryoverSkins > 0 && (
-                          <div className="rounded-full bg-orange-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-orange-600">
-                            Carry {formatSkinsText(carryoverSkins)}
-                          </div>
-                        )}
-
-                        {bonusSkins > 0 && (
-                          <div className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-600">
-                            Bonus {formatSkinsText(bonusSkins)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <div className="text-lg font-black text-slate-950">
-                        {item.hasTie
-                          ? "Carryover"
-                          : item.winner}
-                      </div>
-
-                      <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                        {formatSkinsText(item.skins || 0)} · {item.pot || 0}€
+                        <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
+                          {formatSkinsText(item.skins || 0)} · {item.pot || 0}€
+                        </div>
                       </div>
                     </div>
                   </div>
