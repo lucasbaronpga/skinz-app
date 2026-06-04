@@ -51,7 +51,7 @@ function getMoneyColor(value) {
   const amount = toNumber(value, 0)
 
   if (amount > 0) {
-    return "text-emerald-600"
+    return "text-yellow-500"
   }
 
   if (amount < 0) {
@@ -65,7 +65,7 @@ function getMoneyColorDark(value) {
   const amount = toNumber(value, 0)
 
   if (amount > 0) {
-    return "text-emerald-400"
+    return "text-yellow-400"
   }
 
   if (amount < 0) {
@@ -125,11 +125,11 @@ function getRankStyle(index) {
   }
 
   if (index === 1) {
-    return "border border-slate-200 bg-white text-slate-900"
+    return "bg-slate-300 text-slate-950"
   }
 
   if (index === 2) {
-    return "bg-orange-400 text-white"
+    return "bg-[#cd7f32] text-white"
   }
 
   return "border border-slate-200 bg-white text-slate-700"
@@ -196,13 +196,6 @@ function getRoundCourseName(round) {
   )
 }
 
-function getRoundCourseLocation(round) {
-  return (
-    round?.course?.location ||
-    "Westpfalz"
-  )
-}
-
 function getRoundCoursePar(round) {
   return (
     round?.course?.par ||
@@ -211,7 +204,7 @@ function getRoundCoursePar(round) {
 }
 
 function getRoundCourseMeta(round) {
-  return `${getRoundCourseLocation(round)} · Par ${getRoundCoursePar(round)}`
+  return `Par ${getRoundCoursePar(round)}`
 }
 
 function getRoundDate(round) {
@@ -226,6 +219,31 @@ function getRoundId(round) {
     round?.id ||
     "SKZ-0000"
   )
+}
+
+function getPlayerTotalScore(player) {
+  if (Array.isArray(player?.holes) && player.holes.length > 0) {
+    return player.holes.reduce(
+      (total, hole) =>
+        total + toNumber(hole.score, 0),
+      0
+    )
+  }
+
+  return toNumber(player?.total, 0)
+}
+
+function getLatestScore(recentMatches, playerName) {
+  const latestRound =
+    recentMatches[0]
+
+  const latestPlayer =
+    getRoundPlayer(
+      latestRound,
+      playerName
+    )
+
+  return getPlayerTotalScore(latestPlayer)
 }
 
 function roundHasSpecialScoring(round) {
@@ -368,7 +386,7 @@ export default function Leaderboard() {
           </h1>
 
           <p className="mt-4 max-w-sm text-sm font-bold leading-relaxed text-slate-400">
-            Season Rankings, Winnings und Performance aller Spieler.
+            Season Rankings, Winnings & Performance of all Players.
           </p>
         </motion.div>
 
@@ -509,6 +527,12 @@ export default function Leaderboard() {
                     player.name
                   )
 
+                const latestScore =
+                  getLatestScore(
+                    recentMatches,
+                    player.name
+                  )
+
                 return (
                   <motion.div
                     key={player.name}
@@ -544,7 +568,6 @@ export default function Leaderboard() {
                       className="w-full rounded-[36px] border border-white/70 bg-white/90 p-5 text-left shadow-sm backdrop-blur-xl"
                     >
                       <div className="flex items-center justify-between gap-4">
-                        {/* Left */}
                         <div className="flex min-w-0 items-center gap-4">
                           <div
                             className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-xl font-black shadow-sm ${getRankStyle(index)}`}
@@ -580,7 +603,6 @@ export default function Leaderboard() {
                           </div>
                         </div>
 
-                        {/* Right */}
                         <div className="flex shrink-0 items-center gap-3">
                           <div className="text-right">
                             <div
@@ -612,17 +634,7 @@ export default function Leaderboard() {
                       </div>
 
                       {/* Quick Stats */}
-                      <div className="mt-5 grid grid-cols-4 gap-3">
-                        <div className="rounded-[22px] border border-slate-100 bg-white p-3 text-center shadow-sm">
-                          <div className="text-2xl font-black text-orange-500">
-                            {toNumber(player.eagles, 0)}
-                          </div>
-
-                          <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            Eagles
-                          </div>
-                        </div>
-
+                      <div className="mt-5 grid grid-cols-3 gap-3">
                         <div className="rounded-[22px] border border-slate-100 bg-white p-3 text-center shadow-sm">
                           <div className="text-2xl font-black text-slate-950">
                             {toNumber(player.roundsPlayed, 0)}
@@ -731,7 +743,6 @@ export default function Leaderboard() {
                                     className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm"
                                   >
                                     <div className="flex items-start justify-between gap-4">
-                                      {/* Left */}
                                       <div className="min-w-0">
                                         <div className="flex flex-wrap items-center gap-2">
                                           <div className="text-lg font-black text-slate-950">
@@ -745,7 +756,7 @@ export default function Leaderboard() {
                                           {roundHasSpecialMode && (
                                             <div className="flex items-center gap-1 rounded-full bg-orange-500 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white">
                                               <Sparkles size={10} />
-                                              Sonderform
+                                              Skinz Professional
                                             </div>
                                           )}
                                         </div>
@@ -766,7 +777,7 @@ export default function Leaderboard() {
                                           <div
                                             className={`text-xs font-black uppercase tracking-widest ${getSkinColor(roundPlayer?.skins)}`}
                                           >
-                                            {formatSkinSaldo(roundPlayer?.skins)} Skin-Saldo
+                                            {formatSkinSaldo(roundPlayer?.skins)} Skinz
                                           </div>
 
                                           {playerHasSpecialMode && (
@@ -778,18 +789,11 @@ export default function Leaderboard() {
                                         </div>
                                       </div>
 
-                                      {/* Right */}
                                       <div className="shrink-0 text-right">
                                         <div
                                           className={`text-3xl font-black ${getMoneyColor(roundPlayer?.winnings)}`}
                                         >
                                           {formatMoney(roundPlayer?.winnings)}
-                                        </div>
-
-                                        <div
-                                          className={`mt-1 text-sm font-black uppercase tracking-widest ${getToParColor(roundPlayer?.totalToPar)}`}
-                                        >
-                                          {formatToPar(roundPlayer?.totalToPar)}
                                         </div>
                                       </div>
                                     </div>
@@ -802,11 +806,11 @@ export default function Leaderboard() {
                             <div className="mt-6 grid grid-cols-2 gap-4">
                               <div className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm">
                                 <div className="text-sm font-bold text-slate-400">
-                                  Birdies
+                                  Score
                                 </div>
 
-                                <div className="mt-2 text-5xl font-black text-red-500">
-                                  {toNumber(player.birdies, 0)}
+                                <div className="mt-2 text-5xl font-black text-slate-950">
+                                  {latestScore || 0}
                                 </div>
                               </div>
 
