@@ -31,13 +31,51 @@ import {
   useGame,
 } from "../context/GameContext"
 
-const MIN_STAKE = 1
+const MIN_STAKE = 0.1
 const MAX_STAKE = 100
+
+const STAKE_PRESETS = [
+  0.1,
+  0.2,
+  0.5,
+  1,
+  2,
+  5,
+  10,
+  20,
+  50,
+]
 
 function normalizeName(value) {
   return String(value || "")
     .trim()
     .toLowerCase()
+}
+
+function toNumber(value, fallback = 0) {
+  const number = Number(value)
+
+  return Number.isFinite(number)
+    ? number
+    : fallback
+}
+
+function roundStake(value) {
+  return Math.round(toNumber(value, MIN_STAKE) * 100) / 100
+}
+
+function formatStake(value) {
+  const amount =
+    roundStake(value)
+
+  const hasCents =
+    Math.abs(amount % 1) > 0
+
+  if (hasCents) {
+    return `${amount.toFixed(2).replace(".", ",")}€`
+  }
+
+  return `${amount.toFixed(0)}€`
 }
 
 function getCourseName(course) {
@@ -49,16 +87,41 @@ function getCoursePar(course) {
 }
 
 function clampStake(value) {
-  const number = Number(value)
+  const number =
+    roundStake(value)
 
   if (!Number.isFinite(number)) {
     return MIN_STAKE
   }
 
-  return Math.min(
-    Math.max(number, MIN_STAKE),
-    MAX_STAKE
+  return roundStake(
+    Math.min(
+      Math.max(number, MIN_STAKE),
+      MAX_STAKE
+    )
   )
+}
+
+function getPreviousStakePreset(currentStake) {
+  const current =
+    roundStake(currentStake)
+
+  const previousPreset =
+    [...STAKE_PRESETS]
+      .reverse()
+      .find((preset) => preset < current)
+
+  return previousPreset || MIN_STAKE
+}
+
+function getNextStakePreset(currentStake) {
+  const current =
+    roundStake(currentStake)
+
+  const nextPreset =
+    STAKE_PRESETS.find((preset) => preset > current)
+
+  return nextPreset || MAX_STAKE
 }
 
 function buildInitialPlayers(userName) {
@@ -245,13 +308,23 @@ export default function Round() {
 
   function decreaseStake() {
     setStake((currentStake) =>
-      clampStake(currentStake - 1)
+      clampStake(
+        getPreviousStakePreset(currentStake)
+      )
     )
   }
 
   function increaseStake() {
     setStake((currentStake) =>
-      clampStake(currentStake + 1)
+      clampStake(
+        getNextStakePreset(currentStake)
+      )
+    )
+  }
+
+  function selectStakePreset(nextStake) {
+    setStake(
+      clampStake(nextStake)
     )
   }
 
@@ -451,7 +524,7 @@ export default function Round() {
                 </div>
 
                 <div className="mt-3 text-7xl font-black tracking-tight text-emerald-400">
-                  {stake}€
+                  {formatStake(stake)}
                 </div>
 
                 <div className="mt-2 text-xs font-bold text-slate-500">
@@ -492,6 +565,31 @@ export default function Round() {
                   />
                 </motion.button>
               </div>
+            </div>
+
+            <div className="mt-6 grid grid-cols-3 gap-2">
+              {STAKE_PRESETS.map((preset) => {
+                const isSelected =
+                  roundStake(stake) === roundStake(preset)
+
+                return (
+                  <motion.button
+                    key={preset}
+                    type="button"
+                    whileTap={{
+                      scale: 0.94,
+                    }}
+                    onClick={() => selectStakePreset(preset)}
+                    className={`rounded-[18px] px-3 py-3 text-sm font-black transition ${
+                      isSelected
+                        ? "bg-emerald-500 text-white shadow-lg"
+                        : "bg-white/10 text-white"
+                    }`}
+                  >
+                    {formatStake(preset)}
+                  </motion.button>
+                )
+              })}
             </div>
           </div>
         </motion.div>

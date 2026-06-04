@@ -36,18 +36,46 @@ function toNumber(value, fallback = 0) {
     : fallback
 }
 
+function roundMoney(value) {
+  return Math.round(toNumber(value, 0) * 100) / 100
+}
+
+function formatEuroAmount(value) {
+  const amount =
+    roundMoney(Math.abs(value))
+
+  const hasCents =
+    Math.abs(amount % 1) > 0
+
+  if (hasCents) {
+    return amount
+      .toFixed(2)
+      .replace(".", ",")
+  }
+
+  return amount.toFixed(0)
+}
+
 function formatMoney(value) {
-  const amount = toNumber(value, 0)
+  const amount =
+    roundMoney(value)
 
   if (amount > 0) {
-    return `+${amount}€`
+    return `+${formatEuroAmount(amount)}€`
   }
 
   if (amount < 0) {
-    return `${amount}€`
+    return `-${formatEuroAmount(amount)}€`
   }
 
   return "0€"
+}
+
+function formatPlainMoney(value) {
+  const amount =
+    roundMoney(value)
+
+  return `${formatEuroAmount(amount)}€`
 }
 
 function getMoneyColor(value) {
@@ -1071,7 +1099,7 @@ export default function Live() {
                       </div>
 
                       <div className="mt-1 text-xs font-black uppercase tracking-widest text-yellow-500">
-                        {getSkinsLabel(item.skins || 0)} · {item.pot || 0}€
+                        {getSkinsLabel(item.skins || 0)} · {formatPlainMoney(item.pot || 0)}
                       </div>
                     </div>
                   </div>
@@ -1305,38 +1333,38 @@ export default function Live() {
                 {formatMoney(champion?.winnings)}
               </div>
 
-              <div className="mt-8 grid grid-cols-3 gap-3">
-                <div className="rounded-[26px] border border-slate-100 bg-white p-5 shadow-sm">
+              <div className="mt-8 grid grid-cols-3 gap-2">
+                <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
                   <div className="text-sm font-bold text-slate-400">
                     Skinz
                   </div>
 
                   <div
-                    className={`mt-2 text-4xl font-black ${getSkinColor(champion?.skins)}`}
+                    className={`mt-2 whitespace-nowrap text-[2rem] font-black leading-none tracking-tight ${getSkinColor(champion?.skins)}`}
                   >
                     {formatSkinSaldo(champion?.skins)}
                   </div>
                 </div>
 
-                <div className="rounded-[26px] border border-slate-100 bg-white p-5 shadow-sm">
+                <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
                   <div className="text-sm font-bold text-slate-400">
                     Earnings
                   </div>
 
                   <div
-                    className={`mt-2 text-4xl font-black ${getMoneyColor(champion?.winnings)}`}
+                    className={`mt-2 whitespace-nowrap text-[1.85rem] font-black leading-none tracking-tight ${getMoneyColor(champion?.winnings)}`}
                   >
                     {formatMoney(champion?.winnings)}
                   </div>
                 </div>
 
-                <div className="rounded-[26px] border border-slate-100 bg-white p-5 shadow-sm">
+                <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
                   <div className="text-sm font-bold text-slate-400">
                     To Par
                   </div>
 
                   <div
-                    className={`mt-2 text-4xl font-black ${getToParColor(champion?.totalToPar)}`}
+                    className={`mt-2 whitespace-nowrap text-[2rem] font-black leading-none tracking-tight ${getToParColor(champion?.totalToPar)}`}
                   >
                     {formatToPar(champion?.totalToPar)}
                   </div>

@@ -33,15 +33,36 @@ function toNumber(value, fallback = 0) {
     : fallback
 }
 
+function roundMoney(value) {
+  return Math.round(toNumber(value, 0) * 100) / 100
+}
+
+function formatEuroAmount(value) {
+  const amount =
+    roundMoney(Math.abs(value))
+
+  const hasCents =
+    Math.abs(amount % 1) > 0
+
+  if (hasCents) {
+    return amount
+      .toFixed(2)
+      .replace(".", ",")
+  }
+
+  return amount.toFixed(0)
+}
+
 function formatMoney(value) {
-  const amount = toNumber(value, 0)
+  const amount =
+    roundMoney(value)
 
   if (amount > 0) {
-    return `+${amount}€`
+    return `+${formatEuroAmount(amount)}€`
   }
 
   if (amount < 0) {
-    return `${amount}€`
+    return `-${formatEuroAmount(amount)}€`
   }
 
   return "0€"

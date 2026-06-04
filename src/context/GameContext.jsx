@@ -52,6 +52,19 @@ function toNumber(value, fallback = 0) {
     : fallback
 }
 
+function roundMoney(value) {
+  return Math.round(toNumber(value, 0) * 100) / 100
+}
+
+function normalizeStake(value) {
+  const stake =
+    roundMoney(value)
+
+  return stake > 0
+    ? stake
+    : DEFAULT_STAKE
+}
+
 export function getGameModeLabel(gameMode) {
   if (gameMode === GAME_MODES.WOLFFN) {
     return "Wolffn"
@@ -193,11 +206,17 @@ function normalizePlayer(player, fallbackScore = DEFAULT_SCORE) {
       toNumber(player?.skins, 0),
 
     winnings:
-      toNumber(player?.winnings, 0),
+      roundMoney(player?.winnings),
 
     holes:
       Array.isArray(player?.holes)
-        ? player.holes
+        ? player.holes.map((hole) => ({
+            ...hole,
+            winningsDelta:
+              hole?.winningsDelta !== undefined
+                ? roundMoney(hole.winningsDelta)
+                : hole?.winningsDelta,
+          }))
         : [],
   }
 }
@@ -244,14 +263,20 @@ function normalizeCompletedRounds(rounds) {
 
       history:
         Array.isArray(round.history)
-          ? round.history
+          ? round.history.map((item) => ({
+              ...item,
+              pot:
+                item?.pot !== undefined
+                  ? roundMoney(item.pot)
+                  : item?.pot,
+            }))
           : [],
 
       stake:
-        toNumber(round.stake, DEFAULT_STAKE),
+        normalizeStake(round.stake),
 
       winnings:
-        toNumber(round.winnings, 0),
+        roundMoney(round.winnings),
 
       skins:
         toNumber(round.skins, 0),
@@ -463,7 +488,6 @@ function getWolffnMultiplier(wolffnSetup, winningScore, par) {
     resultLabel:
       scoreMultiplier.resultLabel,
     currentHoleValue:
-      1 *
       wolffnMultiplier *
       scoreMultiplier.multiplier,
   }
@@ -552,13 +576,17 @@ function calculateWolffnHole({
 
   const teamPot =
     hasTie
-      ? nextCarryover *
-        stake *
-        Math.max(players.length - 1, 1)
-      : totalSkins *
-        stake *
-        winningTeam.length *
-        losingTeam.length
+      ? roundMoney(
+          nextCarryover *
+            stake *
+            Math.max(players.length - 1, 1)
+        )
+      : roundMoney(
+          totalSkins *
+            stake *
+            winningTeam.length *
+            losingTeam.length
+        )
 
   return {
     hasTie,
@@ -659,13 +687,19 @@ function createInitialGameState() {
 
     history:
       Array.isArray(savedGame?.history)
-        ? savedGame.history
+        ? savedGame.history.map((item) => ({
+            ...item,
+            pot:
+              item?.pot !== undefined
+                ? roundMoney(item.pot)
+                : item?.pot,
+          }))
         : [],
 
     players,
 
     stake:
-      toNumber(savedGame?.stake, DEFAULT_STAKE),
+      normalizeStake(savedGame?.stake ?? DEFAULT_STAKE),
 
     completedRounds,
 
@@ -709,7 +743,7 @@ export function GameProvider({ children }) {
   const [players, setPlayers] =
     useState(initialState.players)
 
-  const [stake, setStake] =
+  const [stake, setStakeState] =
     useState(initialState.stake)
 
   const [completedRounds, setCompletedRounds] =
@@ -755,6 +789,17 @@ export function GameProvider({ children }) {
 
   const gameModeLabel =
     getGameModeLabel(gameMode)
+
+  const setStake = useCallback((value) => {
+    setStakeState((currentStake) => {
+      const nextStake =
+        typeof value === "function"
+          ? value(currentStake)
+          : value
+
+      return normalizeStake(nextStake)
+    })
+  }, [])
 
   const setGameMode = useCallback((nextGameMode) => {
     const normalizedGameMode =
@@ -823,9 +868,11 @@ export function GameProvider({ children }) {
     carryover + currentBaseSkins
 
   const currentPot =
-    currentSkinsAtStake *
-    stake *
-    Math.max(players.length - 1, 1)
+    roundMoney(
+      currentSkinsAtStake *
+        stake *
+        Math.max(players.length - 1, 1)
+    )
 
   useEffect(() => {
     try {
@@ -967,7 +1014,7 @@ export function GameProvider({ children }) {
 
       setSelectedCourseId(matchCourse.id)
       setPlayers(formattedPlayers)
-      setStake(toNumber(selectedStake, DEFAULT_STAKE))
+      setStakeState(normalizeStake(selectedStake))
       setHole(1)
       setCarryover(0)
       setHistory([])
@@ -1040,7 +1087,7 @@ export function GameProvider({ children }) {
             wolffnSetup.teamB,
 
           pot:
-            wolffnResult.teamPot,
+            roundMoney(wolffnResult.teamPot),
 
           skins:
             wolffnResult.hasTie
@@ -1141,7 +1188,7 @@ export function GameProvider({ children }) {
                 : 0
 
             const winningsDelta =
-              skinDelta * stake
+              roundMoney(skinDelta * stake)
 
             return {
               ...player,
@@ -1156,7 +1203,10 @@ export function GameProvider({ children }) {
                 toNumber(player.skins, 0) + skinDelta,
 
               winnings:
-                toNumber(player.winnings, 0) + winningsDelta,
+                roundMoney(
+                  toNumber(player.winnings, 0) +
+                  winningsDelta
+                ),
 
               holes: [
                 ...(Array.isArray(player.holes)
@@ -1242,7 +1292,7 @@ export function GameProvider({ children }) {
             color:
               winningResult.color,
             pot:
-              wolffnResult.teamPot,
+              roundMoney(wolffnResult.teamPot),
             skins:
               totalSkins,
             baseSkins: 1,
@@ -1312,12 +1362,13 @@ export function GameProvider({ children }) {
             winner:
               champion?.name || "Unbekannt",
             winnings:
-              champion?.winnings || 0,
+              roundMoney(champion?.winnings || 0),
             skins:
               champion?.skins || 0,
             totalToPar:
               champion?.totalToPar || 0,
-            stake,
+            stake:
+              normalizeStake(stake),
             specialScoringEnabled: false,
             bonusSkinsEnabled: false,
             history: updatedHistory,
@@ -1414,10 +1465,10 @@ export function GameProvider({ children }) {
         Math.max(players.length - 1, 1)
 
       const totalWinnerPot =
-        totalSkins * stake * opponentCount
+        roundMoney(totalSkins * stake * opponentCount)
 
       const carryoverPot =
-        nextCarryover * stake * opponentCount
+        roundMoney(nextCarryover * stake * opponentCount)
 
       const holeResult = {
         hole,
@@ -1517,7 +1568,7 @@ export function GameProvider({ children }) {
               : -totalSkins
 
           const winningsDelta =
-            skinDelta * stake
+            roundMoney(skinDelta * stake)
 
           const playerSpecialScoringApplied =
             Boolean(isWinner && specialScoringApplied)
@@ -1545,7 +1596,10 @@ export function GameProvider({ children }) {
               toNumber(player.skins, 0) + skinDelta,
 
             winnings:
-              toNumber(player.winnings, 0) + winningsDelta,
+              roundMoney(
+                toNumber(player.winnings, 0) +
+                winningsDelta
+              ),
 
             holes: [
               ...(Array.isArray(player.holes)
@@ -1723,12 +1777,13 @@ export function GameProvider({ children }) {
           winner:
             champion?.name || "Unbekannt",
           winnings:
-            champion?.winnings || 0,
+            roundMoney(champion?.winnings || 0),
           skins:
             champion?.skins || 0,
           totalToPar:
             champion?.totalToPar || 0,
-          stake,
+          stake:
+            normalizeStake(stake),
           specialScoringEnabled,
           bonusSkinsEnabled: specialScoringEnabled,
           history: updatedHistory,
@@ -1785,7 +1840,7 @@ export function GameProvider({ children }) {
       setHasActiveMatch(false)
       setGameModeState(GAME_MODES.CLASSIC)
       setSpecialScoringEnabledState(false)
-      setStake(DEFAULT_STAKE)
+      setStakeState(DEFAULT_STAKE)
       setPlayers(createDefaultPlayers())
 
       setActiveMatchId(
@@ -1860,17 +1915,19 @@ export function GameProvider({ children }) {
           }, 0)
 
         const totalWinnings =
-          completedRounds.reduce((total, round) => {
-            const roundPlayer =
-              round.players?.find(
-                (player) => player.name === playerName
-              )
+          roundMoney(
+            completedRounds.reduce((total, round) => {
+              const roundPlayer =
+                round.players?.find(
+                  (player) => player.name === playerName
+                )
 
-            return (
-              total +
-              toNumber(roundPlayer?.winnings, 0)
-            )
-          }, 0)
+              return (
+                total +
+                toNumber(roundPlayer?.winnings, 0)
+              )
+            }, 0)
+          )
 
         const totalToPar =
           completedRounds.reduce((total, round) => {
@@ -2005,6 +2062,7 @@ export function GameProvider({ children }) {
         currentPot,
         players,
         stake,
+        setStake,
         history,
         celebration,
         completedRounds,
