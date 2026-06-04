@@ -13,7 +13,6 @@ import {
 
 import {
   ArrowRight,
-  Euro,
   MapPin,
   Minus,
   Plus,
@@ -43,36 +42,8 @@ function getCourseName(course) {
   return course?.name || "Erster Golfclub Westpfalz"
 }
 
-function getCourseLocation(course) {
-  return course?.location || "Westpfalz"
-}
-
 function getCoursePar(course) {
   return course?.par || 72
-}
-
-function getFrontNinePar(course) {
-  return (
-    course?.pars
-      ?.slice(0, 9)
-      .reduce((total, par) => total + par, 0) || 0
-  )
-}
-
-function getBackNinePar(course) {
-  return (
-    course?.pars
-      ?.slice(9, 18)
-      .reduce((total, par) => total + par, 0) || 0
-  )
-}
-
-function getCourseMeta(course) {
-  return `${getCourseLocation(course)} · Par ${getCoursePar(course)}`
-}
-
-function getCourseNineMeta(course) {
-  return `Front 9 Par ${getFrontNinePar(course)} · Back 9 Par ${getBackNinePar(course)}`
 }
 
 function clampStake(value) {
@@ -290,7 +261,7 @@ export default function Round() {
           }}
         >
           <div className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">
-            Tee Time Setup
+            Match Setup
           </div>
 
           <h1 className="mt-3 text-5xl font-black tracking-tight">
@@ -298,7 +269,7 @@ export default function Round() {
           </h1>
 
           <p className="mt-4 max-w-sm text-sm font-bold leading-relaxed text-slate-400">
-            Wähle Course, Flight, €/Skin und optional die Birdie-/Eagle-Sonderform.
+            Wähle Course, Flight, Skinz und optional Skinz Professional.
           </p>
         </motion.div>
 
@@ -352,7 +323,7 @@ export default function Round() {
           className="mt-8 rounded-[34px] border border-white/70 bg-white/90 p-5 shadow-sm backdrop-blur-xl"
         >
           <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
-            Nächste Scorecard
+            Match ID
           </div>
 
           <div className="mt-3 text-4xl font-black tracking-tight text-slate-950">
@@ -396,14 +367,6 @@ export default function Round() {
                 <div className="mt-4 max-w-[250px] text-4xl font-black leading-none tracking-tight sm:max-w-none">
                   {getCourseName(currentCourse)}
                 </div>
-
-                <div className="mt-3 text-sm font-bold text-slate-400">
-                  {getCourseMeta(currentCourse)}
-                </div>
-
-                <div className="mt-3 inline-flex rounded-full bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-300">
-                  {getCourseNineMeta(currentCourse)}
-                </div>
               </div>
 
               <div
@@ -414,7 +377,7 @@ export default function Round() {
                 }`}
               >
                 {specialScoringEnabled
-                  ? "Sonderform"
+                  ? "Pro"
                   : "Standard"}
               </div>
             </div>
@@ -422,12 +385,8 @@ export default function Round() {
             {/* Stake */}
             <div className="mt-10 flex items-end justify-between gap-5">
               <div>
-                <div className="flex items-center gap-2 text-slate-500">
-                  <Euro size={16} />
-
-                  <div className="text-xs font-black uppercase tracking-widest">
-                    €/Skin
-                  </div>
+                <div className="text-xs font-black uppercase tracking-widest text-slate-500">
+                  €/Skin
                 </div>
 
                 <div className="mt-3 text-7xl font-black tracking-tight text-emerald-400">
@@ -519,7 +478,7 @@ export default function Round() {
                   <Sparkles size={18} />
 
                   <div className="text-xs font-black uppercase tracking-[0.25em]">
-                    Sonderform
+                    Skinz Professional
                   </div>
                 </div>
 
@@ -609,7 +568,7 @@ export default function Round() {
           <div className="border-t border-slate-100 px-5 pb-5 pt-1">
             <div className="rounded-[24px] bg-white px-4 py-3 text-xs font-bold leading-relaxed text-slate-500 shadow-sm">
               {specialScoringEnabled
-                ? "Sonderform aktiv: Lochgewinn mit Par oder schlechter zählt 1 Skin, Birdie zählt 2 Skins, Eagle oder besser zählt 3 Skins. Bei geteiltem Birdie werden 2 Skins carried, bei geteiltem Eagle oder besser 3 Skins."
+                ? "Skinz Professional aktiv: Lochgewinn mit Par oder schlechter zählt 1 Skin, Birdie zählt 2 Skins, Eagle oder besser zählt 3 Skins. Bei geteiltem Birdie werden 2 Skins carried, bei geteiltem Eagle oder besser 3 Skins."
                 : "Standard aktiv: Jeder eindeutige Lochgewinn zählt 1 Skin. Jedes geteilte Loch addiert 1 Skin Carryover — unabhängig vom Score."}
             </div>
           </div>
@@ -685,20 +644,6 @@ export default function Round() {
                       <div className="text-2xl font-black leading-tight tracking-tight text-slate-950">
                         {getCourseName(course)}
                       </div>
-
-                      <div className="mt-2 text-sm font-bold text-slate-400">
-                        {getCourseMeta(course)}
-                      </div>
-
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <div className="rounded-full border border-slate-100 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 shadow-sm">
-                          Front 9 Par {getFrontNinePar(course)}
-                        </div>
-
-                        <div className="rounded-full border border-slate-100 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 shadow-sm">
-                          Back 9 Par {getBackNinePar(course)}
-                        </div>
-                      </div>
                     </div>
 
                     <div className="shrink-0 text-right">
@@ -740,7 +685,6 @@ export default function Round() {
           }}
           className="mt-8 rounded-[40px] bg-white/90 p-6 shadow-sm backdrop-blur-xl"
         >
-          {/* Header */}
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 text-slate-400">
@@ -761,7 +705,6 @@ export default function Round() {
             </div>
           </div>
 
-          {/* Add Player */}
           <div className="mt-6 flex gap-3">
             <input
               id="new-player"
@@ -804,7 +747,6 @@ export default function Round() {
             </div>
           )}
 
-          {/* Player List */}
           <div className="mt-6 space-y-3">
             {uniquePlayers.length === 0 && (
               <div className="rounded-[28px] border border-slate-100 bg-white p-5 text-center text-sm font-bold text-slate-400 shadow-sm">
@@ -822,7 +764,6 @@ export default function Round() {
                   key={player}
                   className="flex items-center justify-between rounded-[30px] border border-slate-100 bg-white p-4 shadow-sm"
                 >
-                  {/* Left */}
                   <div className="flex min-w-0 items-center gap-4">
                     <div
                       className={[
@@ -848,7 +789,6 @@ export default function Round() {
                     </div>
                   </div>
 
-                  {/* Remove */}
                   <motion.button
                     type="button"
                     whileTap={{
@@ -871,14 +811,12 @@ export default function Round() {
           </div>
         </motion.div>
 
-        {/* Hint */}
         {!canStart && (
           <div className="mt-5 rounded-[28px] border border-red-100 bg-white p-5 text-center text-sm font-bold text-red-500 shadow-sm">
             Mindestens zwei Mitspieler werden für eine Runde benötigt.
           </div>
         )}
 
-        {/* Start Button */}
         <motion.button
           type="button"
           whileTap={{
@@ -896,7 +834,7 @@ export default function Round() {
             {hasActiveMatch
               ? "Neue Runde starten"
               : specialScoringEnabled
-              ? "Runde mit Sonderform starten"
+              ? "Runde mit Skinz Professional starten"
               : "Runde starten"}
           </span>
 
