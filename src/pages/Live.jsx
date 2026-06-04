@@ -1,4 +1,6 @@
 import {
+  useEffect,
+  useRef,
   useState,
 } from "react"
 
@@ -326,6 +328,9 @@ function joinTeamNames(team) {
 export default function Live() {
   const navigate = useNavigate()
 
+  const scoreEntryRef =
+    useRef(null)
+
   const {
     hole,
 
@@ -432,6 +437,28 @@ export default function Live() {
   const wolffnSetupComplete =
     !isWolffnMode ||
     Boolean(wolffnTeams)
+
+  useEffect(() => {
+    if (!hasActiveMatch || matchFinished) {
+      return undefined
+    }
+
+    const timeoutId =
+      window.setTimeout(() => {
+        scoreEntryRef.current?.scrollIntoView({
+          block: "start",
+          behavior: "auto",
+        })
+      }, 120)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [
+    hasActiveMatch,
+    matchFinished,
+    safeHole,
+  ])
 
   function handleCloseLive() {
     navigate("/")
@@ -798,7 +825,10 @@ export default function Live() {
       )}
 
       {/* Players */}
-      <div className="mx-auto mt-8 max-w-md space-y-5 px-5">
+      <div
+        ref={scoreEntryRef}
+        className="mx-auto mt-8 max-w-md space-y-3 px-5 scroll-mt-6"
+      >
         {players.map((player, index) => {
           const playerScore =
             toNumber(player.score, currentPar)
@@ -827,34 +857,34 @@ export default function Live() {
               key={player.name}
               initial={{
                 opacity: 0,
-                y: 20,
+                y: 12,
               }}
               animate={{
                 opacity: 1,
                 y: 0,
               }}
               transition={{
-                delay: index * 0.05,
-                duration: 0.3,
+                delay: index * 0.035,
+                duration: 0.24,
                 ease: "easeOut",
               }}
             >
               <div
-                className={`overflow-hidden rounded-[38px] border p-6 shadow-sm transition-all duration-300 ${
+                className={`rounded-[30px] border px-5 py-4 shadow-sm transition-all duration-300 ${
                   isWinning
-                    ? "border-emerald-100 bg-white shadow-[0_18px_50px_rgba(16,185,129,0.14)]"
+                    ? "border-emerald-100 bg-white shadow-[0_12px_35px_rgba(16,185,129,0.12)]"
                     : "border-slate-100 bg-white"
                 }`}
               >
-                <div className="flex items-start justify-between gap-5">
+                <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <div className="truncate text-4xl font-black tracking-tight text-slate-950">
+                      <div className="truncate text-3xl font-black tracking-tight text-slate-950">
                         {player.name}
                       </div>
 
                       {isWinning && !hasTie && (
-                        <div className="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                        <div className="rounded-full bg-emerald-100 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-emerald-700">
                           Leader
                         </div>
                       )}
@@ -862,124 +892,98 @@ export default function Live() {
                       {isWinning &&
                         specialScoringEnabled &&
                         playerSpecialLabel && (
-                          <div className="flex items-center gap-1 rounded-full bg-orange-500 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white">
-                            <Sparkles size={10} />
+                          <div className="flex items-center gap-1 rounded-full bg-orange-500 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-white">
+                            <Sparkles size={9} />
                             {playerSpecialLabel}
                           </div>
                         )}
 
                       {getHotStreak(player) && (
-                        <div className="flex items-center gap-1 rounded-full bg-orange-500 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white">
-                          <Flame size={10} />
+                        <div className="flex items-center gap-1 rounded-full bg-orange-500 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-white">
+                          <Flame size={9} />
                           Hot
                         </div>
                       )}
                     </div>
 
-                    <div
-                      className={`mt-5 inline-flex rounded-2xl px-4 py-3 text-xs font-black shadow-sm ${golfResult.color}`}
-                    >
-                      {golfResult.label}
-                    </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <div
+                        className={`inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest shadow-sm ${golfResult.color}`}
+                      >
+                        {golfResult.label}
+                      </div>
 
-                    <div
-                      className={`mt-5 text-6xl font-black tracking-tight ${getToParColor(currentToPar)}`}
-                    >
-                      {formatToPar(currentToPar)}
-                    </div>
-
-                    <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                      Hole Score
+                      <div
+                        className={`text-2xl font-black tracking-tight ${getToParColor(currentToPar)}`}
+                      >
+                        {formatToPar(currentToPar)}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-center gap-4">
-                    <motion.button
-                      type="button"
-                      whileTap={{
-                        scale: 0.9,
-                      }}
-                      disabled={matchFinished}
-                      onClick={() =>
-                        updateScore(
-                          index,
-                          playerScore + 1
-                        )
-                      }
-                      aria-label={`Score von ${player.name} erhöhen`}
-                      className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-100 bg-white text-3xl font-black text-slate-500 shadow-sm disabled:opacity-40"
-                    >
-                      +
-                    </motion.button>
-
-                    <motion.div
-                      key={playerScore}
-                      initial={{
-                        scale: 0.82,
-                        opacity: 0,
-                      }}
-                      animate={{
-                        scale: 1,
-                        opacity: 1,
-                      }}
-                      transition={{
-                        type: "spring",
-                        stiffness: 260,
-                        damping: 18,
-                      }}
-                      className={`flex h-28 w-28 items-center justify-center rounded-[34px] border-2 text-6xl font-black shadow-sm ${getScoreStyle(golfResult.label)}`}
-                    >
-                      {playerScore}
-                    </motion.div>
-
-                    <motion.button
-                      type="button"
-                      whileTap={{
-                        scale: 0.9,
-                      }}
-                      disabled={
-                        matchFinished ||
-                        playerScore <= 1
-                      }
-                      onClick={() =>
-                        updateScore(
-                          index,
-                          Math.max(
-                            1,
-                            playerScore - 1
+                  <div className="shrink-0">
+                    <div className="flex items-center gap-2 rounded-[24px] border border-slate-100 bg-[#f5f5f7] p-2">
+                      <motion.button
+                        type="button"
+                        whileTap={{
+                          scale: 0.9,
+                        }}
+                        disabled={
+                          matchFinished ||
+                          playerScore <= 1
+                        }
+                        onClick={() =>
+                          updateScore(
+                            index,
+                            Math.max(
+                              1,
+                              playerScore - 1
+                            )
                           )
-                        )
-                      }
-                      aria-label={`Score von ${player.name} verringern`}
-                      className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-100 bg-white text-3xl font-black text-slate-500 shadow-sm disabled:opacity-40"
-                    >
-                      −
-                    </motion.button>
-                  </div>
-                </div>
+                        }
+                        aria-label={`Score von ${player.name} verringern`}
+                        className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-3xl font-black text-slate-500 shadow-sm disabled:opacity-40"
+                      >
+                        −
+                      </motion.button>
 
-                <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
-                  <div>
-                    <div className="text-xs font-black uppercase tracking-widest text-slate-400">
-                      Earnings
-                    </div>
+                      <motion.div
+                        key={playerScore}
+                        initial={{
+                          scale: 0.86,
+                          opacity: 0,
+                        }}
+                        animate={{
+                          scale: 1,
+                          opacity: 1,
+                        }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 260,
+                          damping: 18,
+                        }}
+                        className={`flex h-14 w-16 items-center justify-center rounded-[18px] border-2 text-3xl font-black shadow-sm ${getScoreStyle(golfResult.label)}`}
+                      >
+                        {playerScore}
+                      </motion.div>
 
-                    <div
-                      className={`mt-1 text-3xl font-black ${getMoneyColor(player.winnings)}`}
-                    >
-                      {formatMoney(player.winnings)}
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="text-xs font-black uppercase tracking-widest text-slate-400">
-                      Skinz
-                    </div>
-
-                    <div
-                      className={`mt-1 text-3xl font-black ${getSkinColor(player.skins)}`}
-                    >
-                      {formatSkinSaldo(player.skins)}
+                      <motion.button
+                        type="button"
+                        whileTap={{
+                          scale: 0.9,
+                        }}
+                        disabled={matchFinished}
+                        onClick={() =>
+                          updateScore(
+                            index,
+                            playerScore + 1
+                          )
+                        }
+                        aria-label={`Score von ${player.name} erhöhen`}
+                        className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-3xl font-black text-slate-500 shadow-sm disabled:opacity-40"
+                      >
+                        +
+                      </motion.button>
                     </div>
                   </div>
                 </div>
