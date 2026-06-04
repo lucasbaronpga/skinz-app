@@ -344,7 +344,7 @@ function playerHasSpecialScoringInRound(player) {
   )
 }
 
-export default function Leaderboard() {
+export default function LeaderboardScreen() {
   const navigate = useNavigate()
 
   const {

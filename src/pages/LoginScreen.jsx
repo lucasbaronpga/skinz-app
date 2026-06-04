@@ -14,7 +14,7 @@ import {
 
 import { useAuth } from "../context/AuthContext"
 
-export default function Login() {
+export default function LoginScreen() {
   const [name, setName] = useState("")
   const [touched, setTouched] = useState(false)
 

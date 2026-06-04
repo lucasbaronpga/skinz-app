@@ -329,7 +329,7 @@ function roundHasProfessionalScoring(round) {
   return playerHoleHasSpecialScoring
 }
 
-export default function Matches() {
+export default function MatchArchiveScreen() {
   const navigate = useNavigate()
 
   const {

@@ -353,7 +353,7 @@ function joinTeamNames(team) {
     : "-"
 }
 
-export default function Live() {
+export default function LiveScoringScreen() {
   const navigate = useNavigate()
 
   const scoreEntryRef =

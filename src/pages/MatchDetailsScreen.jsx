@@ -616,7 +616,7 @@ function HoleGrid({
   )
 }
 
-export default function MatchDetails() {
+export default function MatchDetailsScreen() {
   const {
     id,
   } = useParams()

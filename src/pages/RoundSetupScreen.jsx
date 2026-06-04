@@ -172,7 +172,7 @@ function getGameModeMeta(gameMode) {
   }
 }
 
-export default function Round() {
+export default function RoundSetupScreen() {
   const navigate = useNavigate()
 
   const {

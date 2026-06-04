@@ -260,7 +260,7 @@ function roundHasSpecialScoring(round) {
   return playerHoleHasSpecialScoring
 }
 
-export default function Profile() {
+export default function ProfileScreen() {
   const navigate = useNavigate()
 
   const {
