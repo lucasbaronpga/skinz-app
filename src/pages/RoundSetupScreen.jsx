@@ -13,16 +13,6 @@ import {
 } from "framer-motion"
 
 import {
-  ArrowRight,
-  MapPin,
-  Minus,
-  Plus,
-  Sparkles,
-  Users,
-  X,
-} from "lucide-react"
-
-import {
   useAuth,
 } from "../context/AuthContext"
 
@@ -150,26 +140,40 @@ function getGameModeMeta(gameMode) {
     return {
       label: "Skinz Professional",
       shortLabel: "Pro",
-      description: "Birdies und Eagles verändern die Skin-Anzahl.",
-      accent: "orange",
+      description: "Birdie zählt 2 Skinz, Eagle oder besser zählt 3 Skinz.",
     }
   }
 
   if (gameMode === GAME_MODES.WOLFFN) {
     return {
-      label: "Wolffn",
-      shortLabel: "Wolffn",
-      description: "4 Spieler. Teams, Bestball und echte Golf-Champs.",
-      accent: "slate",
+      label: "🐺 Wolffn",
+      shortLabel: "🐺 Wolffn",
+      description: "4 Spieler. Teams, Bestball und echter Champ-Modus.",
     }
   }
 
   return {
     label: "Classic Skinz",
-    shortLabel: "Standard",
+    shortLabel: "Classic",
     description: "Jeder eindeutige Lochgewinn zählt 1 Skin.",
-    accent: "emerald",
   }
+}
+
+function ModePill({
+  children,
+  isDark = false,
+}) {
+  return (
+    <span
+      className={`inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl ${
+        isDark
+          ? "border border-white/15 bg-white/10 text-slate-200"
+          : "border border-white/70 bg-white/[0.46] text-slate-600"
+      }`}
+    >
+      {children}
+    </span>
+  )
 }
 
 export default function RoundSetupScreen() {
@@ -322,12 +326,6 @@ export default function RoundSetupScreen() {
     )
   }
 
-  function selectStakePreset(nextStake) {
-    setStake(
-      clampStake(nextStake)
-    )
-  }
-
   function selectGameMode(nextGameMode) {
     if (
       nextGameMode === GAME_MODES.WOLFFN &&
@@ -379,33 +377,44 @@ export default function RoundSetupScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7] pb-[calc(9rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
-      <div className="mx-auto max-w-md px-5">
+    <div className="relative min-h-screen overflow-hidden bg-[#e8ebe5] pb-[calc(13rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_8%,rgba(255,255,255,0.95),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_45%_80%,rgba(234,179,8,0.14),transparent_36%)]"
+      />
+
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-5 top-6 bottom-8 rounded-[56px] border border-white/70 bg-white/18 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_35px_90px_rgba(15,23,42,0.18)] backdrop-blur-3xl"
+      />
+
+      <div className="relative mx-auto max-w-md px-6">
         {/* Header */}
         <motion.div
           initial={{
             opacity: 0,
-            y: 20,
+            y: 18,
           }}
           animate={{
             opacity: 1,
             y: 0,
           }}
           transition={{
-            duration: 0.3,
+            duration: 0.35,
             ease: "easeOut",
           }}
+          className="pt-8"
         >
-          <div className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">
+          <div className="text-[12px] font-black uppercase tracking-[0.28em] text-emerald-700/80">
             Match Setup
           </div>
 
-          <h1 className="mt-3 text-5xl font-black tracking-tight">
+          <h1 className="mt-3 text-[3.85rem] font-black leading-none tracking-[-0.07em] text-slate-950">
             Neue Runde
           </h1>
 
-          <p className="mt-4 max-w-sm text-sm font-bold leading-relaxed text-slate-400">
-            Wähle Course, Flight, Skinz und deinen Game Mode.
+          <p className="mt-4 max-w-sm text-base font-semibold leading-relaxed tracking-[-0.02em] text-slate-600">
+            Course, Flight, Einsatz und Spielmodus festlegen.
           </p>
         </motion.div>
 
@@ -414,7 +423,7 @@ export default function RoundSetupScreen() {
           <motion.div
             initial={{
               opacity: 0,
-              y: 20,
+              y: 18,
             }}
             animate={{
               opacity: 1,
@@ -422,60 +431,30 @@ export default function RoundSetupScreen() {
             }}
             transition={{
               delay: 0.03,
-              duration: 0.3,
+              duration: 0.35,
               ease: "easeOut",
             }}
-            className="mt-8 rounded-[30px] border border-amber-100 bg-white/90 p-5 shadow-sm backdrop-blur-xl"
+            className="mt-8 rounded-[32px] border border-amber-200/70 bg-white/[0.52] p-5 shadow-[0_18px_48px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
           >
-            <div className="text-xs font-black uppercase tracking-[0.25em] text-amber-500">
-              Auf der Runde
+            <div className="text-[11px] font-black uppercase tracking-[0.22em] text-amber-600">
+              Aktive Runde
             </div>
 
-            <div className="mt-2 text-2xl font-black tracking-tight text-slate-950">
+            <div className="mt-2 text-2xl font-black tracking-[-0.035em] text-slate-950">
               Runde läuft bereits
             </div>
 
-            <div className="mt-2 text-sm font-bold leading-relaxed text-slate-400">
+            <div className="mt-2 text-sm font-semibold leading-relaxed text-slate-500">
               Wenn du eine neue Runde startest, wird die aktuelle Runde überschrieben.
             </div>
           </motion.div>
         )}
 
-        {/* Match ID */}
+        {/* Main Setup Hero */}
         <motion.div
           initial={{
             opacity: 0,
-            y: 20,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            delay: 0.04,
-            duration: 0.3,
-            ease: "easeOut",
-          }}
-          className="mt-8 rounded-[34px] border border-white/70 bg-white/90 p-5 shadow-sm backdrop-blur-xl"
-        >
-          <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
-            Match ID
-          </div>
-
-          <div className="mt-3 text-4xl font-black tracking-tight text-slate-950">
-            {activeMatchId}
-          </div>
-
-          <div className="mt-2 text-sm font-bold text-slate-400">
-            Diese ID wird für deine neue Runde verwendet.
-          </div>
-        </motion.div>
-
-        {/* Course / Skin Hero */}
-        <motion.div
-          initial={{
-            opacity: 0,
-            y: 20,
+            y: 22,
           }}
           animate={{
             opacity: 1,
@@ -483,113 +462,102 @@ export default function RoundSetupScreen() {
           }}
           transition={{
             delay: 0.06,
-            duration: 0.3,
+            duration: 0.35,
             ease: "easeOut",
           }}
-          className="mt-6 overflow-hidden rounded-[42px] bg-slate-950 text-white shadow-2xl"
+          className="mt-8 overflow-hidden rounded-[38px] border border-white/20 bg-[#071819] text-white shadow-[0_28px_70px_rgba(7,24,25,0.42)]"
         >
-          <div className="p-8">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 text-slate-500">
-                  <MapPin size={16} />
+          <div className="relative p-8">
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-emerald-400/32 via-emerald-500/8 to-transparent"
+            />
 
-                  <div className="text-xs font-black uppercase tracking-[0.3em]">
+            <div
+              aria-hidden="true"
+              className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/8 blur-3xl"
+            />
+
+            <div className="relative">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="text-[12px] font-black uppercase tracking-[0.22em] text-emerald-200/85">
                     Course
+                  </div>
+
+                  <div className="mt-4 max-w-[260px] text-[2.55rem] font-black leading-none tracking-[-0.055em]">
+                    {getCourseName(currentCourse)}
                   </div>
                 </div>
 
-                <div className="mt-4 max-w-[250px] text-4xl font-black leading-none tracking-tight sm:max-w-none">
-                  {getCourseName(currentCourse)}
+                <div className="shrink-0 text-right">
+                  <ModePill isDark>
+                    {gameModeMeta.shortLabel}
+                  </ModePill>
                 </div>
               </div>
 
-              <div
-                className={`shrink-0 rounded-full px-4 py-2 text-xs font-black uppercase tracking-widest text-white ${
-                  isWolffnMode
-                    ? "bg-slate-700"
-                    : isProfessionalMode
-                    ? "bg-orange-500"
-                    : "bg-emerald-500"
-                }`}
-              >
-                {gameModeMeta.shortLabel}
-              </div>
-            </div>
+              <div className="mt-10 flex items-end justify-between gap-5">
+                <div>
+                  <div className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">
+                    €/Skin
+                  </div>
 
-            <div className="mt-10 flex items-end justify-between gap-5">
-              <div>
-                <div className="text-xs font-black uppercase tracking-widest text-slate-500">
-                  €/Skin
+                  <div className="mt-3 text-[4.6rem] font-black leading-none tracking-[-0.075em] text-amber-300">
+                    {formatStake(stake)}
+                  </div>
                 </div>
 
-                <div className="mt-3 text-7xl font-black tracking-tight text-emerald-400">
-                  {formatStake(stake)}
-                </div>
-
-                <div className="mt-2 text-xs font-bold text-slate-500">
-                  Einsatz pro gewonnenem oder verlorenem Skin
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <motion.button
-                  type="button"
-                  whileTap={{
-                    scale: 0.9,
-                  }}
-                  onClick={decreaseStake}
-                  disabled={stake <= MIN_STAKE}
-                  aria-label="Einsatz verringern"
-                  className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-xl transition disabled:opacity-30"
-                >
-                  <Minus
-                    size={22}
-                    strokeWidth={3}
-                  />
-                </motion.button>
-
-                <motion.button
-                  type="button"
-                  whileTap={{
-                    scale: 0.9,
-                  }}
-                  onClick={increaseStake}
-                  disabled={stake >= MAX_STAKE}
-                  aria-label="Einsatz erhöhen"
-                  className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg transition disabled:opacity-40"
-                >
-                  <Plus
-                    size={22}
-                    strokeWidth={3}
-                  />
-                </motion.button>
-              </div>
-            </div>
-
-            <div className="mt-6 grid grid-cols-3 gap-2">
-              {STAKE_PRESETS.map((preset) => {
-                const isSelected =
-                  roundStake(stake) === roundStake(preset)
-
-                return (
+                <div className="flex shrink-0 items-center gap-2">
                   <motion.button
-                    key={preset}
                     type="button"
                     whileTap={{
-                      scale: 0.94,
+                      scale: 0.9,
                     }}
-                    onClick={() => selectStakePreset(preset)}
-                    className={`rounded-[18px] px-3 py-3 text-sm font-black transition ${
-                      isSelected
-                        ? "bg-emerald-500 text-white shadow-lg"
-                        : "bg-white/10 text-white"
-                    }`}
+                    onClick={decreaseStake}
+                    disabled={roundStake(stake) <= MIN_STAKE}
+                    aria-label="Einsatz verringern"
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/10 text-2xl font-black text-white backdrop-blur-xl transition disabled:opacity-30"
                   >
-                    {formatStake(preset)}
+                    −
                   </motion.button>
-                )
-              })}
+
+                  <motion.button
+                    type="button"
+                    whileTap={{
+                      scale: 0.9,
+                    }}
+                    onClick={increaseStake}
+                    disabled={roundStake(stake) >= MAX_STAKE}
+                    aria-label="Einsatz erhöhen"
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-white/80 bg-white text-2xl font-black text-slate-950 shadow-sm transition disabled:opacity-40"
+                  >
+                    +
+                  </motion.button>
+                </div>
+              </div>
+
+              <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-5">
+                <div>
+                  <div className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">
+                    Match
+                  </div>
+
+                  <div className="mt-1 text-sm font-black text-slate-300">
+                    {activeMatchId}
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <div className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">
+                    Step
+                  </div>
+
+                  <div className="mt-1 text-sm font-black text-slate-300">
+                    {formatStake(getPreviousStakePreset(stake))} / {formatStake(getNextStakePreset(stake))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -598,53 +566,61 @@ export default function RoundSetupScreen() {
         <motion.div
           initial={{
             opacity: 0,
-            y: 20,
+            y: 22,
           }}
           animate={{
             opacity: 1,
             y: 0,
           }}
           transition={{
-            delay: 0.065,
-            duration: 0.3,
+            delay: 0.08,
+            duration: 0.35,
             ease: "easeOut",
           }}
-          className="mt-6 rounded-[38px] bg-white/90 p-6 shadow-sm backdrop-blur-xl"
+          className="mt-7 rounded-[34px] border border-white/70 bg-white/[0.48] p-6 shadow-[0_18px_55px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
         >
-          <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
-            Game Mode
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-[12px] font-black uppercase tracking-[0.24em] text-slate-600">
+                Game Mode
+              </div>
+
+              <div className="mt-2 text-3xl font-black tracking-[-0.045em] text-slate-950">
+                Spielmodus
+              </div>
+            </div>
+
+            <ModePill>
+              {gameModeMeta.shortLabel}
+            </ModePill>
           </div>
 
-          <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-            Spielmodus
-          </div>
-
-          <div className="mt-5 space-y-3">
+          <div className="mt-6 space-y-3">
             <button
               type="button"
               onClick={() => selectGameMode(GAME_MODES.CLASSIC)}
-              className={`w-full rounded-[28px] border p-5 text-left transition ${
+              className={`w-full rounded-[28px] border px-5 py-5 text-left transition ${
                 selectedGameMode === GAME_MODES.CLASSIC
-                  ? "border-emerald-200 bg-emerald-50"
-                  : "border-slate-100 bg-white"
+                  ? "border-emerald-300/70 bg-emerald-50/80"
+                  : "border-white/70 bg-white/[0.48] backdrop-blur-xl"
               }`}
             >
               <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="text-2xl font-black tracking-tight text-slate-950">
+                <div className="min-w-0">
+                  <div className="text-2xl font-black tracking-[-0.035em] text-slate-950">
                     Classic Skinz
                   </div>
 
-                  <div className="mt-1 text-sm font-bold text-slate-400">
+                  <div className="mt-1 text-sm font-semibold leading-relaxed text-slate-500">
                     Jeder eindeutige Lochgewinn zählt 1 Skin.
                   </div>
                 </div>
 
                 <div
-                  className={`h-5 w-5 rounded-full border ${
+                  className={`h-5 w-5 shrink-0 rounded-full border ${
                     selectedGameMode === GAME_MODES.CLASSIC
                       ? "border-emerald-500 bg-emerald-500"
-                      : "border-slate-200 bg-white"
+                      : "border-slate-300 bg-white/60"
                   }`}
                 />
               </div>
@@ -653,35 +629,28 @@ export default function RoundSetupScreen() {
             <button
               type="button"
               onClick={() => selectGameMode(GAME_MODES.PROFESSIONAL)}
-              className={`w-full rounded-[28px] border p-5 text-left transition ${
+              className={`w-full rounded-[28px] border px-5 py-5 text-left transition ${
                 selectedGameMode === GAME_MODES.PROFESSIONAL
-                  ? "border-orange-200 bg-orange-50"
-                  : "border-slate-100 bg-white"
+                  ? "border-orange-300/70 bg-orange-50/85"
+                  : "border-white/70 bg-white/[0.48] backdrop-blur-xl"
               }`}
             >
               <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Sparkles
-                      size={18}
-                      className="text-orange-500"
-                    />
-
-                    <div className="text-2xl font-black tracking-tight text-slate-950">
-                      Skinz Professional
-                    </div>
+                <div className="min-w-0">
+                  <div className="text-2xl font-black tracking-[-0.035em] text-slate-950">
+                    Skinz Professional
                   </div>
 
-                  <div className="mt-1 text-sm font-bold text-slate-400">
+                  <div className="mt-1 text-sm font-semibold leading-relaxed text-slate-500">
                     Birdie zählt 2 Skinz, Eagle oder besser zählt 3 Skinz.
                   </div>
                 </div>
 
                 <div
-                  className={`h-5 w-5 rounded-full border ${
+                  className={`h-5 w-5 shrink-0 rounded-full border ${
                     selectedGameMode === GAME_MODES.PROFESSIONAL
                       ? "border-orange-500 bg-orange-500"
-                      : "border-slate-200 bg-white"
+                      : "border-slate-300 bg-white/60"
                   }`}
                 />
               </div>
@@ -690,32 +659,23 @@ export default function RoundSetupScreen() {
             <button
               type="button"
               onClick={() => selectGameMode(GAME_MODES.WOLFFN)}
-              className={`w-full rounded-[28px] border p-5 text-left transition ${
+              className={`w-full rounded-[28px] border px-5 py-5 text-left transition ${
                 selectedGameMode === GAME_MODES.WOLFFN
-                  ? "border-slate-300 bg-slate-950 text-white"
-                  : "border-slate-100 bg-white text-slate-950"
+                  ? "border-slate-950 bg-slate-950 text-white"
+                  : "border-white/70 bg-white/[0.48] text-slate-950 backdrop-blur-xl"
               }`}
             >
               <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="text-2xl"
-                      aria-hidden="true"
-                    >
-                      🐺
-                    </div>
-
-                    <div className="text-2xl font-black tracking-tight">
-                      Wolffn
-                    </div>
+                <div className="min-w-0">
+                  <div className="text-2xl font-black tracking-[-0.035em]">
+                    🐺 Wolffn
                   </div>
 
                   <div
-                    className={`mt-1 text-sm font-bold ${
+                    className={`mt-1 text-sm font-semibold leading-relaxed ${
                       selectedGameMode === GAME_MODES.WOLFFN
                         ? "text-slate-300"
-                        : "text-slate-400"
+                        : "text-slate-500"
                     }`}
                   >
                     4 Spieler. Teams, Bestball und echter Champ-Modus.
@@ -723,65 +683,19 @@ export default function RoundSetupScreen() {
                 </div>
 
                 <div
-                  className={`h-5 w-5 rounded-full border ${
+                  className={`h-5 w-5 shrink-0 rounded-full border ${
                     selectedGameMode === GAME_MODES.WOLFFN
                       ? "border-white bg-white"
-                      : "border-slate-200 bg-white"
+                      : "border-slate-300 bg-white/60"
                   }`}
                 />
               </div>
             </button>
           </div>
 
-          {isProfessionalMode && (
-            <div className="mt-5 grid grid-cols-3 gap-3">
-              <div className="rounded-[24px] border border-slate-100 bg-white p-4 text-center shadow-sm">
-                <div className="text-xs font-black uppercase tracking-widest text-slate-400">
-                  Par+
-                </div>
-
-                <div className="mt-2 text-4xl font-black text-slate-950">
-                  1
-                </div>
-
-                <div className="mt-1 text-xs font-bold text-slate-400">
-                  Skin
-                </div>
-              </div>
-
-              <div className="rounded-[24px] border border-red-100 bg-white p-4 text-center shadow-sm">
-                <div className="text-xs font-black uppercase tracking-widest text-red-400">
-                  Birdie
-                </div>
-
-                <div className="mt-2 text-4xl font-black text-red-500">
-                  2
-                </div>
-
-                <div className="mt-1 text-xs font-bold text-slate-400">
-                  Skinz
-                </div>
-              </div>
-
-              <div className="rounded-[24px] border border-orange-100 bg-orange-50 p-4 text-center shadow-sm">
-                <div className="text-xs font-black uppercase tracking-widest text-orange-500">
-                  Eagle+
-                </div>
-
-                <div className="mt-2 text-4xl font-black text-orange-500">
-                  3
-                </div>
-
-                <div className="mt-1 text-xs font-bold text-orange-400">
-                  Skinz
-                </div>
-              </div>
-            </div>
-          )}
-
           {isWolffnMode && (
-            <div className="mt-5 rounded-[24px] bg-slate-950 px-5 py-4 text-sm font-bold leading-relaxed text-slate-300 shadow-sm">
-              Wolffn braucht exakt 4 Spieler. Der erste Spieler am Loch entscheidet: Partner, Ablehnung oder allein gegen drei.
+            <div className="mt-5 rounded-[24px] border border-slate-900/10 bg-slate-950 px-5 py-4 text-sm font-semibold leading-relaxed text-slate-300 shadow-sm">
+              🐺 Wolffn braucht exakt 4 Spieler. Der erste Spieler am Loch entscheidet: Partner, Ablehnung oder allein gegen drei.
             </div>
           )}
         </motion.div>
@@ -790,41 +704,44 @@ export default function RoundSetupScreen() {
         <motion.div
           initial={{
             opacity: 0,
-            y: 20,
+            y: 22,
           }}
           animate={{
             opacity: 1,
             y: 0,
           }}
           transition={{
-            delay: 0.07,
-            duration: 0.3,
+            delay: 0.1,
+            duration: 0.35,
             ease: "easeOut",
           }}
-          className="mt-8 rounded-[40px] bg-white/90 p-6 shadow-sm backdrop-blur-xl"
+          className="mt-7 rounded-[34px] border border-white/70 bg-white/[0.48] p-6 shadow-[0_18px_55px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
         >
-          <div className="flex items-center justify-between">
+          <div className="flex items-end justify-between gap-4">
             <div>
-              <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
+              <div className="text-[12px] font-black uppercase tracking-[0.24em] text-slate-600">
                 Course
               </div>
 
-              <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-                Course wählen
+              <div className="mt-2 text-3xl font-black tracking-[-0.045em] text-slate-950">
+                Platz wählen
               </div>
             </div>
 
-            <div
-              className="text-3xl"
-              aria-hidden="true"
-            >
-              ⛳
+            <div className="text-right">
+              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                Selected
+              </div>
+
+              <div className="mt-1 text-xl font-black text-slate-950">
+                Par {getCoursePar(currentCourse)}
+              </div>
             </div>
           </div>
 
           <div className="mt-6 space-y-3">
             {courses.length === 0 && (
-              <div className="rounded-[28px] border border-slate-100 bg-white p-5 text-center text-sm font-bold text-slate-400 shadow-sm">
+              <div className="rounded-[26px] border border-white/70 bg-white/[0.42] p-5 text-center text-sm font-bold text-slate-500 backdrop-blur-xl">
                 Keine Courses verfügbar.
               </div>
             )}
@@ -844,36 +761,35 @@ export default function RoundSetupScreen() {
                     setSelectedCourseId(course.id)
                   }
                   aria-pressed={isActive}
-                  className={[
-                    "w-full rounded-[30px] border px-5 py-5 text-left shadow-sm transition-all",
+                  className={`w-full rounded-[28px] border px-5 py-5 text-left transition ${
                     isActive
-                      ? "border-emerald-200 bg-emerald-50"
-                      : "border-slate-100 bg-white hover:border-slate-200",
-                  ].join(" ")}
+                      ? "border-emerald-300/70 bg-emerald-50/85"
+                      : "border-white/70 bg-white/[0.42] backdrop-blur-xl"
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <div className="text-2xl font-black leading-tight tracking-tight text-slate-950">
+                      <div className="text-2xl font-black leading-tight tracking-[-0.035em] text-slate-950">
                         {getCourseName(course)}
+                      </div>
+
+                      <div className="mt-2 text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+                        {isActive
+                          ? "Selected"
+                          : "Available"}
                       </div>
                     </div>
 
                     <div className="shrink-0 text-right">
-                      <div className="text-4xl font-black text-slate-950">
+                      <div className="text-4xl font-black leading-none text-slate-950">
                         {getCoursePar(course)}
                       </div>
 
-                      <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
+                      <div className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
                         Par
                       </div>
                     </div>
                   </div>
-
-                  {isActive && (
-                    <div className="mt-4 inline-flex rounded-full bg-emerald-500 px-3 py-1 text-xs font-black uppercase tracking-widest text-white">
-                      Selected
-                    </div>
-                  )}
                 </motion.button>
               )
             })}
@@ -884,39 +800,35 @@ export default function RoundSetupScreen() {
         <motion.div
           initial={{
             opacity: 0,
-            y: 20,
+            y: 22,
           }}
           animate={{
             opacity: 1,
             y: 0,
           }}
           transition={{
-            delay: 0.1,
-            duration: 0.3,
+            delay: 0.12,
+            duration: 0.35,
             ease: "easeOut",
           }}
-          className="mt-8 rounded-[40px] bg-white/90 p-6 shadow-sm backdrop-blur-xl"
+          className="mt-7 rounded-[34px] border border-white/70 bg-white/[0.48] p-6 shadow-[0_18px_55px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
         >
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-end justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 text-slate-400">
-                <Users size={18} />
-
-                <div className="text-xs font-black uppercase tracking-[0.25em]">
-                  Flight
-                </div>
+              <div className="text-[12px] font-black uppercase tracking-[0.24em] text-slate-600">
+                Flight
               </div>
 
-              <h2 className="mt-3 text-4xl font-black tracking-tight text-slate-950">
+              <div className="mt-2 text-3xl font-black tracking-[-0.045em] text-slate-950">
                 Mitspieler
-              </h2>
+              </div>
             </div>
 
             <div
-              className={`rounded-full border px-4 py-2 text-xs font-black uppercase tracking-widest shadow-sm ${
+              className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${
                 isWolffnMode && !wolffnPlayerCountValid
-                  ? "border-red-100 bg-red-50 text-red-500"
-                  : "border-slate-100 bg-white text-slate-500"
+                  ? "border-red-200 bg-red-50 text-red-500"
+                  : "border-white/70 bg-white/[0.46] text-slate-600"
               }`}
             >
               {uniquePlayers.length} aktiv
@@ -939,7 +851,7 @@ export default function RoundSetupScreen() {
               autoComplete="given-name"
               enterKeyHint="done"
               aria-label="Mitspieler hinzufügen"
-              className="h-16 min-w-0 flex-1 rounded-[26px] border border-slate-100 bg-white px-5 text-lg font-black text-slate-950 shadow-sm outline-none placeholder:text-slate-300 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+              className="h-16 min-w-0 flex-1 rounded-[26px] border border-white/70 bg-white/[0.62] px-5 text-lg font-black text-slate-950 shadow-sm outline-none backdrop-blur-xl placeholder:text-slate-300 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
             />
 
             <motion.button
@@ -948,14 +860,11 @@ export default function RoundSetupScreen() {
                 scale: canAddPlayer ? 0.92 : 1,
               }}
               onClick={addPlayer}
-              disabled={!cleanedNewPlayer}
+              disabled={!canAddPlayer}
               aria-label="Mitspieler hinzufügen"
-              className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[26px] bg-emerald-500 text-white shadow-[0_12px_30px_rgba(16,185,129,0.28)] transition disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[26px] bg-slate-950 text-3xl font-black text-white shadow-[0_14px_35px_rgba(15,23,42,0.25)] transition disabled:cursor-not-allowed disabled:opacity-35"
             >
-              <Plus
-                size={28}
-                strokeWidth={3}
-              />
+              +
             </motion.button>
           </div>
 
@@ -973,7 +882,7 @@ export default function RoundSetupScreen() {
 
           <div className="mt-6 space-y-3">
             {uniquePlayers.length === 0 && (
-              <div className="rounded-[28px] border border-slate-100 bg-white p-5 text-center text-sm font-bold text-slate-400 shadow-sm">
+              <div className="rounded-[26px] border border-white/70 bg-white/[0.42] p-5 text-center text-sm font-bold text-slate-500 backdrop-blur-xl">
                 Noch kein Flight zusammengestellt.
               </div>
             )}
@@ -986,26 +895,25 @@ export default function RoundSetupScreen() {
               return (
                 <div
                   key={player}
-                  className="flex items-center justify-between rounded-[30px] border border-slate-100 bg-white p-4 shadow-sm"
+                  className="flex items-center justify-between rounded-[28px] border border-white/70 bg-white/[0.42] p-4 shadow-sm backdrop-blur-xl"
                 >
                   <div className="flex min-w-0 items-center gap-4">
                     <div
-                      className={[
-                        "flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-xl font-black uppercase shadow-sm",
+                      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg font-black uppercase shadow-sm ${
                         isCurrentUser
                           ? "bg-emerald-500 text-white"
-                          : "bg-slate-950 text-white",
-                      ].join(" ")}
+                          : "bg-slate-950 text-white"
+                      }`}
                     >
                       {player.charAt(0)}
                     </div>
 
                     <div className="min-w-0">
-                      <div className="truncate text-2xl font-black tracking-tight text-slate-950">
+                      <div className="truncate text-2xl font-black tracking-[-0.035em] text-slate-950">
                         {player}
                       </div>
 
-                      <div className="mt-1 text-sm font-bold text-slate-400">
+                      <div className="mt-1 text-sm font-semibold text-slate-500">
                         {isCurrentUser
                           ? "Du"
                           : "Im Flight"}
@@ -1022,12 +930,9 @@ export default function RoundSetupScreen() {
                       removePlayer(player)
                     }
                     aria-label={`${player} entfernen`}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-red-100 bg-white text-red-500 shadow-sm transition hover:bg-red-50"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-red-100 bg-white/70 text-xl font-black text-red-500 shadow-sm transition hover:bg-red-50"
                   >
-                    <X
-                      size={20}
-                      strokeWidth={3}
-                    />
+                    ×
                   </motion.button>
                 </div>
               )
@@ -1036,7 +941,7 @@ export default function RoundSetupScreen() {
         </motion.div>
 
         {!canStart && (
-          <div className="mt-5 rounded-[28px] border border-red-100 bg-white p-5 text-center text-sm font-bold text-red-500 shadow-sm">
+          <div className="mt-5 rounded-[28px] border border-red-100 bg-white/[0.62] p-5 text-center text-sm font-bold text-red-500 shadow-sm backdrop-blur-xl">
             {isWolffnMode
               ? "Wolffn braucht exakt 4 Spieler."
               : "Mindestens zwei Mitspieler werden für eine Runde benötigt."}
@@ -1050,30 +955,27 @@ export default function RoundSetupScreen() {
           }}
           disabled={!canStart}
           onClick={handleStartMatch}
-          className={`mt-8 flex w-full items-center justify-between rounded-[34px] px-6 py-6 text-xl font-black text-white transition disabled:cursor-not-allowed disabled:opacity-40 ${
+          className={`mt-8 flex w-full items-center justify-between rounded-[34px] px-6 py-6 text-xl font-black text-white shadow-[0_20px_55px_rgba(15,23,42,0.22)] transition disabled:cursor-not-allowed disabled:opacity-40 ${
             isWolffnMode
-              ? "bg-slate-950 shadow-[0_18px_45px_rgba(15,23,42,0.28)]"
+              ? "bg-slate-950"
               : isProfessionalMode
-              ? "bg-orange-500 shadow-[0_18px_45px_rgba(249,115,22,0.28)]"
-              : "bg-emerald-500 shadow-[0_18px_45px_rgba(16,185,129,0.3)]"
+              ? "bg-orange-500"
+              : "bg-emerald-500"
           }`}
         >
           <span>
             {hasActiveMatch
               ? "Neue Runde starten"
               : isWolffnMode
-              ? "Wolffn starten"
+              ? "🐺 Wolffn starten"
               : isProfessionalMode
-              ? "Runde mit Skinz Professional starten"
+              ? "Pro Runde starten"
               : "Runde starten"}
           </span>
 
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
-            <ArrowRight
-              size={24}
-              strokeWidth={3}
-            />
-          </div>
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/20 text-2xl">
+            →
+          </span>
         </motion.button>
       </div>
 
@@ -1112,7 +1014,7 @@ export default function RoundSetupScreen() {
                 stiffness: 260,
                 damping: 22,
               }}
-              className="w-full max-w-sm overflow-hidden rounded-[40px] bg-white text-center shadow-2xl"
+              className="w-full max-w-sm overflow-hidden rounded-[40px] border border-white/70 bg-white/[0.76] text-center shadow-2xl backdrop-blur-2xl"
             >
               <div className="p-8">
                 <div
@@ -1122,16 +1024,16 @@ export default function RoundSetupScreen() {
                   🐺
                 </div>
 
-                <div className="mt-6 text-4xl font-black tracking-tight text-slate-950">
+                <div className="mt-6 text-4xl font-black tracking-[-0.045em] text-slate-950">
                   Are you sure?
                 </div>
 
-                <div className="mt-3 text-sm font-bold leading-relaxed text-slate-400">
+                <div className="mt-3 text-sm font-bold leading-relaxed text-slate-500">
                   Wolffn is made for real golf champs.
                 </div>
               </div>
 
-              <div className="border-t border-slate-100">
+              <div className="border-t border-white/70">
                 <button
                   type="button"
                   onClick={cancelWolffnMode}
@@ -1143,7 +1045,7 @@ export default function RoundSetupScreen() {
                 <button
                   type="button"
                   onClick={confirmWolffnMode}
-                  className="w-full border-t border-slate-100 bg-slate-950 py-5 text-sm font-black text-white"
+                  className="w-full border-t border-white/70 bg-slate-950 py-5 text-sm font-black text-white"
                 >
                   Enter Wolffn
                 </button>
