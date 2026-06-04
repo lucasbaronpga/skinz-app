@@ -3,13 +3,11 @@ import {
 } from "framer-motion"
 
 import {
-  Trophy,
   DollarSign,
   Target,
   Flag,
   LogOut,
   Crown,
-  ArrowRight,
   MapPin,
   Sparkles,
 } from "lucide-react"
@@ -52,7 +50,7 @@ function getMoneyColor(value) {
   const amount = toNumber(value, 0)
 
   if (amount > 0) {
-    return "text-emerald-600"
+    return "text-yellow-500"
   }
 
   if (amount < 0) {
@@ -66,7 +64,7 @@ function getMoneyColorDark(value) {
   const amount = toNumber(value, 0)
 
   if (amount > 0) {
-    return "text-emerald-400"
+    return "text-yellow-400"
   }
 
   if (amount < 0) {
@@ -149,13 +147,6 @@ function getRoundCourseName(round) {
   )
 }
 
-function getRoundCourseLocation(round) {
-  return (
-    round?.course?.location ||
-    "Westpfalz"
-  )
-}
-
 function getRoundCoursePar(round) {
   return (
     round?.course?.par ||
@@ -164,7 +155,7 @@ function getRoundCoursePar(round) {
 }
 
 function getRoundCourseMeta(round) {
-  return `${getRoundCourseLocation(round)} · Par ${getRoundCoursePar(round)}`
+  return `Par ${getRoundCoursePar(round)}`
 }
 
 function getRoundDate(round) {
@@ -230,19 +221,6 @@ function roundHasSpecialScoring(round) {
   return playerHoleHasSpecialScoring
 }
 
-function playerHasSpecialScoringInRound(player) {
-  return (
-    Array.isArray(player?.holes) &&
-    player.holes.some(
-      (playedHole) =>
-        playedHole?.specialScoringEnabled ||
-        playedHole?.specialScoringApplied ||
-        toNumber(playedHole?.bonusSkins, 0) > 0 ||
-        playedHole?.eagleBonusApplied
-    )
-  )
-}
-
 export default function Profile() {
   const navigate = useNavigate()
 
@@ -293,6 +271,7 @@ export default function Profile() {
   return (
     <div className="min-h-screen bg-[#f5f5f7] pb-[calc(9rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
       <div className="mx-auto max-w-md px-5">
+        {/* Header */}
         <motion.div
           initial={{
             opacity: 0,
@@ -307,15 +286,12 @@ export default function Profile() {
             ease: "easeOut",
           }}
         >
-          <div className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">
-            Account
-          </div>
-
-          <h1 className="mt-3 text-5xl font-black tracking-tight">
-            Player Profile
+          <h1 className="text-6xl font-black tracking-tight">
+            Profile
           </h1>
         </motion.div>
 
+        {/* Hero */}
         <motion.div
           initial={{
             opacity: 0,
@@ -337,18 +313,8 @@ export default function Profile() {
               {getInitials(userName)}
             </div>
 
-            <div className="mt-6 flex items-center gap-3">
-              <div className="truncate text-5xl font-black tracking-tight">
-                {userName}
-              </div>
-
-              <div className="shrink-0 rounded-full bg-yellow-400 px-3 py-1 text-xs font-black uppercase tracking-widest text-black">
-                Member
-              </div>
-            </div>
-
-            <div className="mt-3 text-lg text-slate-400">
-              Skinz Player
+            <div className="mt-6 truncate text-6xl font-black tracking-tight">
+              {userName}
             </div>
 
             <div className="mt-8 grid grid-cols-3 gap-4">
@@ -374,7 +340,7 @@ export default function Profile() {
 
               <div className="rounded-[26px] bg-white/10 p-4 backdrop-blur-xl">
                 <div className="text-sm font-bold text-slate-400">
-                  Winnings
+                  Earnings
                 </div>
 
                 <div
@@ -387,42 +353,7 @@ export default function Profile() {
           </div>
         </motion.div>
 
-        <motion.button
-          type="button"
-          whileTap={{
-            scale: 0.985,
-          }}
-          initial={{
-            opacity: 0,
-            y: 20,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            delay: 0.08,
-            duration: 0.35,
-            ease: "easeOut",
-          }}
-          onClick={() => navigate("/leaderboard")}
-          className="mt-6 flex w-full items-center justify-between rounded-[34px] border border-white/70 bg-white/90 px-6 py-5 text-left shadow-sm backdrop-blur-xl"
-        >
-          <div>
-            <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
-              Season
-            </div>
-
-            <div className="mt-2 text-2xl font-black tracking-tight text-slate-950">
-              Season Leaderboard
-            </div>
-          </div>
-
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-950 text-white">
-            <ArrowRight size={20} />
-          </div>
-        </motion.button>
-
+        {/* Performance */}
         <motion.div
           initial={{
             opacity: 0,
@@ -433,7 +364,7 @@ export default function Profile() {
             y: 0,
           }}
           transition={{
-            delay: 0.1,
+            delay: 0.08,
             duration: 0.35,
             ease: "easeOut",
           }}
@@ -460,15 +391,15 @@ export default function Profile() {
 
             <div className="rounded-[26px] border border-slate-100 bg-white p-5 shadow-sm">
               <div className="flex items-center gap-2 text-slate-400">
-                <Trophy size={18} />
+                <Crown size={18} />
 
                 <div className="text-sm font-bold">
-                  Eagles
+                  Wins
                 </div>
               </div>
 
-              <div className="mt-4 text-5xl font-black text-orange-500">
-                {toNumber(player?.eagles, 0)}
+              <div className="mt-4 text-5xl font-black text-yellow-500">
+                {toNumber(player?.wins, 0)}
               </div>
             </div>
 
@@ -493,7 +424,7 @@ export default function Profile() {
                 <DollarSign size={18} />
 
                 <div className="text-sm font-bold">
-                  Winnings
+                  Earnings
                 </div>
               </div>
 
@@ -506,6 +437,7 @@ export default function Profile() {
           </div>
         </motion.div>
 
+        {/* Recent Rounds */}
         <motion.div
           initial={{
             opacity: 0,
@@ -516,7 +448,7 @@ export default function Profile() {
             y: 0,
           }}
           transition={{
-            delay: 0.15,
+            delay: 0.12,
             duration: 0.35,
             ease: "easeOut",
           }}
@@ -564,8 +496,9 @@ export default function Profile() {
               const roundHasSpecialMode =
                 roundHasSpecialScoring(round)
 
-              const playerHasSpecialMode =
-                playerHasSpecialScoringInRound(roundPlayer)
+              const isWinner =
+                normalizeName(round.winner) ===
+                normalizeName(userName)
 
               return (
                 <motion.button
@@ -593,7 +526,7 @@ export default function Profile() {
                         {roundHasSpecialMode && (
                           <div className="flex items-center gap-1 rounded-full bg-orange-500 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white">
                             <Sparkles size={10} />
-                            Sonderform
+                            Skinz Professional
                           </div>
                         )}
                       </div>
@@ -614,20 +547,13 @@ export default function Profile() {
                         <div
                           className={`text-xs font-black uppercase tracking-widest ${getSkinColor(roundPlayer?.skins)}`}
                         >
-                          {formatSkinSaldo(roundPlayer?.skins)} Skin-Saldo
+                          {formatSkinSaldo(roundPlayer?.skins)} Skinz
                         </div>
 
-                        {round.winner === userName && (
+                        {isWinner && (
                           <div className="flex items-center gap-1 rounded-full bg-yellow-400 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-black">
                             <Crown size={10} />
                             Winner
-                          </div>
-                        )}
-
-                        {playerHasSpecialMode && (
-                          <div className="flex items-center gap-1 rounded-full bg-orange-100 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-orange-600">
-                            <Sparkles size={10} />
-                            Dein Bonus
                           </div>
                         )}
                       </div>
@@ -639,12 +565,6 @@ export default function Profile() {
                       >
                         {formatMoney(roundPlayer?.winnings)}
                       </div>
-
-                      <div
-                        className={`mt-1 text-sm font-black uppercase tracking-widest ${getToParColor(roundPlayer?.totalToPar)}`}
-                      >
-                        {formatToPar(roundPlayer?.totalToPar)}
-                      </div>
                     </div>
                   </div>
                 </motion.button>
@@ -653,6 +573,7 @@ export default function Profile() {
           </div>
         </motion.div>
 
+        {/* Logout */}
         <motion.button
           type="button"
           whileTap={{
@@ -667,15 +588,15 @@ export default function Profile() {
             y: 0,
           }}
           transition={{
-            delay: 0.2,
+            delay: 0.16,
             duration: 0.35,
             ease: "easeOut",
           }}
           onClick={handleLogout}
-          className="mt-8 flex w-full items-center justify-between rounded-[34px] border border-red-100 bg-white px-6 py-6 text-red-500 shadow-sm"
+          className="mt-8 flex w-full items-center justify-between rounded-[30px] border border-red-100 bg-white px-5 py-4 text-red-500 shadow-sm"
         >
           <div>
-            <div className="text-2xl font-black">
+            <div className="text-xl font-black">
               Logout
             </div>
 
@@ -684,8 +605,8 @@ export default function Profile() {
             </div>
           </div>
 
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-50">
-            <LogOut size={24} />
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
+            <LogOut size={22} />
           </div>
         </motion.button>
       </div>
