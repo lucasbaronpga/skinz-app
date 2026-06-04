@@ -15,6 +15,12 @@ const DEFAULT_STAKE = 2
 const DEFAULT_SCORE = 4
 const HOLE_COUNT = 18
 
+export const GAME_MODES = {
+  CLASSIC: "classic",
+  PROFESSIONAL: "professional",
+  WOLFFN: "wolffn",
+}
+
 const courses = [
   {
     id: "westpfalz",
@@ -44,6 +50,46 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(number)
     ? number
     : fallback
+}
+
+export function getGameModeLabel(gameMode) {
+  if (gameMode === GAME_MODES.WOLFFN) {
+    return "Wolffn"
+  }
+
+  if (gameMode === GAME_MODES.PROFESSIONAL) {
+    return "Skinz Professional"
+  }
+
+  return "Classic Skinz"
+}
+
+function normalizeGameMode(value, specialScoringEnabled = false) {
+  if (value === GAME_MODES.WOLFFN) {
+    return GAME_MODES.WOLFFN
+  }
+
+  if (value === GAME_MODES.PROFESSIONAL) {
+    return GAME_MODES.PROFESSIONAL
+  }
+
+  if (value === GAME_MODES.CLASSIC) {
+    return GAME_MODES.CLASSIC
+  }
+
+  if (specialScoringEnabled) {
+    return GAME_MODES.PROFESSIONAL
+  }
+
+  return GAME_MODES.CLASSIC
+}
+
+function isProfessionalGameMode(gameMode) {
+  return gameMode === GAME_MODES.PROFESSIONAL
+}
+
+function isWolffnGameMode(gameMode) {
+  return gameMode === GAME_MODES.WOLFFN
 }
 
 function getCourseById(courseId) {
@@ -161,50 +207,65 @@ function normalizeCompletedRounds(rounds) {
     return []
   }
 
-  return rounds.map((round) => ({
-    ...round,
-
-    course:
-      normalizeCourseSnapshot(round.course),
-
-    players:
-      Array.isArray(round.players)
-        ? round.players.map((player) =>
-            normalizePlayer(player)
-          )
-        : [],
-
-    history:
-      Array.isArray(round.history)
-        ? round.history
-        : [],
-
-    stake:
-      toNumber(round.stake, DEFAULT_STAKE),
-
-    winnings:
-      toNumber(round.winnings, 0),
-
-    skins:
-      toNumber(round.skins, 0),
-
-    totalToPar:
-      toNumber(round.totalToPar, 0),
-
-    specialScoringEnabled:
+  return rounds.map((round) => {
+    const specialScoringEnabled =
       Boolean(
         round.specialScoringEnabled ||
         round.bonusSkinsEnabled ||
         round.eagleBonusEnabled
-      ),
+      )
 
-    bonusSkinsEnabled:
-      Boolean(
-        round.specialScoringEnabled ||
-        round.bonusSkinsEnabled ||
-        round.eagleBonusEnabled
-      ),
-  }))
+    const gameMode =
+      normalizeGameMode(
+        round.gameMode,
+        specialScoringEnabled
+      )
+
+    const normalizedSpecialScoringEnabled =
+      isProfessionalGameMode(gameMode)
+
+    return {
+      ...round,
+
+      gameMode,
+      gameModeLabel:
+        round.gameModeLabel ||
+        getGameModeLabel(gameMode),
+
+      course:
+        normalizeCourseSnapshot(round.course),
+
+      players:
+        Array.isArray(round.players)
+          ? round.players.map((player) =>
+              normalizePlayer(player)
+            )
+          : [],
+
+      history:
+        Array.isArray(round.history)
+          ? round.history
+          : [],
+
+      stake:
+        toNumber(round.stake, DEFAULT_STAKE),
+
+      winnings:
+        toNumber(round.winnings, 0),
+
+      skins:
+        toNumber(round.skins, 0),
+
+      totalToPar:
+        toNumber(round.totalToPar, 0),
+
+      specialScoringEnabled:
+        normalizedSpecialScoringEnabled,
+
+      bonusSkinsEnabled:
+        normalizedSpecialScoringEnabled,
+    }
+  })
 }
 
 function getGolfResult(score, par) {
@@ -323,6 +384,198 @@ function getSpecialScoringLabel(
   return null
 }
 
+function getPlayerByName(players, playerName) {
+  return (
+    players.find(
+      (player) => player.name === playerName
+    ) || null
+  )
+}
+
+function getTeamBestScore(team, players) {
+  const teamPlayers =
+    Array.isArray(team)
+      ? team
+          .map((playerName) =>
+            getPlayerByName(players, playerName)
+          )
+          .filter(Boolean)
+      : []
+
+  if (teamPlayers.length === 0) {
+    return null
+  }
+
+  return Math.min(
+    ...teamPlayers.map((player) =>
+      toNumber(player.score, DEFAULT_SCORE)
+    )
+  )
+}
+
+function getWolffnScoreMultiplier(score, par) {
+  const difference =
+    toNumber(score, DEFAULT_SCORE) -
+    toNumber(par, DEFAULT_SCORE)
+
+  if (difference <= -2) {
+    return {
+      multiplier: 4,
+      label: "Eagle x4",
+      resultLabel: "Eagle",
+    }
+  }
+
+  if (difference === -1) {
+    return {
+      multiplier: 2,
+      label: "Birdie x2",
+      resultLabel: "Birdie",
+    }
+  }
+
+  return {
+    multiplier: 1,
+    label: null,
+    resultLabel: getGolfResult(score, par).label,
+  }
+}
+
+function getWolffnMultiplier(wolffnSetup, winningScore, par) {
+  const isOneVsThree =
+    wolffnSetup?.format === "1v3"
+
+  const wolffnMultiplier =
+    isOneVsThree ? 2 : 1
+
+  const scoreMultiplier =
+    getWolffnScoreMultiplier(
+      winningScore,
+      par
+    )
+
+  return {
+    wolffnMultiplier,
+    scoreMultiplier:
+      scoreMultiplier.multiplier,
+    scoreMultiplierLabel:
+      scoreMultiplier.label,
+    resultLabel:
+      scoreMultiplier.resultLabel,
+    currentHoleValue:
+      1 *
+      wolffnMultiplier *
+      scoreMultiplier.multiplier,
+  }
+}
+
+function calculateWolffnHole({
+  players,
+  par,
+  carryover,
+  stake,
+  wolffnSetup,
+}) {
+  if (
+    !wolffnSetup ||
+    !Array.isArray(wolffnSetup.teamA) ||
+    !Array.isArray(wolffnSetup.teamB) ||
+    wolffnSetup.teamA.length === 0 ||
+    wolffnSetup.teamB.length === 0
+  ) {
+    return null
+  }
+
+  const teamAScore =
+    getTeamBestScore(
+      wolffnSetup.teamA,
+      players
+    )
+
+  const teamBScore =
+    getTeamBestScore(
+      wolffnSetup.teamB,
+      players
+    )
+
+  if (
+    teamAScore === null ||
+    teamBScore === null
+  ) {
+    return null
+  }
+
+  const hasTie =
+    teamAScore === teamBScore
+
+  const winningScore =
+    Math.min(teamAScore, teamBScore)
+
+  const multiplierInfo =
+    getWolffnMultiplier(
+      wolffnSetup,
+      winningScore,
+      par
+    )
+
+  const currentHoleValue =
+    multiplierInfo.currentHoleValue
+
+  const nextCarryover =
+    hasTie
+      ? carryover + currentHoleValue
+      : 0
+
+  const totalSkins =
+    hasTie
+      ? 0
+      : carryover + currentHoleValue
+
+  const winningTeam =
+    hasTie
+      ? []
+      : teamAScore < teamBScore
+      ? wolffnSetup.teamA
+      : wolffnSetup.teamB
+
+  const losingTeam =
+    hasTie
+      ? []
+      : teamAScore < teamBScore
+      ? wolffnSetup.teamB
+      : wolffnSetup.teamA
+
+  const winnerLabel =
+    hasTie
+      ? "Carryover"
+      : winningTeam.join(" + ")
+
+  const teamPot =
+    hasTie
+      ? nextCarryover *
+        stake *
+        Math.max(players.length - 1, 1)
+      : totalSkins *
+        stake *
+        winningTeam.length *
+        losingTeam.length
+
+  return {
+    hasTie,
+    teamAScore,
+    teamBScore,
+    winningScore,
+    winningTeam,
+    losingTeam,
+    winnerLabel,
+    nextCarryover,
+    totalSkins,
+    currentHoleValue,
+    teamPot,
+    multiplierInfo,
+  }
+}
+
 function getSavedGame() {
   try {
     const savedGame =
@@ -376,12 +629,21 @@ function createInitialGameState() {
         )
       : createDefaultPlayers()
 
-  const specialScoringEnabled =
+  const savedSpecialScoringEnabled =
     Boolean(
       savedGame?.specialScoringEnabled ||
       savedGame?.bonusSkinsEnabled ||
       savedGame?.eagleBonusEnabled
     )
+
+  const gameMode =
+    normalizeGameMode(
+      savedGame?.gameMode,
+      savedSpecialScoringEnabled
+    )
+
+  const specialScoringEnabled =
+    isProfessionalGameMode(gameMode)
 
   return {
     selectedCourseId,
@@ -418,6 +680,8 @@ function createInitialGameState() {
 
     hasActiveMatch:
       Boolean(savedGame?.hasActiveMatch),
+
+    gameMode,
 
     specialScoringEnabled,
   }
@@ -466,9 +730,12 @@ export function GameProvider({ children }) {
   const [hasActiveMatch, setHasActiveMatch] =
     useState(initialState.hasActiveMatch)
 
+  const [gameMode, setGameModeState] =
+    useState(initialState.gameMode)
+
   const [
     specialScoringEnabled,
-    setSpecialScoringEnabled,
+    setSpecialScoringEnabledState,
   ] = useState(initialState.specialScoringEnabled)
 
   const currentCourse =
@@ -479,6 +746,42 @@ export function GameProvider({ children }) {
 
   const currentPar =
     currentPars[hole - 1] || DEFAULT_SCORE
+
+  const isWolffnMode =
+    isWolffnGameMode(gameMode)
+
+  const isProfessionalMode =
+    isProfessionalGameMode(gameMode)
+
+  const gameModeLabel =
+    getGameModeLabel(gameMode)
+
+  const setGameMode = useCallback((nextGameMode) => {
+    const normalizedGameMode =
+      normalizeGameMode(nextGameMode)
+
+    setGameModeState(normalizedGameMode)
+    setSpecialScoringEnabledState(
+      isProfessionalGameMode(normalizedGameMode)
+    )
+  }, [])
+
+  const setSpecialScoringEnabled = useCallback((value) => {
+    setSpecialScoringEnabledState((currentValue) => {
+      const nextValue =
+        typeof value === "function"
+          ? Boolean(value(currentValue))
+          : Boolean(value)
+
+      setGameModeState(
+        nextValue
+          ? GAME_MODES.PROFESSIONAL
+          : GAME_MODES.CLASSIC
+      )
+
+      return nextValue
+    })
+  }, [])
 
   const lowestScore =
     players.length > 0
@@ -540,6 +843,8 @@ export function GameProvider({ children }) {
           activeMatchId,
           matchCounter,
           selectedCourseId,
+          gameMode,
+          gameModeLabel,
           specialScoringEnabled,
           bonusSkinsEnabled: specialScoringEnabled,
         })
@@ -559,6 +864,8 @@ export function GameProvider({ children }) {
     activeMatchId,
     matchCounter,
     selectedCourseId,
+    gameMode,
+    gameModeLabel,
     specialScoringEnabled,
   ])
 
@@ -593,7 +900,8 @@ export function GameProvider({ children }) {
       playerNames,
       selectedStake = DEFAULT_STAKE,
       courseId = selectedCourseId,
-      selectedSpecialScoringEnabled = false
+      selectedSpecialScoringEnabledOrGameMode = false,
+      selectedGameMode
     ) => {
       const cleanedNames =
         Array.isArray(playerNames)
@@ -608,6 +916,34 @@ export function GameProvider({ children }) {
       if (uniqueNames.length < 2) {
         return false
       }
+
+      const requestedGameMode =
+        selectedGameMode !== undefined
+          ? selectedGameMode
+          : typeof selectedSpecialScoringEnabledOrGameMode === "string"
+          ? selectedSpecialScoringEnabledOrGameMode
+          : null
+
+      const requestedSpecialScoringEnabled =
+        typeof selectedSpecialScoringEnabledOrGameMode === "boolean"
+          ? selectedSpecialScoringEnabledOrGameMode
+          : false
+
+      const nextGameMode =
+        normalizeGameMode(
+          requestedGameMode,
+          requestedSpecialScoringEnabled
+        )
+
+      if (
+        isWolffnGameMode(nextGameMode) &&
+        uniqueNames.length !== 4
+      ) {
+        return false
+      }
+
+      const nextSpecialScoringEnabled =
+        isProfessionalGameMode(nextGameMode)
 
       const matchCourse =
         getCourseById(courseId)
@@ -638,9 +974,8 @@ export function GameProvider({ children }) {
       setCelebration(null)
       setMatchFinished(false)
       setHasActiveMatch(true)
-      setSpecialScoringEnabled(
-        Boolean(selectedSpecialScoringEnabled)
-      )
+      setGameModeState(nextGameMode)
+      setSpecialScoringEnabledState(nextSpecialScoringEnabled)
       setActiveMatchId(newMatchId)
       setMatchCounter(nextCounter)
 
@@ -653,13 +988,360 @@ export function GameProvider({ children }) {
   )
 
   const finishHole = useCallback(
-    () => {
+    (wolffnSetup = null) => {
       if (matchFinished || !hasActiveMatch) {
         return
       }
 
       const courseSnapshot =
         createCourseSnapshot(currentCourse)
+
+      if (isWolffnMode) {
+        const wolffnResult =
+          calculateWolffnHole({
+            players,
+            par: currentPar,
+            carryover,
+            stake,
+            wolffnSetup,
+          })
+
+        if (!wolffnResult) {
+          return
+        }
+
+        const winningResult =
+          getGolfResult(
+            wolffnResult.winningScore,
+            currentPar
+          )
+
+        const nextCarryover =
+          wolffnResult.nextCarryover
+
+        const totalSkins =
+          wolffnResult.totalSkins
+
+        const holeResult = {
+          hole,
+          par: currentPar,
+
+          gameMode,
+          gameModeLabel,
+
+          wolffnSetup,
+          wolffnFormat:
+            wolffnSetup.format,
+          wolffnPlayer:
+            wolffnSetup.wolffnPlayer || null,
+          wolffnTeamA:
+            wolffnSetup.teamA,
+          wolffnTeamB:
+            wolffnSetup.teamB,
+
+          pot:
+            wolffnResult.teamPot,
+
+          skins:
+            wolffnResult.hasTie
+              ? nextCarryover
+              : totalSkins,
+
+          baseSkins: 1,
+
+          currentHoleValue:
+            wolffnResult.currentHoleValue,
+
+          wolffnMultiplier:
+            wolffnResult.multiplierInfo.wolffnMultiplier,
+
+          scoreMultiplier:
+            wolffnResult.multiplierInfo.scoreMultiplier,
+
+          scoreMultiplierLabel:
+            wolffnResult.multiplierInfo.scoreMultiplierLabel,
+
+          bonusSkins:
+            Math.max(
+              wolffnResult.currentHoleValue - 1,
+              0
+            ),
+
+          carryoverSkins:
+            carryover,
+
+          carryoverAdded:
+            wolffnResult.hasTie
+              ? wolffnResult.currentHoleValue
+              : 0,
+
+          hasTie:
+            wolffnResult.hasTie,
+
+          specialScoringEnabled: false,
+          specialScoringApplied: false,
+          specialScoringLabel: null,
+          bonusSkinsEnabled: false,
+          bonusResult:
+            wolffnResult.multiplierInfo.scoreMultiplierLabel,
+
+          winningResult:
+            winningResult.label,
+
+          eagleBonusApplied: false,
+
+          winner:
+            wolffnResult.winnerLabel,
+
+          winningScore:
+            wolffnResult.winningScore,
+
+          course: {
+            id: courseSnapshot.id,
+            name: courseSnapshot.name,
+          },
+
+          players:
+            players.map((player) => ({
+              name: player.name,
+              score: player.score,
+              result: getGolfResult(
+                player.score,
+                currentPar
+              ),
+            })),
+        }
+
+        const updatedHistory = [
+          ...history,
+          holeResult,
+        ]
+
+        const updatedPlayers =
+          players.map((player) => {
+            const playerScore =
+              toNumber(player.score, currentPar)
+
+            const toPar =
+              playerScore - currentPar
+
+            const isOnWinningTeam =
+              wolffnResult.winningTeam.includes(player.name)
+
+            const isOnLosingTeam =
+              wolffnResult.losingTeam.includes(player.name)
+
+            const skinDelta =
+              wolffnResult.hasTie
+                ? 0
+                : isOnWinningTeam
+                ? totalSkins * wolffnResult.losingTeam.length
+                : isOnLosingTeam
+                ? -totalSkins * wolffnResult.winningTeam.length
+                : 0
+
+            const winningsDelta =
+              skinDelta * stake
+
+            return {
+              ...player,
+
+              total:
+                toNumber(player.total, 0) + playerScore,
+
+              totalToPar:
+                toNumber(player.totalToPar, 0) + toPar,
+
+              skins:
+                toNumber(player.skins, 0) + skinDelta,
+
+              winnings:
+                toNumber(player.winnings, 0) + winningsDelta,
+
+              holes: [
+                ...(Array.isArray(player.holes)
+                  ? player.holes
+                  : []),
+
+                {
+                  hole,
+                  par: currentPar,
+                  score: playerScore,
+                  toPar,
+                  courseId: courseSnapshot.id,
+
+                  gameMode,
+                  gameModeLabel,
+
+                  wolffnSetup,
+                  wolffnFormat:
+                    wolffnSetup.format,
+                  wolffnPlayer:
+                    wolffnSetup.wolffnPlayer || null,
+                  wolffnTeamA:
+                    wolffnSetup.teamA,
+                  wolffnTeamB:
+                    wolffnSetup.teamB,
+
+                  result:
+                    getGolfResult(
+                      playerScore,
+                      currentPar
+                    ),
+
+                  skinDelta,
+                  winningsDelta,
+
+                  totalSkins:
+                    wolffnResult.hasTie
+                      ? 0
+                      : totalSkins,
+
+                  baseSkins: 1,
+
+                  currentHoleValue:
+                    wolffnResult.currentHoleValue,
+
+                  carryoverAdded:
+                    wolffnResult.hasTie
+                      ? wolffnResult.currentHoleValue
+                      : 0,
+
+                  specialScoringEnabled: false,
+                  specialScoringApplied: false,
+                  specialScoringLabel: null,
+                  bonusSkinsEnabled: false,
+                  bonusResult:
+                    wolffnResult.multiplierInfo.scoreMultiplierLabel,
+
+                  winningResult:
+                    winningResult.label,
+
+                  eagleBonusApplied: false,
+                },
+              ],
+
+              score:
+                currentPars[hole] || DEFAULT_SCORE,
+            }
+          })
+
+        setHistory(updatedHistory)
+        setPlayers(updatedPlayers)
+
+        if (wolffnResult.hasTie) {
+          setCarryover(nextCarryover)
+        } else {
+          setCarryover(0)
+
+          setCelebration({
+            player:
+              wolffnResult.winnerLabel,
+            result:
+              winningResult.label,
+            color:
+              winningResult.color,
+            pot:
+              wolffnResult.teamPot,
+            skins:
+              totalSkins,
+            baseSkins: 1,
+            bonusSkins:
+              Math.max(
+                wolffnResult.currentHoleValue - 1,
+                0
+              ),
+
+            gameMode,
+            gameModeLabel,
+
+            wolffnSetup,
+            wolffnFormat:
+              wolffnSetup.format,
+            wolffnPlayer:
+              wolffnSetup.wolffnPlayer || null,
+
+            specialScoringEnabled: false,
+            specialScoringApplied: false,
+            specialScoringLabel: null,
+            bonusSkinsEnabled: false,
+            bonusResult:
+              wolffnResult.multiplierInfo.scoreMultiplierLabel,
+            winningResult:
+              winningResult.label,
+            eagleBonusApplied: false,
+          })
+
+          window.setTimeout(() => {
+            setCelebration(null)
+          }, 2200)
+        }
+
+        if (hole >= HOLE_COUNT) {
+          const finalPlayers =
+            updatedPlayers.map((player) => ({
+              ...player,
+              holes:
+                Array.isArray(player.holes)
+                  ? player.holes.map((playedHole) => ({
+                      ...playedHole,
+                    }))
+                  : [],
+            }))
+
+          const sortedFinalPlayers =
+            [...finalPlayers].sort(
+              (a, b) =>
+                b.winnings - a.winnings ||
+                a.totalToPar - b.totalToPar
+            )
+
+          const champion =
+            sortedFinalPlayers[0]
+
+          const completedRound = {
+            id: activeMatchId,
+            date:
+              new Date().toLocaleDateString("de-DE"),
+            createdAt:
+              Date.now(),
+            course:
+              courseSnapshot,
+            gameMode,
+            gameModeLabel,
+            winner:
+              champion?.name || "Unbekannt",
+            winnings:
+              champion?.winnings || 0,
+            skins:
+              champion?.skins || 0,
+            totalToPar:
+              champion?.totalToPar || 0,
+            stake,
+            specialScoringEnabled: false,
+            bonusSkinsEnabled: false,
+            history: updatedHistory,
+            players: finalPlayers,
+          }
+
+          setCompletedRounds((previousRounds) => [
+            completedRound,
+            ...previousRounds,
+          ])
+
+          setMatchFinished(true)
+          setHasActiveMatch(false)
+
+          setActiveMatchId(
+            createMatchId(matchCounter + 1)
+          )
+
+          return
+        }
+
+        setHole(hole + 1)
+        return
+      }
 
       const winner =
         !hasTie ? winners[0] : null
@@ -740,6 +1422,9 @@ export function GameProvider({ children }) {
       const holeResult = {
         hole,
         par: currentPar,
+
+        gameMode,
+        gameModeLabel,
 
         pot:
           hasTie
@@ -874,6 +1559,9 @@ export function GameProvider({ children }) {
                 toPar,
                 courseId: courseSnapshot.id,
 
+                gameMode,
+                gameModeLabel,
+
                 result:
                   getGolfResult(
                     playerScore,
@@ -970,6 +1658,10 @@ export function GameProvider({ children }) {
             skins: totalSkins,
             baseSkins: winnerBaseSkins,
             bonusSkins: winnerBonusSkins,
+
+            gameMode,
+            gameModeLabel,
+
             specialScoringEnabled,
             specialScoringApplied:
               winnerSpecialScoringApplied,
@@ -1020,28 +1712,22 @@ export function GameProvider({ children }) {
 
         const completedRound = {
           id: activeMatchId,
-
           date:
             new Date().toLocaleDateString("de-DE"),
-
           createdAt:
             Date.now(),
-
           course:
             courseSnapshot,
-
+          gameMode,
+          gameModeLabel,
           winner:
             champion?.name || "Unbekannt",
-
           winnings:
             champion?.winnings || 0,
-
           skins:
             champion?.skins || 0,
-
           totalToPar:
             champion?.totalToPar || 0,
-
           stake,
           specialScoringEnabled,
           bonusSkinsEnabled: specialScoringEnabled,
@@ -1070,19 +1756,22 @@ export function GameProvider({ children }) {
       matchFinished,
       hasActiveMatch,
       currentCourse,
-      hasTie,
-      winners,
-      currentPar,
-      specialScoringEnabled,
-      lowestScore,
-      carryover,
+      isWolffnMode,
       players,
+      currentPar,
+      carryover,
       stake,
-      history,
       hole,
+      gameMode,
+      gameModeLabel,
+      history,
       currentPars,
       activeMatchId,
       matchCounter,
+      hasTie,
+      winners,
+      specialScoringEnabled,
+      lowestScore,
     ]
   )
 
@@ -1094,7 +1783,8 @@ export function GameProvider({ children }) {
       setCelebration(null)
       setMatchFinished(false)
       setHasActiveMatch(false)
-      setSpecialScoringEnabled(false)
+      setGameModeState(GAME_MODES.CLASSIC)
+      setSpecialScoringEnabledState(false)
       setStake(DEFAULT_STAKE)
       setPlayers(createDefaultPlayers())
 
@@ -1222,6 +1912,17 @@ export function GameProvider({ children }) {
       () => ({
         courses,
 
+        GAME_MODES,
+
+        gameMode,
+        setGameMode,
+        gameModeLabel,
+
+        isWolffnMode,
+        isProfessionalMode,
+
+        getGameModeLabel,
+
         selectedCourseId,
         setSelectedCourseId,
 
@@ -1288,6 +1989,11 @@ export function GameProvider({ children }) {
         getGolfResult,
       }),
       [
+        gameMode,
+        setGameMode,
+        gameModeLabel,
+        isWolffnMode,
+        isProfessionalMode,
         selectedCourseId,
         currentCourse,
         hole,
@@ -1310,6 +2016,7 @@ export function GameProvider({ children }) {
         winners,
         hasTie,
         specialScoringEnabled,
+        setSpecialScoringEnabled,
         updateScore,
         finishHole,
         startMatch,

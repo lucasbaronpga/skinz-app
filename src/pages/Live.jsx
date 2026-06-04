@@ -225,6 +225,104 @@ function getHistorySpecialLabel(item) {
   return null
 }
 
+function getWolffnTeeOrder(players, hole) {
+  const playerNames =
+    players.map((player) => player.name)
+
+  if (playerNames.length !== 4) {
+    return playerNames
+  }
+
+  const offset =
+    (Math.max(toNumber(hole, 1), 1) - 1) %
+    playerNames.length
+
+  return [
+    ...playerNames.slice(offset),
+    ...playerNames.slice(0, offset),
+  ]
+}
+
+function getWolffnTeams({
+  teeOrder,
+  decisionPlayer,
+  askedPlayer,
+  wolffnDecision,
+}) {
+  if (
+    !Array.isArray(teeOrder) ||
+    teeOrder.length !== 4 ||
+    !decisionPlayer
+  ) {
+    return null
+  }
+
+  if (wolffnDecision === "alone") {
+    return {
+      format: "1v3",
+      label: "Wolffn",
+      wolffnPlayer: decisionPlayer,
+      teamA: [
+        decisionPlayer,
+      ],
+      teamB:
+        teeOrder.filter(
+          (playerName) =>
+            playerName !== decisionPlayer
+        ),
+    }
+  }
+
+  if (!askedPlayer) {
+    return null
+  }
+
+  if (wolffnDecision === "accepted") {
+    const teamA = [
+      decisionPlayer,
+      askedPlayer,
+    ]
+
+    const teamB =
+      teeOrder.filter(
+        (playerName) =>
+          !teamA.includes(playerName)
+      )
+
+    return {
+      format: "2v2",
+      label: "2v2",
+      wolffnPlayer: null,
+      teamA,
+      teamB,
+    }
+  }
+
+  if (wolffnDecision === "declined") {
+    return {
+      format: "1v3",
+      label: "Wolffn",
+      wolffnPlayer: askedPlayer,
+      teamA: [
+        askedPlayer,
+      ],
+      teamB:
+        teeOrder.filter(
+          (playerName) =>
+            playerName !== askedPlayer
+        ),
+    }
+  }
+
+  return null
+}
+
+function joinTeamNames(team) {
+  return Array.isArray(team)
+    ? team.join(" + ")
+    : "-"
+}
+
 export default function Live() {
   const navigate = useNavigate()
 
@@ -245,6 +343,9 @@ export default function Live() {
     lowestScore,
     hasTie,
 
+    gameMode,
+    isWolffnMode,
+
     specialScoringEnabled,
 
     updateScore,
@@ -263,6 +364,16 @@ export default function Live() {
     setShowSavedFeedback,
   ] = useState(false)
 
+  const [
+    wolffnSetup,
+    setWolffnSetup,
+  ] = useState({
+    hole: null,
+    gameMode: null,
+    askedPlayer: null,
+    decision: null,
+  })
+
   const sortedPlayers =
     [...players].sort(
       (a, b) =>
@@ -280,6 +391,47 @@ export default function Live() {
       Math.max(toNumber(hole, 1), 1),
       HOLE_COUNT
     )
+
+  const wolffnSetupIsCurrent =
+    wolffnSetup.hole === safeHole &&
+    wolffnSetup.gameMode === gameMode
+
+  const wolffnAskedPlayer =
+    wolffnSetupIsCurrent
+      ? wolffnSetup.askedPlayer
+      : null
+
+  const wolffnDecision =
+    wolffnSetupIsCurrent
+      ? wolffnSetup.decision
+      : null
+
+  const wolffnTeeOrder =
+    getWolffnTeeOrder(
+      players,
+      safeHole
+    )
+
+  const wolffnDecisionPlayer =
+    wolffnTeeOrder[0] || null
+
+  const wolffnAvailablePartners =
+    wolffnTeeOrder.filter(
+      (playerName) =>
+        playerName !== wolffnDecisionPlayer
+    )
+
+  const wolffnTeams =
+    getWolffnTeams({
+      teeOrder: wolffnTeeOrder,
+      decisionPlayer: wolffnDecisionPlayer,
+      askedPlayer: wolffnAskedPlayer,
+      wolffnDecision,
+    })
+
+  const wolffnSetupComplete =
+    !isWolffnMode ||
+    Boolean(wolffnTeams)
 
   function handleCloseLive() {
     navigate("/")
@@ -300,9 +452,27 @@ export default function Live() {
     navigate("/")
   }
 
+  function handleAskPartner(playerName) {
+    setWolffnSetup({
+      hole: safeHole,
+      gameMode,
+      askedPlayer: playerName,
+      decision: null,
+    })
+  }
+
   function handleFinishHole() {
+    if (!wolffnSetupComplete) {
+      return
+    }
+
     setShowSavedFeedback(true)
-    finishHole()
+
+    if (isWolffnMode) {
+      finishHole(wolffnTeams)
+    } else {
+      finishHole()
+    }
 
     window.setTimeout(() => {
       setShowSavedFeedback(false)
@@ -380,7 +550,16 @@ export default function Live() {
                   </span>
                 </div>
 
-                {specialScoringEnabled && (
+                {isWolffnMode && (
+                  <div className="inline-flex items-center gap-1 rounded-full bg-slate-950 px-3 py-1 text-xs font-black uppercase tracking-widest text-white shadow-sm">
+                    <span aria-hidden="true">
+                      🐺
+                    </span>
+                    Wolffn
+                  </div>
+                )}
+
+                {!isWolffnMode && specialScoringEnabled && (
                   <div className="inline-flex items-center gap-1 rounded-full bg-orange-500 px-3 py-1 text-xs font-black uppercase tracking-widest text-white shadow-sm">
                     <Sparkles size={12} />
                     Skinz Professional
@@ -413,6 +592,210 @@ export default function Live() {
           </div>
         </div>
       </motion.div>
+
+      {/* Wolffn Setup */}
+      {isWolffnMode && !matchFinished && (
+        <div className="mx-auto mt-8 max-w-md px-5">
+          <motion.div
+            initial={{
+              opacity: 0,
+              y: 20,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            transition={{
+              duration: 0.3,
+              ease: "easeOut",
+            }}
+            className="overflow-hidden rounded-[38px] bg-slate-950 text-white shadow-2xl"
+          >
+            <div className="p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-xs font-black uppercase tracking-[0.3em] text-slate-500">
+                    Wolffn Setup
+                  </div>
+
+                  <div className="mt-3 text-4xl font-black tracking-tight">
+                    {wolffnDecisionPlayer || "-"} decides
+                  </div>
+                </div>
+
+                <div
+                  className="text-4xl"
+                  aria-hidden="true"
+                >
+                  🐺
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-[28px] bg-white/10 p-4">
+                <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-500">
+                  Tee Order
+                </div>
+
+                <div className="mt-4 grid grid-cols-4 gap-2">
+                  {wolffnTeeOrder.map((playerName, index) => (
+                    <div
+                      key={`${playerName}-${index}`}
+                      className={`rounded-[20px] px-3 py-3 text-center ${
+                        index === 0
+                          ? "bg-yellow-400 text-black"
+                          : "bg-white/10 text-white"
+                      }`}
+                    >
+                      <div className="text-xs font-black uppercase tracking-widest opacity-70">
+                        {index + 1}
+                      </div>
+
+                      <div className="mt-1 truncate text-sm font-black">
+                        {playerName}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-500">
+                  Ask Partner
+                </div>
+
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {wolffnAvailablePartners.map((playerName) => {
+                    const isSelected =
+                      wolffnAskedPlayer === playerName
+
+                    return (
+                      <button
+                        key={playerName}
+                        type="button"
+                        onClick={() => handleAskPartner(playerName)}
+                        className={`rounded-[22px] px-3 py-4 text-sm font-black transition ${
+                          isSelected
+                            ? "bg-yellow-400 text-black"
+                            : "bg-white/10 text-white"
+                        }`}
+                      >
+                        {playerName}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWolffnSetup({
+                      hole: safeHole,
+                      gameMode,
+                      askedPlayer: null,
+                      decision: "alone",
+                    })
+                  }}
+                  className={`mt-3 w-full rounded-[24px] px-4 py-4 text-sm font-black transition ${
+                    wolffnDecision === "alone"
+                      ? "bg-yellow-400 text-black"
+                      : "bg-white/10 text-white"
+                  }`}
+                >
+                  Play Alone
+                </button>
+              </div>
+
+              {wolffnAskedPlayer && (
+                <div className="mt-6 rounded-[28px] bg-white/10 p-4">
+                  <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-500">
+                    Did {wolffnAskedPlayer} accept?
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setWolffnSetup({
+                          hole: safeHole,
+                          gameMode,
+                          askedPlayer: wolffnAskedPlayer,
+                          decision: "accepted",
+                        })
+                      }
+                      className={`rounded-[22px] px-4 py-4 text-sm font-black transition ${
+                        wolffnDecision === "accepted"
+                          ? "bg-emerald-500 text-white"
+                          : "bg-white/10 text-white"
+                      }`}
+                    >
+                      Accepted
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setWolffnSetup({
+                          hole: safeHole,
+                          gameMode,
+                          askedPlayer: wolffnAskedPlayer,
+                          decision: "declined",
+                        })
+                      }
+                      className={`rounded-[22px] px-4 py-4 text-sm font-black transition ${
+                        wolffnDecision === "declined"
+                          ? "bg-red-500 text-white"
+                          : "bg-white/10 text-white"
+                      }`}
+                    >
+                      Declined
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {wolffnTeams && (
+                <div className="mt-6 rounded-[28px] bg-white p-5 text-slate-950 shadow-sm">
+                  <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
+                    Teams
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="text-xl font-black">
+                        {joinTeamNames(wolffnTeams.teamA)}
+                      </div>
+
+                      <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
+                        {wolffnTeams.label}
+                      </div>
+                    </div>
+
+                    <div className="text-xs font-black uppercase tracking-widest text-slate-400">
+                      vs
+                    </div>
+
+                    <div className="min-w-0 text-right">
+                      <div className="text-xl font-black">
+                        {joinTeamNames(wolffnTeams.teamB)}
+                      </div>
+
+                      <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
+                        Opponents
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!wolffnSetupComplete && (
+                <div className="mt-5 rounded-[24px] bg-red-500/10 px-4 py-3 text-sm font-bold text-red-200">
+                  Choose partner response or play alone before closing the hole.
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Players */}
       <div className="mx-auto mt-8 max-w-md space-y-5 px-5">
@@ -735,7 +1118,9 @@ export default function Live() {
                     ease: "easeOut",
                   }}
                   className={`absolute left-1/2 top-0 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-full items-center justify-center rounded-full text-white shadow-[0_18px_40px_rgba(16,185,129,0.35)] ${
-                    specialScoringEnabled
+                    isWolffnMode
+                      ? "bg-slate-950"
+                      : specialScoringEnabled
                       ? "bg-orange-500"
                       : "bg-emerald-500"
                   }`}
@@ -751,17 +1136,22 @@ export default function Live() {
             <motion.button
               type="button"
               whileTap={{
-                scale: 0.98,
+                scale: wolffnSetupComplete ? 0.98 : 1,
               }}
+              disabled={!wolffnSetupComplete}
               onClick={handleFinishHole}
-              className={`flex w-full items-center justify-between rounded-[32px] px-6 py-5 text-xl font-black text-white ${
-                specialScoringEnabled
+              className={`flex w-full items-center justify-between rounded-[32px] px-6 py-5 text-xl font-black text-white disabled:opacity-45 ${
+                isWolffnMode
+                  ? "bg-slate-950 shadow-[0_20px_50px_rgba(15,23,42,0.35)]"
+                  : specialScoringEnabled
                   ? "bg-orange-500 shadow-[0_20px_50px_rgba(249,115,22,0.35)]"
                   : "bg-emerald-500 shadow-[0_20px_50px_rgba(16,185,129,0.35)]"
               }`}
             >
               <span>
-                Loch abschließen
+                {!wolffnSetupComplete
+                  ? "Wolffn Setup wählen"
+                  : "Loch abschließen"}
               </span>
 
               <ChevronRight size={24} />

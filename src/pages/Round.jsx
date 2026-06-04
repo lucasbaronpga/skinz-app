@@ -8,6 +8,7 @@ import {
 } from "react-router-dom"
 
 import {
+  AnimatePresence,
   motion,
 } from "framer-motion"
 
@@ -26,6 +27,7 @@ import {
 } from "../context/AuthContext"
 
 import {
+  GAME_MODES,
   useGame,
 } from "../context/GameContext"
 
@@ -80,6 +82,33 @@ function buildInitialPlayers(userName) {
   ]
 }
 
+function getGameModeMeta(gameMode) {
+  if (gameMode === GAME_MODES.PROFESSIONAL) {
+    return {
+      label: "Skinz Professional",
+      shortLabel: "Pro",
+      description: "Birdies und Eagles verändern die Skin-Anzahl.",
+      accent: "orange",
+    }
+  }
+
+  if (gameMode === GAME_MODES.WOLFFN) {
+    return {
+      label: "Wolffn",
+      shortLabel: "Wolffn",
+      description: "4 Spieler. Teams, Bestball und echte Golf-Champs.",
+      accent: "slate",
+    }
+  }
+
+  return {
+    label: "Classic Skinz",
+    shortLabel: "Standard",
+    description: "Jeder eindeutige Lochgewinn zählt 1 Skin.",
+    accent: "emerald",
+  }
+}
+
 export default function Round() {
   const navigate = useNavigate()
 
@@ -116,8 +145,13 @@ export default function Round() {
   ] = useState(2)
 
   const [
-    specialScoringEnabled,
-    setSpecialScoringEnabled,
+    selectedGameMode,
+    setSelectedGameMode,
+  ] = useState(GAME_MODES.CLASSIC)
+
+  const [
+    showWolffnModal,
+    setShowWolffnModal,
   ] = useState(false)
 
   const uniquePlayers =
@@ -164,8 +198,22 @@ export default function Round() {
     cleanedNewPlayer.length > 0 &&
     !newPlayerAlreadyExists
 
+  const isProfessionalMode =
+    selectedGameMode === GAME_MODES.PROFESSIONAL
+
+  const isWolffnMode =
+    selectedGameMode === GAME_MODES.WOLFFN
+
+  const gameModeMeta =
+    getGameModeMeta(selectedGameMode)
+
+  const wolffnPlayerCountValid =
+    uniquePlayers.length === 4
+
   const canStart =
-    uniquePlayers.length >= 2
+    isWolffnMode
+      ? wolffnPlayerCountValid
+      : uniquePlayers.length >= 2
 
   function addPlayer() {
     if (!cleanedNewPlayer) {
@@ -207,10 +255,25 @@ export default function Round() {
     )
   }
 
-  function toggleSpecialScoring() {
-    setSpecialScoringEnabled(
-      (currentValue) => !currentValue
-    )
+  function selectGameMode(nextGameMode) {
+    if (
+      nextGameMode === GAME_MODES.WOLFFN &&
+      selectedGameMode !== GAME_MODES.WOLFFN
+    ) {
+      setShowWolffnModal(true)
+      return
+    }
+
+    setSelectedGameMode(nextGameMode)
+  }
+
+  function confirmWolffnMode() {
+    setSelectedGameMode(GAME_MODES.WOLFFN)
+    setShowWolffnModal(false)
+  }
+
+  function cancelWolffnMode() {
+    setShowWolffnModal(false)
   }
 
   function handleStartMatch() {
@@ -234,7 +297,7 @@ export default function Round() {
         uniquePlayers,
         stake,
         selectedCourseId,
-        specialScoringEnabled
+        selectedGameMode
       )
 
     if (didStart) {
@@ -269,7 +332,7 @@ export default function Round() {
           </h1>
 
           <p className="mt-4 max-w-sm text-sm font-bold leading-relaxed text-slate-400">
-            Wähle Course, Flight, Skinz und optional Skinz Professional.
+            Wähle Course, Flight, Skinz und deinen Game Mode.
           </p>
         </motion.div>
 
@@ -353,7 +416,6 @@ export default function Round() {
           className="mt-6 overflow-hidden rounded-[42px] bg-slate-950 text-white shadow-2xl"
         >
           <div className="p-8">
-            {/* Course */}
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-slate-500">
@@ -371,18 +433,17 @@ export default function Round() {
 
               <div
                 className={`shrink-0 rounded-full px-4 py-2 text-xs font-black uppercase tracking-widest text-white ${
-                  specialScoringEnabled
+                  isWolffnMode
+                    ? "bg-slate-700"
+                    : isProfessionalMode
                     ? "bg-orange-500"
                     : "bg-emerald-500"
                 }`}
               >
-                {specialScoringEnabled
-                  ? "Pro"
-                  : "Standard"}
+                {gameModeMeta.shortLabel}
               </div>
             </div>
 
-            {/* Stake */}
             <div className="mt-10 flex items-end justify-between gap-5">
               <div>
                 <div className="text-xs font-black uppercase tracking-widest text-slate-500">
@@ -435,7 +496,7 @@ export default function Round() {
           </div>
         </motion.div>
 
-        {/* Rules / Special Mode */}
+        {/* Game Mode */}
         <motion.div
           initial={{
             opacity: 0,
@@ -450,128 +511,181 @@ export default function Round() {
             duration: 0.3,
             ease: "easeOut",
           }}
-          className={`mt-6 overflow-hidden rounded-[38px] border shadow-sm backdrop-blur-xl ${
-            specialScoringEnabled
-              ? "border-orange-200 bg-orange-50"
-              : "border-white/70 bg-white/90"
-          }`}
+          className="mt-6 rounded-[38px] bg-white/90 p-6 shadow-sm backdrop-blur-xl"
         >
-          <button
-            type="button"
-            onClick={toggleSpecialScoring}
-            aria-pressed={specialScoringEnabled}
-            className={`w-full p-6 text-left transition ${
-              specialScoringEnabled
-                ? "bg-orange-500 text-white"
-                : "bg-white text-slate-950"
-            }`}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div
-                  className={`flex items-center gap-2 ${
-                    specialScoringEnabled
-                      ? "text-orange-100"
-                      : "text-orange-500"
-                  }`}
-                >
-                  <Sparkles size={18} />
+          <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
+            Game Mode
+          </div>
 
-                  <div className="text-xs font-black uppercase tracking-[0.25em]">
-                    Skinz Professional
+          <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
+            Spielmodus
+          </div>
+
+          <div className="mt-5 space-y-3">
+            <button
+              type="button"
+              onClick={() => selectGameMode(GAME_MODES.CLASSIC)}
+              className={`w-full rounded-[28px] border p-5 text-left transition ${
+                selectedGameMode === GAME_MODES.CLASSIC
+                  ? "border-emerald-200 bg-emerald-50"
+                  : "border-slate-100 bg-white"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-2xl font-black tracking-tight text-slate-950">
+                    Classic Skinz
+                  </div>
+
+                  <div className="mt-1 text-sm font-bold text-slate-400">
+                    Jeder eindeutige Lochgewinn zählt 1 Skin.
                   </div>
                 </div>
 
-                <div className="mt-3 text-3xl font-black tracking-tight">
-                  Birdie & Eagle zählen mehr
+                <div
+                  className={`h-5 w-5 rounded-full border ${
+                    selectedGameMode === GAME_MODES.CLASSIC
+                      ? "border-emerald-500 bg-emerald-500"
+                      : "border-slate-200 bg-white"
+                  }`}
+                />
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => selectGameMode(GAME_MODES.PROFESSIONAL)}
+              className={`w-full rounded-[28px] border p-5 text-left transition ${
+                selectedGameMode === GAME_MODES.PROFESSIONAL
+                  ? "border-orange-200 bg-orange-50"
+                  : "border-slate-100 bg-white"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Sparkles
+                      size={18}
+                      className="text-orange-500"
+                    />
+
+                    <div className="text-2xl font-black tracking-tight text-slate-950">
+                      Skinz Professional
+                    </div>
+                  </div>
+
+                  <div className="mt-1 text-sm font-bold text-slate-400">
+                    Birdie zählt 2 Skinz, Eagle oder besser zählt 3 Skinz.
+                  </div>
                 </div>
 
                 <div
-                  className={`mt-2 text-sm font-bold leading-relaxed ${
-                    specialScoringEnabled
-                      ? "text-orange-100"
-                      : "text-slate-400"
+                  className={`h-5 w-5 rounded-full border ${
+                    selectedGameMode === GAME_MODES.PROFESSIONAL
+                      ? "border-orange-500 bg-orange-500"
+                      : "border-slate-200 bg-white"
                   }`}
-                >
-                  Aktiviert für die komplette Runde. Birdies und Eagles verändern die Skin-Anzahl.
+                />
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => selectGameMode(GAME_MODES.WOLFFN)}
+              className={`w-full rounded-[28px] border p-5 text-left transition ${
+                selectedGameMode === GAME_MODES.WOLFFN
+                  ? "border-slate-300 bg-slate-950 text-white"
+                  : "border-slate-100 bg-white text-slate-950"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="text-2xl"
+                      aria-hidden="true"
+                    >
+                      🐺
+                    </div>
+
+                    <div className="text-2xl font-black tracking-tight">
+                      Wolffn
+                    </div>
+                  </div>
+
+                  <div
+                    className={`mt-1 text-sm font-bold ${
+                      selectedGameMode === GAME_MODES.WOLFFN
+                        ? "text-slate-300"
+                        : "text-slate-400"
+                    }`}
+                  >
+                    4 Spieler. Teams, Bestball und echter Champ-Modus.
+                  </div>
+                </div>
+
+                <div
+                  className={`h-5 w-5 rounded-full border ${
+                    selectedGameMode === GAME_MODES.WOLFFN
+                      ? "border-white bg-white"
+                      : "border-slate-200 bg-white"
+                  }`}
+                />
+              </div>
+            </button>
+          </div>
+
+          {isProfessionalMode && (
+            <div className="mt-5 grid grid-cols-3 gap-3">
+              <div className="rounded-[24px] border border-slate-100 bg-white p-4 text-center shadow-sm">
+                <div className="text-xs font-black uppercase tracking-widest text-slate-400">
+                  Par+
+                </div>
+
+                <div className="mt-2 text-4xl font-black text-slate-950">
+                  1
+                </div>
+
+                <div className="mt-1 text-xs font-bold text-slate-400">
+                  Skin
                 </div>
               </div>
 
-              <div
-                className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-xl font-black shadow-lg ${
-                  specialScoringEnabled
-                    ? "bg-white text-orange-500"
-                    : "bg-orange-100 text-orange-500"
-                }`}
-              >
-                {specialScoringEnabled ? "✓" : "Off"}
+              <div className="rounded-[24px] border border-red-100 bg-white p-4 text-center shadow-sm">
+                <div className="text-xs font-black uppercase tracking-widest text-red-400">
+                  Birdie
+                </div>
+
+                <div className="mt-2 text-4xl font-black text-red-500">
+                  2
+                </div>
+
+                <div className="mt-1 text-xs font-bold text-slate-400">
+                  Skinz
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-orange-100 bg-orange-50 p-4 text-center shadow-sm">
+                <div className="text-xs font-black uppercase tracking-widest text-orange-500">
+                  Eagle+
+                </div>
+
+                <div className="mt-2 text-4xl font-black text-orange-500">
+                  3
+                </div>
+
+                <div className="mt-1 text-xs font-bold text-orange-400">
+                  Skinz
+                </div>
               </div>
             </div>
-          </button>
+          )}
 
-          <div className="grid grid-cols-3 gap-3 p-5">
-            <div className="rounded-[24px] border border-slate-100 bg-white p-4 text-center shadow-sm">
-              <div className="text-xs font-black uppercase tracking-widest text-slate-400">
-                Par+
-              </div>
-
-              <div className="mt-2 text-4xl font-black text-slate-950">
-                1
-              </div>
-
-              <div className="mt-1 text-xs font-bold text-slate-400">
-                Skin
-              </div>
+          {isWolffnMode && (
+            <div className="mt-5 rounded-[24px] bg-slate-950 px-5 py-4 text-sm font-bold leading-relaxed text-slate-300 shadow-sm">
+              Wolffn braucht exakt 4 Spieler. Der erste Spieler am Loch entscheidet: Partner, Ablehnung oder allein gegen drei.
             </div>
-
-            <div className="rounded-[24px] border border-red-100 bg-white p-4 text-center shadow-sm">
-              <div className="text-xs font-black uppercase tracking-widest text-red-400">
-                Birdie
-              </div>
-
-              <div
-                className={`mt-2 text-4xl font-black ${
-                  specialScoringEnabled
-                    ? "text-red-500"
-                    : "text-slate-400"
-                }`}
-              >
-                {specialScoringEnabled ? 2 : 1}
-              </div>
-
-              <div className="mt-1 text-xs font-bold text-slate-400">
-                Skins
-              </div>
-            </div>
-
-            <div className="rounded-[24px] border border-orange-100 bg-orange-50 p-4 text-center shadow-sm">
-              <div className="text-xs font-black uppercase tracking-widest text-orange-500">
-                Eagle+
-              </div>
-
-              <div
-                className={`mt-2 text-4xl font-black ${
-                  specialScoringEnabled
-                    ? "text-orange-500"
-                    : "text-slate-400"
-                }`}
-              >
-                {specialScoringEnabled ? 3 : 1}
-              </div>
-
-              <div className="mt-1 text-xs font-bold text-orange-400">
-                Skins
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-100 px-5 pb-5 pt-1">
-            <div className="rounded-[24px] bg-white px-4 py-3 text-xs font-bold leading-relaxed text-slate-500 shadow-sm">
-              {specialScoringEnabled
-                ? "Skinz Professional aktiv: Lochgewinn mit Par oder schlechter zählt 1 Skin, Birdie zählt 2 Skins, Eagle oder besser zählt 3 Skins. Bei geteiltem Birdie werden 2 Skins carried, bei geteiltem Eagle oder besser 3 Skins."
-                : "Standard aktiv: Jeder eindeutige Lochgewinn zählt 1 Skin. Jedes geteilte Loch addiert 1 Skin Carryover — unabhängig vom Score."}
-            </div>
-          </div>
+          )}
         </motion.div>
 
         {/* Course Selection */}
@@ -700,7 +814,13 @@ export default function Round() {
               </h2>
             </div>
 
-            <div className="rounded-full border border-slate-100 bg-white px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-500 shadow-sm">
+            <div
+              className={`rounded-full border px-4 py-2 text-xs font-black uppercase tracking-widest shadow-sm ${
+                isWolffnMode && !wolffnPlayerCountValid
+                  ? "border-red-100 bg-red-50 text-red-500"
+                  : "border-slate-100 bg-white text-slate-500"
+              }`}
+            >
               {uniquePlayers.length} aktiv
             </div>
           </div>
@@ -744,6 +864,12 @@ export default function Round() {
           {cleanedNewPlayer && newPlayerAlreadyExists && (
             <div className="mt-3 rounded-[22px] border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-600">
               Dieser Spieler ist bereits im Flight.
+            </div>
+          )}
+
+          {isWolffnMode && !wolffnPlayerCountValid && (
+            <div className="mt-3 rounded-[22px] border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-500">
+              Wolffn braucht exakt 4 Spieler.
             </div>
           )}
 
@@ -813,7 +939,9 @@ export default function Round() {
 
         {!canStart && (
           <div className="mt-5 rounded-[28px] border border-red-100 bg-white p-5 text-center text-sm font-bold text-red-500 shadow-sm">
-            Mindestens zwei Mitspieler werden für eine Runde benötigt.
+            {isWolffnMode
+              ? "Wolffn braucht exakt 4 Spieler."
+              : "Mindestens zwei Mitspieler werden für eine Runde benötigt."}
           </div>
         )}
 
@@ -825,7 +953,9 @@ export default function Round() {
           disabled={!canStart}
           onClick={handleStartMatch}
           className={`mt-8 flex w-full items-center justify-between rounded-[34px] px-6 py-6 text-xl font-black text-white transition disabled:cursor-not-allowed disabled:opacity-40 ${
-            specialScoringEnabled
+            isWolffnMode
+              ? "bg-slate-950 shadow-[0_18px_45px_rgba(15,23,42,0.28)]"
+              : isProfessionalMode
               ? "bg-orange-500 shadow-[0_18px_45px_rgba(249,115,22,0.28)]"
               : "bg-emerald-500 shadow-[0_18px_45px_rgba(16,185,129,0.3)]"
           }`}
@@ -833,7 +963,9 @@ export default function Round() {
           <span>
             {hasActiveMatch
               ? "Neue Runde starten"
-              : specialScoringEnabled
+              : isWolffnMode
+              ? "Wolffn starten"
+              : isProfessionalMode
               ? "Runde mit Skinz Professional starten"
               : "Runde starten"}
           </span>
@@ -846,6 +978,82 @@ export default function Round() {
           </div>
         </motion.button>
       </div>
+
+      <AnimatePresence>
+        {showWolffnModal && (
+          <motion.div
+            initial={{
+              opacity: 0,
+            }}
+            animate={{
+              opacity: 1,
+            }}
+            exit={{
+              opacity: 0,
+            }}
+            className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 px-5 backdrop-blur-xl"
+          >
+            <motion.div
+              initial={{
+                opacity: 0,
+                scale: 0.9,
+                y: 30,
+              }}
+              animate={{
+                opacity: 1,
+                scale: 1,
+                y: 0,
+              }}
+              exit={{
+                opacity: 0,
+                scale: 0.95,
+                y: 20,
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 260,
+                damping: 22,
+              }}
+              className="w-full max-w-sm overflow-hidden rounded-[40px] bg-white text-center shadow-2xl"
+            >
+              <div className="p-8">
+                <div
+                  className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-slate-950 text-5xl shadow-[0_18px_45px_rgba(15,23,42,0.24)]"
+                  aria-hidden="true"
+                >
+                  🐺
+                </div>
+
+                <div className="mt-6 text-4xl font-black tracking-tight text-slate-950">
+                  Are you sure?
+                </div>
+
+                <div className="mt-3 text-sm font-bold leading-relaxed text-slate-400">
+                  Wolffn is made for real golf champs.
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={cancelWolffnMode}
+                  className="w-full py-4 text-sm font-black text-slate-500"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={confirmWolffnMode}
+                  className="w-full border-t border-slate-100 bg-slate-950 py-5 text-sm font-black text-white"
+                >
+                  Enter Wolffn
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
