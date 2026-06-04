@@ -45,7 +45,7 @@ function getMoneyColor(value) {
   const amount = toNumber(value, 0)
 
   if (amount > 0) {
-    return "text-emerald-600"
+    return "text-yellow-500"
   }
 
   if (amount < 0) {
@@ -59,7 +59,7 @@ function getMoneyColorDark(value) {
   const amount = toNumber(value, 0)
 
   if (amount > 0) {
-    return "text-emerald-400"
+    return "text-yellow-400"
   }
 
   if (amount < 0) {
@@ -127,6 +127,22 @@ function getToParColorDark(value) {
   return "text-white"
 }
 
+function getRankStyle(index) {
+  if (index === 0) {
+    return "bg-yellow-400 text-black"
+  }
+
+  if (index === 1) {
+    return "bg-slate-300 text-slate-950"
+  }
+
+  if (index === 2) {
+    return "bg-[#cd7f32] text-white"
+  }
+
+  return "border border-slate-200 bg-white text-slate-900"
+}
+
 function getRoundPlayers(round) {
   return Array.isArray(round?.players)
     ? round.players
@@ -163,13 +179,6 @@ function getCourseName(round) {
   )
 }
 
-function getCourseLocation(round) {
-  return (
-    round?.course?.location ||
-    "Westpfalz"
-  )
-}
-
 function getCoursePar(round) {
   return (
     round?.course?.par ||
@@ -177,8 +186,8 @@ function getCoursePar(round) {
   )
 }
 
-function getCourseMeta(round) {
-  return `${getCourseLocation(round)} · Par ${getCoursePar(round)}`
+function getCourseParMeta(round) {
+  return `Par ${getCoursePar(round)}`
 }
 
 function getRoundDate(round) {
@@ -196,6 +205,10 @@ function getRoundId(round) {
 }
 
 function roundHasSpecialScoring(round) {
+  if (!round) {
+    return false
+  }
+
   if (
     round?.specialScoringEnabled ||
     round?.bonusSkinsEnabled ||
@@ -233,49 +246,6 @@ function roundHasSpecialScoring(round) {
   return playerHoleHasSpecialScoring
 }
 
-function playerHasSpecialScoring(player) {
-  return (
-    Array.isArray(player?.holes) &&
-    player.holes.some(
-      (hole) =>
-        hole?.specialScoringEnabled ||
-        hole?.specialScoringApplied ||
-        toNumber(hole?.bonusSkins, 0) > 0 ||
-        hole?.eagleBonusApplied
-    )
-  )
-}
-
-function getPlayerSpecialLabel(player) {
-  if (!Array.isArray(player?.holes)) {
-    return null
-  }
-
-  const highestBonus =
-    player.holes.reduce((highest, hole) => {
-      if (hole?.eagleBonusApplied) {
-        return Math.max(highest, 2)
-      }
-
-      return Math.max(
-        highest,
-        toNumber(hole?.bonusSkins, 0)
-      )
-    }, 0)
-
-  if (highestBonus >= 2) {
-    return "Eagle+"
-  }
-
-  if (highestBonus === 1) {
-    return "Birdie"
-  }
-
-  return playerHasSpecialScoring(player)
-    ? "Bonus"
-    : null
-}
-
 export default function Matches() {
   const navigate = useNavigate()
 
@@ -308,16 +278,12 @@ export default function Matches() {
             ease: "easeOut",
           }}
         >
-          <div className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">
-            Rundenarchiv
-          </div>
-
-          <h1 className="mt-3 text-5xl font-black tracking-tight">
-            Rounds
+          <h1 className="text-6xl font-black tracking-tight">
+            Matches
           </h1>
 
           <p className="mt-4 max-w-sm text-sm font-bold leading-relaxed text-slate-400">
-            Deine gespielten Runden, Golfplätze, Round Winner und Scorecards im Überblick.
+            Deine Matches, Courses, Winners & Scores.
           </p>
         </motion.div>
 
@@ -347,7 +313,7 @@ export default function Matches() {
             </div>
 
             <div className="mt-6 text-3xl font-black tracking-tight text-slate-950">
-              Noch keine Runden
+              Noch keine Matches
             </div>
 
             <div className="mt-3 text-sm font-bold leading-relaxed text-slate-400">
@@ -373,14 +339,14 @@ export default function Matches() {
 
             const roundId = getRoundId(round)
             const courseName = getCourseName(round)
-            const courseMeta = getCourseMeta(round)
+            const courseParMeta = getCourseParMeta(round)
 
             const displayWinnerName =
               round?.winner ||
               winner?.name ||
               "Unbekannt"
 
-            const displayWinnings =
+            const displayEarnings =
               round?.winnings ??
               winner?.winnings ??
               0
@@ -416,11 +382,10 @@ export default function Matches() {
               >
                 {/* Hero */}
                 <div className="bg-slate-950 p-7 text-white">
-                  {/* Top */}
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <div className="text-xs font-black uppercase tracking-[0.3em] text-slate-500">
-                        Round Winner
+                        Winner
                       </div>
 
                       <div className="mt-4 flex items-center gap-3">
@@ -435,7 +400,6 @@ export default function Matches() {
                     </div>
                   </div>
 
-                  {/* Match / Golfplatz Chips */}
                   <div className="mt-5 flex flex-wrap gap-2">
                     <div className="inline-flex rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
                       {roundId}
@@ -452,27 +416,24 @@ export default function Matches() {
                     {roundHasSpecialMode && (
                       <div className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
                         <Sparkles size={13} />
-                        Sonderform
+                        Skinz Professional
                       </div>
                     )}
                   </div>
 
-                  {/* Bottom */}
                   <div className="mt-8 flex items-end justify-between gap-5">
-                    {/* Winnings */}
                     <div>
                       <div className="text-xs font-black uppercase tracking-widest text-slate-500">
-                        Winnings
+                        Earnings
                       </div>
 
                       <div
-                        className={`mt-2 text-6xl font-black tracking-tight ${getMoneyColorDark(displayWinnings)}`}
+                        className={`mt-2 text-6xl font-black tracking-tight ${getMoneyColorDark(displayEarnings)}`}
                       >
-                        {formatMoney(displayWinnings)}
+                        {formatMoney(displayEarnings)}
                       </div>
                     </div>
 
-                    {/* Score */}
                     <div className="text-right">
                       <div className="text-xs font-black uppercase tracking-widest text-slate-500">
                         To Par
@@ -491,7 +452,6 @@ export default function Matches() {
                 <div className="p-6">
                   {/* Meta */}
                   <div className="grid grid-cols-2 gap-3">
-                    {/* Date */}
                     <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm">
                       <div className="text-xs font-black uppercase tracking-widest text-slate-400">
                         Datum
@@ -506,7 +466,6 @@ export default function Matches() {
                       </div>
                     </div>
 
-                    {/* Flight */}
                     <div className="rounded-[24px] border border-slate-100 bg-white p-4 text-right shadow-sm">
                       <div className="text-xs font-black uppercase tracking-widest text-slate-400">
                         Flight
@@ -525,30 +484,21 @@ export default function Matches() {
 
                   {/* Golfplatz Meta */}
                   <div className="mt-4 rounded-[26px] border border-slate-100 bg-white p-5 shadow-sm">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 text-slate-400">
-                          <MapPin size={16} />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 text-slate-400">
+                        <MapPin size={16} />
 
-                          <div className="text-xs font-black uppercase tracking-[0.25em]">
-                            Golfplatz
-                          </div>
-                        </div>
-
-                        <div className="mt-2 truncate text-2xl font-black tracking-tight text-slate-950">
-                          {courseName}
-                        </div>
-
-                        <div className="mt-1 text-sm font-bold text-slate-400">
-                          {courseMeta}
+                        <div className="text-xs font-black uppercase tracking-[0.25em]">
+                          Golfplatz
                         </div>
                       </div>
 
-                      <div
-                        className="text-3xl"
-                        aria-hidden="true"
-                      >
-                        ⛳
+                      <div className="mt-2 truncate text-2xl font-black tracking-tight text-slate-950">
+                        {courseName}
+                      </div>
+
+                      <div className="mt-1 text-sm font-bold text-slate-400">
+                        {courseParMeta}
                       </div>
                     </div>
                   </div>
@@ -559,9 +509,6 @@ export default function Matches() {
                       const isWinner =
                         player.name === displayWinnerName
 
-                      const playerSpecialLabel =
-                        getPlayerSpecialLabel(player)
-
                       return (
                         <div
                           key={`${roundId}-${player.name}`}
@@ -571,25 +518,14 @@ export default function Matches() {
                               : "border-slate-100 bg-white"
                           }`}
                         >
-                          {/* Left */}
                           <div className="min-w-0">
                             <div className="flex items-center gap-3">
-                              {/* Ranking */}
                               <div
-                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-black ${
-                                  playerIndex === 0
-                                    ? "bg-yellow-400 text-black"
-                                    : playerIndex === 1
-                                    ? "border border-slate-200 bg-white text-slate-900"
-                                    : playerIndex === 2
-                                    ? "bg-orange-400 text-white"
-                                    : "border border-slate-200 bg-white text-slate-900"
-                                }`}
+                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-black ${getRankStyle(playerIndex)}`}
                               >
                                 {playerIndex + 1}
                               </div>
 
-                              {/* Player */}
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2">
                                   <div className="truncate text-xl font-black tracking-tight text-slate-950">
@@ -602,20 +538,13 @@ export default function Matches() {
                                       Winner
                                     </div>
                                   )}
-
-                                  {playerSpecialLabel && (
-                                    <div className="flex shrink-0 items-center gap-1 rounded-full bg-orange-500 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white">
-                                      <Sparkles size={10} />
-                                      {playerSpecialLabel}
-                                    </div>
-                                  )}
                                 </div>
 
                                 <div className="mt-1 flex flex-wrap gap-2">
                                   <div
                                     className={`text-xs font-black uppercase tracking-widest ${getSkinColor(player.skins)}`}
                                   >
-                                    {formatSkinSaldo(player.skins)} Skin-Saldo
+                                    {formatSkinSaldo(player.skins)} Skinz
                                   </div>
 
                                   <div
@@ -628,7 +557,6 @@ export default function Matches() {
                             </div>
                           </div>
 
-                          {/* Right */}
                           <div className="shrink-0 text-right">
                             <div
                               className={`text-3xl font-black tracking-tight ${getToParColor(player.totalToPar)}`}
