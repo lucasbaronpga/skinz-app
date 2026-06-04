@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 
 import {
+  GAME_MODES,
   useGame,
 } from "../context/GameContext"
 
@@ -204,12 +205,63 @@ function getRoundId(round) {
   )
 }
 
-function roundHasSpecialScoring(round) {
+function itemIsWolffn(item) {
+  return Boolean(
+    item?.gameMode === GAME_MODES.WOLFFN ||
+      item?.gameModeLabel === "Wolffn" ||
+      item?.wolffnSetup ||
+      item?.wolffnFormat ||
+      item?.wolffnPlayer ||
+      Array.isArray(item?.wolffnTeamA) ||
+      Array.isArray(item?.wolffnTeamB)
+  )
+}
+
+function roundIsWolffn(round) {
   if (!round) {
     return false
   }
 
   if (
+    round?.gameMode === GAME_MODES.WOLFFN ||
+    round?.gameModeLabel === "Wolffn"
+  ) {
+    return true
+  }
+
+  const historyHasWolffn =
+    Array.isArray(round?.history) &&
+    round.history.some((hole) =>
+      itemIsWolffn(hole)
+    )
+
+  if (historyHasWolffn) {
+    return true
+  }
+
+  const playerHoleHasWolffn =
+    getRoundPlayers(round).some((player) =>
+      Array.isArray(player?.holes) &&
+      player.holes.some((hole) =>
+        itemIsWolffn(hole)
+      )
+    )
+
+  return playerHoleHasWolffn
+}
+
+function roundHasProfessionalScoring(round) {
+  if (!round) {
+    return false
+  }
+
+  if (roundIsWolffn(round)) {
+    return false
+  }
+
+  if (
+    round?.gameMode === GAME_MODES.PROFESSIONAL ||
+    round?.gameModeLabel === "Skinz Professional" ||
     round?.specialScoringEnabled ||
     round?.bonusSkinsEnabled ||
     round?.eagleBonusEnabled
@@ -221,10 +273,15 @@ function roundHasSpecialScoring(round) {
     Array.isArray(round?.history) &&
     round.history.some(
       (hole) =>
-        hole?.specialScoringEnabled ||
-        hole?.specialScoringApplied ||
-        toNumber(hole?.bonusSkins, 0) > 0 ||
-        hole?.eagleBonusApplied
+        !itemIsWolffn(hole) &&
+        (
+          hole?.gameMode === GAME_MODES.PROFESSIONAL ||
+          hole?.gameModeLabel === "Skinz Professional" ||
+          hole?.specialScoringEnabled ||
+          hole?.specialScoringApplied ||
+          toNumber(hole?.bonusSkins, 0) > 0 ||
+          hole?.eagleBonusApplied
+        )
     )
 
   if (historyHasSpecialScoring) {
@@ -236,10 +293,15 @@ function roundHasSpecialScoring(round) {
       Array.isArray(player?.holes) &&
       player.holes.some(
         (hole) =>
-          hole?.specialScoringEnabled ||
-          hole?.specialScoringApplied ||
-          toNumber(hole?.bonusSkins, 0) > 0 ||
-          hole?.eagleBonusApplied
+          !itemIsWolffn(hole) &&
+          (
+            hole?.gameMode === GAME_MODES.PROFESSIONAL ||
+            hole?.gameModeLabel === "Skinz Professional" ||
+            hole?.specialScoringEnabled ||
+            hole?.specialScoringApplied ||
+            toNumber(hole?.bonusSkins, 0) > 0 ||
+            hole?.eagleBonusApplied
+          )
       )
     )
 
@@ -351,8 +413,11 @@ export default function Matches() {
               winner?.winnings ??
               0
 
-            const roundHasSpecialMode =
-              roundHasSpecialScoring(round)
+            const isWolffnRound =
+              roundIsWolffn(round)
+
+            const roundHasProfessionalMode =
+              roundHasProfessionalScoring(round)
 
             return (
               <motion.button
@@ -413,7 +478,16 @@ export default function Matches() {
                       </span>
                     </div>
 
-                    {roundHasSpecialMode && (
+                    {isWolffnRound && (
+                      <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-950">
+                        <span aria-hidden="true">
+                          🐺
+                        </span>
+                        Wolffn
+                      </div>
+                    )}
+
+                    {!isWolffnRound && roundHasProfessionalMode && (
                       <div className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
                         <Sparkles size={13} />
                         Skinz Professional

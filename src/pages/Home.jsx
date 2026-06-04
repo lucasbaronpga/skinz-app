@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 
 import {
+  GAME_MODES,
   useGame,
 } from "../context/GameContext"
 
@@ -134,12 +135,63 @@ function getRoundPlayers(round) {
     : []
 }
 
-function roundHasSpecialScoring(round) {
+function itemIsWolffn(item) {
+  return Boolean(
+    item?.gameMode === GAME_MODES.WOLFFN ||
+      item?.gameModeLabel === "Wolffn" ||
+      item?.wolffnSetup ||
+      item?.wolffnFormat ||
+      item?.wolffnPlayer ||
+      Array.isArray(item?.wolffnTeamA) ||
+      Array.isArray(item?.wolffnTeamB)
+  )
+}
+
+function roundIsWolffn(round) {
   if (!round) {
     return false
   }
 
   if (
+    round?.gameMode === GAME_MODES.WOLFFN ||
+    round?.gameModeLabel === "Wolffn"
+  ) {
+    return true
+  }
+
+  const historyHasWolffn =
+    Array.isArray(round?.history) &&
+    round.history.some((playedHole) =>
+      itemIsWolffn(playedHole)
+    )
+
+  if (historyHasWolffn) {
+    return true
+  }
+
+  const playerHoleHasWolffn =
+    getRoundPlayers(round).some((player) =>
+      Array.isArray(player?.holes) &&
+      player.holes.some((playedHole) =>
+        itemIsWolffn(playedHole)
+      )
+    )
+
+  return playerHoleHasWolffn
+}
+
+function roundHasSpecialScoring(round) {
+  if (!round) {
+    return false
+  }
+
+  if (roundIsWolffn(round)) {
+    return false
+  }
+
+  if (
+    round?.gameMode === GAME_MODES.PROFESSIONAL ||
+    round?.gameModeLabel === "Skinz Professional" ||
     round?.specialScoringEnabled ||
     round?.bonusSkinsEnabled ||
     round?.eagleBonusEnabled
@@ -151,10 +203,15 @@ function roundHasSpecialScoring(round) {
     Array.isArray(round?.history) &&
     round.history.some(
       (playedHole) =>
-        playedHole?.specialScoringEnabled ||
-        playedHole?.specialScoringApplied ||
-        toNumber(playedHole?.bonusSkins, 0) > 0 ||
-        playedHole?.eagleBonusApplied
+        !itemIsWolffn(playedHole) &&
+        (
+          playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
+          playedHole?.gameModeLabel === "Skinz Professional" ||
+          playedHole?.specialScoringEnabled ||
+          playedHole?.specialScoringApplied ||
+          toNumber(playedHole?.bonusSkins, 0) > 0 ||
+          playedHole?.eagleBonusApplied
+        )
     )
 
   if (historyHasSpecialScoring) {
@@ -166,10 +223,15 @@ function roundHasSpecialScoring(round) {
       Array.isArray(player?.holes) &&
       player.holes.some(
         (playedHole) =>
-          playedHole?.specialScoringEnabled ||
-          playedHole?.specialScoringApplied ||
-          toNumber(playedHole?.bonusSkins, 0) > 0 ||
-          playedHole?.eagleBonusApplied
+          !itemIsWolffn(playedHole) &&
+          (
+            playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
+            playedHole?.gameModeLabel === "Skinz Professional" ||
+            playedHole?.specialScoringEnabled ||
+            playedHole?.specialScoringApplied ||
+            toNumber(playedHole?.bonusSkins, 0) > 0 ||
+            playedHole?.eagleBonusApplied
+          )
       )
     )
 
@@ -191,6 +253,7 @@ export default function Home() {
     completedRounds,
     activeMatchId,
     hasActiveMatch,
+    isWolffnMode,
     specialScoringEnabled,
   } = useGame()
 
@@ -207,6 +270,9 @@ export default function Home() {
         toNumber(b.createdAt, 0) -
         toNumber(a.createdAt, 0)
     )[0] || null
+
+  const latestRoundIsWolffn =
+    roundIsWolffn(latestRound)
 
   const latestRoundHasSpecialScoring =
     roundHasSpecialScoring(latestRound)
@@ -291,7 +357,16 @@ export default function Home() {
                       </span>
                     </div>
 
-                    {specialScoringEnabled && (
+                    {isWolffnMode && (
+                      <div className="inline-flex items-center gap-1 rounded-full bg-slate-950 px-3 py-1 text-xs font-black uppercase tracking-widest text-white shadow-sm">
+                        <span aria-hidden="true">
+                          🐺
+                        </span>
+                        Wolffn
+                      </div>
+                    )}
+
+                    {!isWolffnMode && specialScoringEnabled && (
                       <div className="inline-flex items-center gap-1 rounded-full bg-orange-500 px-3 py-1 text-xs font-black uppercase tracking-widest text-white shadow-sm">
                         <Sparkles size={13} />
                         Skinz Professional
@@ -304,6 +379,8 @@ export default function Home() {
                   className={`shrink-0 rounded-2xl px-4 py-2 text-xs font-black ${
                     matchFinished
                       ? "bg-amber-100 text-amber-700"
+                      : isWolffnMode
+                      ? "bg-slate-950 text-white"
                       : specialScoringEnabled
                       ? "bg-orange-100 text-orange-700"
                       : "bg-emerald-100 text-emerald-700"
@@ -311,6 +388,8 @@ export default function Home() {
                 >
                   {matchFinished
                     ? "Beendet"
+                    : isWolffnMode
+                    ? "Wolffn"
                     : specialScoringEnabled
                     ? "Pro"
                     : "Live"}
@@ -324,7 +403,9 @@ export default function Home() {
 
                 <div
                   className={`mt-2 text-7xl font-black tracking-tight ${
-                    specialScoringEnabled
+                    isWolffnMode
+                      ? "text-yellow-500"
+                      : specialScoringEnabled
                       ? "text-orange-500"
                       : "text-yellow-500"
                   }`}
@@ -534,7 +615,16 @@ export default function Home() {
                       </span>
                     </div>
 
-                    {latestRoundHasSpecialScoring && (
+                    {latestRoundIsWolffn && (
+                      <div className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-black uppercase tracking-widest text-slate-950">
+                        <span aria-hidden="true">
+                          🐺
+                        </span>
+                        Wolffn
+                      </div>
+                    )}
+
+                    {!latestRoundIsWolffn && latestRoundHasSpecialScoring && (
                       <div className="inline-flex items-center gap-1 rounded-full bg-orange-500 px-3 py-1 text-xs font-black uppercase tracking-widest text-white">
                         <Sparkles size={13} />
                         Skinz Professional
