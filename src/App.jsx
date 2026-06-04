@@ -15,14 +15,14 @@ import {
   useAuth,
 } from "./context/AuthContext"
 
-import Home from "./pages/Home"
-import Login from "./pages/Login"
-import Round from "./pages/Round"
-import Live from "./pages/Live"
-import Matches from "./pages/Matches"
-import MatchDetails from "./pages/MatchDetails"
-import Leaderboard from "./pages/Leaderboard"
-import Profile from "./pages/Profile"
+import HomeScreen from "./pages/HomeScreen"
+import LoginScreen from "./pages/LoginScreen"
+import RoundSetupScreen from "./pages/RoundSetupScreen"
+import LiveScoringScreen from "./pages/LiveScoringScreen"
+import MatchArchiveScreen from "./pages/MatchArchiveScreen"
+import MatchDetailsScreen from "./pages/MatchDetailsScreen"
+import LeaderboardScreen from "./pages/LeaderboardScreen"
+import ProfileScreen from "./pages/ProfileScreen"
 
 import BottomNav from "./components/BottomNav"
 
@@ -88,7 +88,7 @@ function AnimatedRoutes({
               />
             ) : (
               <PageTransition>
-                <Login />
+                <LoginScreen />
               </PageTransition>
             )
           }
@@ -102,13 +102,13 @@ function AnimatedRoutes({
               isAuthenticated={isAuthenticated}
             >
               <PageTransition>
-                <Home />
+                <HomeScreen />
               </PageTransition>
             </ProtectedRoute>
           }
         />
 
-        {/* New Round */}
+        {/* Round Setup */}
         <Route
           path="/round"
           element={
@@ -116,13 +116,13 @@ function AnimatedRoutes({
               isAuthenticated={isAuthenticated}
             >
               <PageTransition>
-                <Round />
+                <RoundSetupScreen />
               </PageTransition>
             </ProtectedRoute>
           }
         />
 
-        {/* Live Match */}
+        {/* Live Scoring */}
         <Route
           path="/live"
           element={
@@ -130,7 +130,7 @@ function AnimatedRoutes({
               isAuthenticated={isAuthenticated}
             >
               <PageTransition>
-                <Live />
+                <LiveScoringScreen />
               </PageTransition>
             </ProtectedRoute>
           }
@@ -144,7 +144,7 @@ function AnimatedRoutes({
               isAuthenticated={isAuthenticated}
             >
               <PageTransition>
-                <Matches />
+                <MatchArchiveScreen />
               </PageTransition>
             </ProtectedRoute>
           }
@@ -158,7 +158,7 @@ function AnimatedRoutes({
               isAuthenticated={isAuthenticated}
             >
               <PageTransition>
-                <MatchDetails />
+                <MatchDetailsScreen />
               </PageTransition>
             </ProtectedRoute>
           }
@@ -172,7 +172,7 @@ function AnimatedRoutes({
               isAuthenticated={isAuthenticated}
             >
               <PageTransition>
-                <Leaderboard />
+                <LeaderboardScreen />
               </PageTransition>
             </ProtectedRoute>
           }
@@ -186,7 +186,7 @@ function AnimatedRoutes({
               isAuthenticated={isAuthenticated}
             >
               <PageTransition>
-                <Profile />
+                <ProfileScreen />
               </PageTransition>
             </ProtectedRoute>
           }
