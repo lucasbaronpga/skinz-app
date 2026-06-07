@@ -164,7 +164,7 @@ function getScoreStyle(label) {
     return "border-purple-600 bg-purple-600 text-white"
   }
 
-  return "border-white/80 bg-white/[0.82] text-slate-950"
+  return "border-white/80 bg-white/[0.88] text-slate-950"
 }
 
 function getCourseName(course) {
@@ -212,16 +212,104 @@ function getSpecialLabelForScore(score, par, specialScoringEnabled) {
   return null
 }
 
-function getScoreBadgeLabel(label) {
-  if (
-    label === "Birdie" ||
-    label === "Eagle" ||
-    label === "Albatross"
-  ) {
-    return label
+function getResultLabelFromScore(score, par) {
+  const scoreToPar =
+    toNumber(score, par) -
+    toNumber(par, 0)
+
+  if (scoreToPar <= -3) {
+    return "Albatross"
   }
 
-  return null
+  if (scoreToPar === -2) {
+    return "Eagle"
+  }
+
+  if (scoreToPar === -1) {
+    return "Birdie"
+  }
+
+  if (scoreToPar === 0) {
+    return "Par"
+  }
+
+  if (scoreToPar === 1) {
+    return "Bogey"
+  }
+
+  if (scoreToPar === 2) {
+    return "Double Bogey"
+  }
+
+  return "Triple+"
+}
+
+function getHistoryScore(item) {
+  const possibleScores = [
+    item?.winningScore,
+    item?.winnerScore,
+    item?.lowestScore,
+    item?.bestScore,
+    item?.score,
+  ]
+
+  const foundScore =
+    possibleScores.find((value) =>
+      Number.isFinite(Number(value))
+    )
+
+  return foundScore === undefined
+    ? null
+    : toNumber(foundScore, null)
+}
+
+function getHistoryResultLabel(item) {
+  if (item?.result) {
+    return item.result
+  }
+
+  if (item?.golfResult?.label) {
+    return item.golfResult.label
+  }
+
+  if (item?.winningResult) {
+    return item.winningResult
+  }
+
+  if (item?.winnerResult) {
+    return item.winnerResult
+  }
+
+  const historyScore =
+    getHistoryScore(item)
+
+  if (historyScore === null) {
+    return null
+  }
+
+  return getResultLabelFromScore(
+    historyScore,
+    item?.par
+  )
+}
+
+function getHistoryResultSummary(item) {
+  const resultLabel =
+    getHistoryResultLabel(item)
+
+  if (item?.hasTie) {
+    if (resultLabel) {
+      return `Mit ${resultLabel} geteilt`
+    }
+
+    return "Loch geteilt"
+  }
+
+  if (resultLabel) {
+    return `Mit ${resultLabel} gewonnen`
+  }
+
+  return "Loch gewonnen"
 }
 
 function getSkinsLabel(value) {
@@ -557,7 +645,7 @@ export default function LiveScoringScreen() {
       <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#e8ebe5] px-6 text-slate-950">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_8%,rgba(255,255,255,0.95),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_45%_80%,rgba(234,179,8,0.14),transparent_36%)]"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(255,255,255,0.95),transparent_30%),radial-gradient(circle_at_85%_18%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_50%_78%,rgba(234,179,8,0.16),transparent_36%)]"
         />
 
         <div
@@ -565,44 +653,51 @@ export default function LiveScoringScreen() {
           className="pointer-events-none absolute inset-x-5 top-6 bottom-8 rounded-[56px] border border-white/70 bg-white/18 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_35px_90px_rgba(15,23,42,0.18)] backdrop-blur-3xl"
         />
 
-        <div className="relative w-full max-w-sm rounded-[40px] border border-white/70 bg-white/[0.58] p-8 text-center shadow-[0_28px_70px_rgba(15,23,42,0.16)] backdrop-blur-2xl">
-          <div className="text-[12px] font-black uppercase tracking-[0.28em] text-emerald-700/80">
-            Live Scoring
+        <div className="relative w-full max-w-sm overflow-hidden rounded-[40px] border border-white/20 bg-[#071819] p-8 text-center text-white shadow-[0_28px_70px_rgba(7,24,25,0.42)]">
+          <div
+            aria-hidden="true"
+            className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-emerald-400/32 via-emerald-500/8 to-transparent"
+          />
+
+          <div className="relative">
+            <div className="text-[12px] font-black uppercase tracking-[0.24em] text-emerald-200/85">
+              Live Scoring
+            </div>
+
+            <div className="mt-5 text-5xl font-black tracking-[-0.06em]">
+              Keine Runde
+            </div>
+
+            <div className="mt-4 text-sm font-semibold leading-relaxed text-slate-400">
+              Starte zuerst eine neue Runde, damit Scores geändert und Löcher abgeschlossen werden können.
+            </div>
+
+            <button
+              type="button"
+              onClick={() => navigate("/round")}
+              className="mt-8 w-full rounded-[28px] border border-white/90 bg-white py-5 text-lg font-black text-slate-950 shadow-[0_18px_55px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.95)]"
+            >
+              Runde starten
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="mt-3 w-full rounded-[28px] border border-white/15 bg-white/10 py-5 text-lg font-black text-slate-300 backdrop-blur-xl"
+            >
+              Home
+            </button>
           </div>
-
-          <div className="mt-4 text-5xl font-black tracking-[-0.06em]">
-            Keine Runde
-          </div>
-
-          <div className="mt-3 text-sm font-semibold leading-relaxed text-slate-500">
-            Starte zuerst eine neue Runde, damit Scores geändert und Löcher abgeschlossen werden können.
-          </div>
-
-          <button
-            type="button"
-            onClick={() => navigate("/round")}
-            className="mt-8 w-full rounded-[30px] bg-slate-950 py-5 text-lg font-black text-white shadow-[0_18px_45px_rgba(15,23,42,0.25)]"
-          >
-            Runde starten
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate("/")}
-            className="mt-3 w-full rounded-[30px] border border-white/70 bg-white/[0.58] py-5 text-lg font-black text-slate-500 shadow-sm backdrop-blur-xl"
-          >
-            Home
-          </button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#e8ebe5] pb-[calc(11rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
+    <div className="relative min-h-screen overflow-x-hidden bg-[#e8ebe5] pb-[calc(9.5rem+env(safe-area-inset-bottom))] text-slate-950">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_8%,rgba(255,255,255,0.95),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_45%_80%,rgba(234,179,8,0.14),transparent_36%)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(255,255,255,0.95),transparent_30%),radial-gradient(circle_at_85%_18%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_50%_78%,rgba(234,179,8,0.16),transparent_36%)]"
       />
 
       <div
@@ -610,139 +705,135 @@ export default function LiveScoringScreen() {
         className="pointer-events-none absolute inset-x-5 top-6 bottom-8 rounded-[56px] border border-white/70 bg-white/18 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_35px_90px_rgba(15,23,42,0.18)] backdrop-blur-3xl"
       />
 
-      <div className="relative mx-auto max-w-md px-5">
-        <motion.div
-          initial={{
-            opacity: 0,
-            y: 18,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            duration: 0.35,
-            ease: "easeOut",
-          }}
-          className="pt-8"
-        >
-          <div className="flex items-start justify-between gap-5">
-            <div className="min-w-0">
-              <div className="text-[12px] font-black uppercase tracking-[0.28em] text-emerald-700/80">
-                Live Scoring
-              </div>
-
-              <h1 className="mt-3 text-[3.65rem] font-black leading-none tracking-[-0.07em] text-slate-950">
-                Loch {safeHole}
-              </h1>
-
-              <div className="mt-2 text-xl font-black tracking-[-0.035em] text-slate-500">
-                Par {currentPar}
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                <ModePill>
-                  {currentModeLabel}
-                </ModePill>
-
-                <ModePill>
-                  {getCourseName(currentCourse)}
-                </ModePill>
-              </div>
-            </div>
-
-            {!matchFinished && (
-              <motion.button
-                type="button"
-                whileTap={{
-                  scale: 0.9,
-                }}
-                onClick={handleCloseLive}
-                aria-label="Live-Ansicht schließen"
-                className="mt-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/70 bg-white/[0.48] text-slate-600 shadow-sm backdrop-blur-2xl"
-              >
-                <X size={21} />
-              </motion.button>
-            )}
-          </div>
-        </motion.div>
-
-        {isWolffnMode && !matchFinished && (
+      <div className="relative px-5 pt-9">
+        <div className="mx-auto max-w-md">
           <motion.div
             initial={{
               opacity: 0,
-              y: 22,
+              y: 18,
             }}
             animate={{
               opacity: 1,
               y: 0,
             }}
             transition={{
-              delay: 0.05,
               duration: 0.35,
               ease: "easeOut",
             }}
-            className="mt-8 overflow-hidden rounded-[38px] border border-white/20 bg-slate-950 text-white shadow-[0_28px_70px_rgba(15,23,42,0.35)]"
+            className="pt-5"
           >
-            <div className="relative p-6">
-              <div
-                aria-hidden="true"
-                className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-white/10 blur-3xl"
-              />
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <ModePill>
+                    {matchFinished
+                      ? "Beendet"
+                      : "Live"}
+                  </ModePill>
 
-              <div className="relative">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-[12px] font-black uppercase tracking-[0.24em] text-slate-500">
-                      Wolffn Setup
-                    </div>
-
-                    <div className="mt-3 text-4xl font-black tracking-[-0.05em]">
-                      {wolffnDecisionPlayer || "-"} entscheidet
-                    </div>
-                  </div>
-
-                  <div
-                    className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-3xl shadow-sm"
-                    aria-hidden="true"
-                  >
-                    🐺
-                  </div>
+                  <ModePill>
+                    {currentModeLabel}
+                  </ModePill>
                 </div>
 
-                <div className="mt-6 rounded-[28px] border border-white/10 bg-white/10 p-4 backdrop-blur-xl">
-                  <div className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">
-                    Tee Order
+                <h1 className="mt-4 text-[4rem] font-black leading-none tracking-[-0.075em] text-slate-950">
+                  Loch {safeHole}
+                </h1>
+
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <div className="text-[1.4rem] font-semibold leading-none tracking-[-0.04em] text-slate-600">
+                    Par {currentPar}
                   </div>
 
-                  <div className="mt-4 grid grid-cols-4 gap-2">
+                  <div className="h-1 w-1 rounded-full bg-slate-400" />
+
+                  <div className="min-w-0 truncate text-sm font-bold text-slate-500">
+                    {getCourseName(currentCourse)}
+                  </div>
+                </div>
+              </div>
+
+              {!matchFinished && (
+                <motion.button
+                  type="button"
+                  whileTap={{
+                    scale: 0.9,
+                  }}
+                  onClick={handleCloseLive}
+                  aria-label="Live-Ansicht schließen"
+                  className="mt-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/70 bg-white/[0.46] text-slate-600 shadow-sm backdrop-blur-2xl"
+                >
+                  <X size={21} />
+                </motion.button>
+              )}
+            </div>
+          </motion.div>
+
+          {isWolffnMode && !matchFinished && (
+            <motion.div
+              initial={{
+                opacity: 0,
+                y: 18,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
+              transition={{
+                delay: 0.06,
+                duration: 0.3,
+                ease: "easeOut",
+              }}
+              className="mt-5 overflow-hidden rounded-[32px] border border-white/20 bg-[#071819] text-white shadow-[0_22px_55px_rgba(7,24,25,0.30)]"
+            >
+              <div className="relative p-5">
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-amber-300/24 via-amber-300/6 to-transparent"
+                />
+
+                <div className="relative">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-200/85">
+                        Wolffn Setup
+                      </div>
+
+                      <div className="mt-2 truncate text-3xl font-black tracking-[-0.05em]">
+                        {wolffnDecisionPlayer || "-"} entscheidet
+                      </div>
+                    </div>
+
+                    <div
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-2xl shadow-sm"
+                      aria-hidden="true"
+                    >
+                      🐺
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-4 gap-2">
                     {wolffnTeeOrder.map((playerName, index) => (
                       <div
                         key={`${playerName}-${index}`}
-                        className={`rounded-[20px] px-3 py-3 text-center ${
+                        className={`rounded-[18px] px-2 py-2.5 text-center ${
                           index === 0
                             ? "bg-amber-300 text-black"
                             : "bg-white/10 text-white"
                         }`}
                       >
-                        <div className="text-[10px] font-black uppercase tracking-widest opacity-70">
+                        <div className="text-[9px] font-black uppercase tracking-widest opacity-70">
                           {index + 1}
                         </div>
 
-                        <div className="mt-1 truncate text-sm font-black">
+                        <div className="mt-1 truncate text-xs font-black">
                           {playerName}
                         </div>
                       </div>
                     ))}
                   </div>
-                </div>
 
-                <div className="mt-6">
-                  <div className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">
-                    Partner fragen
-                  </div>
-
-                  <div className="mt-3 grid grid-cols-3 gap-2">
+                  <div className="mt-4 grid grid-cols-3 gap-2">
                     {wolffnAvailablePartners.map((playerName) => {
                       const isSelected =
                         wolffnAskedPlayer === playerName
@@ -752,7 +843,7 @@ export default function LiveScoringScreen() {
                           key={playerName}
                           type="button"
                           onClick={() => handleAskPartner(playerName)}
-                          className={`rounded-[22px] px-3 py-4 text-sm font-black transition ${
+                          className={`rounded-[20px] px-3 py-3 text-xs font-black transition ${
                             isSelected
                               ? "bg-amber-300 text-black"
                               : "bg-white/10 text-white"
@@ -774,7 +865,7 @@ export default function LiveScoringScreen() {
                         decision: "alone",
                       })
                     }}
-                    className={`mt-3 w-full rounded-[24px] px-4 py-4 text-sm font-black transition ${
+                    className={`mt-2 w-full rounded-[20px] px-4 py-3 text-xs font-black transition ${
                       wolffnDecision === "alone"
                         ? "bg-amber-300 text-black"
                         : "bg-white/10 text-white"
@@ -782,176 +873,163 @@ export default function LiveScoringScreen() {
                   >
                     Alleine spielen
                   </button>
+
+                  {wolffnAskedPlayer && (
+                    <div className="mt-4 rounded-[24px] border border-white/10 bg-white/10 p-3 backdrop-blur-xl">
+                      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                        Hat {wolffnAskedPlayer} angenommen?
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setWolffnSetup({
+                              hole: safeHole,
+                              gameMode,
+                              askedPlayer: wolffnAskedPlayer,
+                              decision: "accepted",
+                            })
+                          }
+                          className={`rounded-[18px] px-4 py-3 text-xs font-black transition ${
+                            wolffnDecision === "accepted"
+                              ? "bg-emerald-500 text-white"
+                              : "bg-white/10 text-white"
+                          }`}
+                        >
+                          Ja
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setWolffnSetup({
+                              hole: safeHole,
+                              gameMode,
+                              askedPlayer: wolffnAskedPlayer,
+                              decision: "declined",
+                            })
+                          }
+                          className={`rounded-[18px] px-4 py-3 text-xs font-black transition ${
+                            wolffnDecision === "declined"
+                              ? "bg-red-500 text-white"
+                              : "bg-white/10 text-white"
+                          }`}
+                        >
+                          Nein
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {wolffnTeams && (
+                    <div className="mt-4 rounded-[24px] border border-white/70 bg-white p-4 text-slate-950 shadow-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate text-base font-black tracking-[-0.035em]">
+                            {joinTeamNames(wolffnTeams.teamA)}
+                          </div>
+
+                          <div className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                            {wolffnTeams.label}
+                          </div>
+                        </div>
+
+                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                          vs
+                        </div>
+
+                        <div className="min-w-0 text-right">
+                          <div className="truncate text-base font-black tracking-[-0.035em]">
+                            {joinTeamNames(wolffnTeams.teamB)}
+                          </div>
+
+                          <div className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                            Gegner
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!wolffnSetupComplete && (
+                    <div className="mt-4 rounded-[20px] border border-red-400/20 bg-red-500/10 px-4 py-3 text-xs font-bold text-red-200">
+                      Partner-Antwort wählen oder alleine spielen.
+                    </div>
+                  )}
                 </div>
-
-                {wolffnAskedPlayer && (
-                  <div className="mt-6 rounded-[28px] border border-white/10 bg-white/10 p-4 backdrop-blur-xl">
-                    <div className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">
-                      Hat {wolffnAskedPlayer} angenommen?
-                    </div>
-
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setWolffnSetup({
-                            hole: safeHole,
-                            gameMode,
-                            askedPlayer: wolffnAskedPlayer,
-                            decision: "accepted",
-                          })
-                        }
-                        className={`rounded-[22px] px-4 py-4 text-sm font-black transition ${
-                          wolffnDecision === "accepted"
-                            ? "bg-emerald-500 text-white"
-                            : "bg-white/10 text-white"
-                        }`}
-                      >
-                        Ja
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setWolffnSetup({
-                            hole: safeHole,
-                            gameMode,
-                            askedPlayer: wolffnAskedPlayer,
-                            decision: "declined",
-                          })
-                        }
-                        className={`rounded-[22px] px-4 py-4 text-sm font-black transition ${
-                          wolffnDecision === "declined"
-                            ? "bg-red-500 text-white"
-                            : "bg-white/10 text-white"
-                        }`}
-                      >
-                        Nein
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {wolffnTeams && (
-                  <div className="mt-6 rounded-[28px] border border-white/70 bg-white p-5 text-slate-950 shadow-sm">
-                    <div className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">
-                      Teams
-                    </div>
-
-                    <div className="mt-3 flex items-center justify-between gap-4">
-                      <div className="min-w-0">
-                        <div className="text-xl font-black tracking-[-0.035em]">
-                          {joinTeamNames(wolffnTeams.teamA)}
-                        </div>
-
-                        <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                          {wolffnTeams.label}
-                        </div>
-                      </div>
-
-                      <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                        vs
-                      </div>
-
-                      <div className="min-w-0 text-right">
-                        <div className="text-xl font-black tracking-[-0.035em]">
-                          {joinTeamNames(wolffnTeams.teamB)}
-                        </div>
-
-                        <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                          Gegner
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {!wolffnSetupComplete && (
-                  <div className="mt-5 rounded-[24px] border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-200">
-                    Partner-Antwort wählen oder alleine spielen.
-                  </div>
-                )}
               </div>
-            </div>
-          </motion.div>
-        )}
+            </motion.div>
+          )}
 
-        <div
-          ref={scoreEntryRef}
-          className="mt-8 space-y-4 scroll-mt-6"
-        >
-          {players.map((player, index) => {
-            const playerScore =
-              toNumber(player.score, currentPar)
+          <div
+            ref={scoreEntryRef}
+            className="mt-5 space-y-2.5 scroll-mt-5"
+          >
+            {players.map((player, index) => {
+              const playerScore =
+                toNumber(player.score, currentPar)
 
-            const isWinning =
-              playerScore === lowestScore
+              const isWinning =
+                playerScore === lowestScore
 
-            const golfResult =
-              getGolfResult(
-                playerScore,
-                currentPar
-              )
+              const golfResult =
+                getGolfResult(
+                  playerScore,
+                  currentPar
+                )
 
-            const currentToPar =
-              playerScore - currentPar
+              const currentToPar =
+                playerScore - currentPar
 
-            const playerSpecialLabel =
-              getSpecialLabelForScore(
-                playerScore,
-                currentPar,
-                specialScoringEnabled
-              )
+              const playerSpecialLabel =
+                getSpecialLabelForScore(
+                  playerScore,
+                  currentPar,
+                  specialScoringEnabled
+                )
 
-            const scoreBadgeLabel =
-              getScoreBadgeLabel(golfResult.label)
-
-            return (
-              <motion.div
-                key={player.name}
-                initial={{
-                  opacity: 0,
-                  y: 12,
-                }}
-                animate={{
-                  opacity: 1,
-                  y: 0,
-                }}
-                transition={{
-                  delay: index * 0.035,
-                  duration: 0.24,
-                  ease: "easeOut",
-                }}
-                className={`overflow-hidden rounded-[38px] border shadow-[0_22px_58px_rgba(15,23,42,0.09)] backdrop-blur-2xl transition ${
-                  isWinning
-                    ? "border-emerald-300/70 bg-emerald-50/78"
-                    : "border-white/70 bg-white/[0.56]"
-                }`}
-              >
-                <div className="p-5">
-                  <div className="flex items-start justify-between gap-4">
+              return (
+                <motion.div
+                  key={player.name}
+                  initial={{
+                    opacity: 0,
+                    y: 10,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                  }}
+                  transition={{
+                    delay: index * 0.025,
+                    duration: 0.22,
+                    ease: "easeOut",
+                  }}
+                  className={`rounded-[28px] border px-4 py-3 shadow-[0_14px_38px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition ${
+                    isWinning
+                      ? "border-emerald-300/70 bg-emerald-50/[0.82]"
+                      : "border-white/70 bg-white/[0.46]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-[2.35rem] font-black leading-none tracking-[-0.06em] text-slate-950">
+                      <div className="truncate text-[1.75rem] font-black leading-none tracking-[-0.06em] text-slate-950">
                         {player.name}
                       </div>
 
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        {scoreBadgeLabel && (
-                          <div
-                            className={`rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white ${
-                              scoreBadgeLabel === "Birdie"
-                                ? "bg-red-500"
-                                : scoreBadgeLabel === "Eagle"
-                                ? "bg-orange-500"
-                                : "bg-amber-400 text-black"
-                            }`}
-                          >
-                            {scoreBadgeLabel}
-                          </div>
-                        )}
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <div className="rounded-full bg-white/[0.62] px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-slate-400 shadow-sm">
+                          {golfResult.label}
+                        </div>
+
+                        <div
+                          className={`rounded-full bg-white/[0.62] px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] shadow-sm ${getToParColor(currentToPar)}`}
+                        >
+                          {formatToPar(currentToPar)}
+                        </div>
 
                         {isWinning && !hasTie && (
-                          <div className="rounded-full bg-emerald-500 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white">
+                          <div className="rounded-full bg-emerald-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-white">
                             Leader
                           </div>
                         )}
@@ -959,27 +1037,19 @@ export default function LiveScoringScreen() {
                         {isWinning &&
                           specialScoringEnabled &&
                           playerSpecialLabel && (
-                            <div className="flex items-center gap-1 rounded-full bg-orange-500 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white">
-                              <Sparkles size={10} />
+                            <div className="flex items-center gap-1 rounded-full bg-orange-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-white">
+                              <Sparkles size={9} />
                               {playerSpecialLabel}
                             </div>
                           )}
                       </div>
                     </div>
 
-                    <div
-                      className={`shrink-0 text-[2.45rem] font-black leading-none tracking-[-0.06em] ${getToParColor(currentToPar)}`}
-                    >
-                      {formatToPar(currentToPar)}
-                    </div>
-                  </div>
-
-                  <div className="mt-5 rounded-[32px] border border-white/70 bg-white/[0.46] p-3 shadow-[inset_0_1px_1px_rgba(255,255,255,0.78)] backdrop-blur-xl">
-                    <div className="grid grid-cols-[4.2rem_1fr_4.2rem] items-center gap-3">
+                    <div className="grid grid-cols-[2.55rem_3.55rem_2.55rem] items-center gap-1.5">
                       <motion.button
                         type="button"
                         whileTap={{
-                          scale: matchFinished ? 1 : 0.92,
+                          scale: matchFinished ? 1 : 0.9,
                         }}
                         disabled={
                           matchFinished ||
@@ -995,7 +1065,7 @@ export default function LiveScoringScreen() {
                           )
                         }
                         aria-label={`Score von ${player.name} verringern`}
-                        className="flex h-[4.2rem] w-[4.2rem] items-center justify-center rounded-[24px] border border-white/80 bg-white/[0.72] text-[2.25rem] font-black leading-none text-slate-500 shadow-[0_10px_26px_rgba(15,23,42,0.10)] transition disabled:opacity-35"
+                        className="flex h-[2.85rem] w-[2.55rem] items-center justify-center rounded-[18px] border border-white/80 bg-white/[0.74] text-[1.65rem] font-black leading-none text-slate-500 shadow-[0_8px_18px_rgba(15,23,42,0.09)] transition disabled:opacity-35"
                       >
                         −
                       </motion.button>
@@ -1003,9 +1073,9 @@ export default function LiveScoringScreen() {
                       <motion.div
                         key={playerScore}
                         initial={{
-                          scale: 0.9,
+                          scale: 0.92,
                           opacity: 0,
-                          y: 4,
+                          y: 3,
                         }}
                         animate={{
                           scale: 1,
@@ -1017,7 +1087,7 @@ export default function LiveScoringScreen() {
                           stiffness: 280,
                           damping: 18,
                         }}
-                        className={`flex min-h-[5.4rem] items-center justify-center rounded-[28px] border-2 text-[4.1rem] font-black leading-none tracking-[-0.07em] shadow-[0_14px_34px_rgba(15,23,42,0.13)] ${getScoreStyle(golfResult.label)}`}
+                        className={`flex h-[3.25rem] w-[3.55rem] items-center justify-center rounded-[20px] border-2 text-[2.45rem] font-black leading-none tracking-[-0.07em] shadow-[0_10px_22px_rgba(15,23,42,0.12)] ${getScoreStyle(golfResult.label)}`}
                       >
                         {playerScore}
                       </motion.div>
@@ -1025,7 +1095,7 @@ export default function LiveScoringScreen() {
                       <motion.button
                         type="button"
                         whileTap={{
-                          scale: matchFinished ? 1 : 0.92,
+                          scale: matchFinished ? 1 : 0.9,
                         }}
                         disabled={matchFinished}
                         onClick={() =>
@@ -1035,149 +1105,140 @@ export default function LiveScoringScreen() {
                           )
                         }
                         aria-label={`Score von ${player.name} erhöhen`}
-                        className="flex h-[4.2rem] w-[4.2rem] items-center justify-center rounded-[24px] border border-white/80 bg-white/[0.72] text-[2.25rem] font-black leading-none text-slate-500 shadow-[0_10px_26px_rgba(15,23,42,0.10)] transition disabled:opacity-35"
+                        className="flex h-[2.85rem] w-[2.55rem] items-center justify-center rounded-[18px] border border-white/80 bg-white/[0.74] text-[1.65rem] font-black leading-none text-slate-500 shadow-[0_8px_18px_rgba(15,23,42,0.09)] transition disabled:opacity-35"
                       >
                         +
                       </motion.button>
                     </div>
-
-                    <div className="mt-3 flex items-center justify-center gap-2">
-                      <div className="rounded-full bg-white/[0.62] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 shadow-sm">
-                        {golfResult.label}
-                      </div>
-
-                      <div
-                        className={`rounded-full bg-white/[0.62] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] shadow-sm ${getToParColor(currentToPar)}`}
-                      >
-                        {formatToPar(currentToPar)}
-                      </div>
-                    </div>
                   </div>
+                </motion.div>
+              )
+            })}
+          </div>
+
+          <motion.div
+            initial={{
+              opacity: 0,
+              y: 18,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            transition={{
+              delay: 0.1,
+              duration: 0.32,
+              ease: "easeOut",
+            }}
+            className="mt-6 rounded-[32px] border border-white/70 bg-white/[0.48] p-5 shadow-[0_16px_48px_rgba(15,23,42,0.09)] backdrop-blur-2xl"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-600">
+                  Scorekarte
                 </div>
-              </motion.div>
-            )
-          })}
-        </div>
-
-        <motion.div
-          initial={{
-            opacity: 0,
-            y: 22,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            delay: 0.12,
-            duration: 0.35,
-            ease: "easeOut",
-          }}
-          className="mt-7 rounded-[34px] border border-white/70 bg-white/[0.48] p-6 shadow-[0_18px_55px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
-        >
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="text-[12px] font-black uppercase tracking-[0.24em] text-slate-600">
-                Scorekarte
               </div>
 
-              <div className="mt-2 text-3xl font-black tracking-[-0.045em] text-slate-950">
-                Verlauf
-              </div>
+              <ModePill>
+                {history.length}/{HOLE_COUNT}
+              </ModePill>
             </div>
 
-            <ModePill>
-              {history.length}/{HOLE_COUNT}
-            </ModePill>
-          </div>
+            <div className="mt-5 space-y-2.5">
+              {history.length === 0 && (
+                <div className="rounded-[24px] border border-white/70 bg-white/[0.40] p-4 text-center text-sm font-bold text-slate-500 backdrop-blur-xl">
+                  Noch kein Score auf der Karte.
+                </div>
+              )}
 
-          <div className="mt-6 space-y-3">
-            {history.length === 0 && (
-              <div className="rounded-[26px] border border-white/70 bg-white/[0.42] p-5 text-center text-sm font-bold text-slate-500 backdrop-blur-xl">
-                Noch kein Score auf der Karte.
-              </div>
-            )}
+              {history
+                .slice()
+                .reverse()
+                .map((item) => {
+                  const historySpecialLabel =
+                    getHistorySpecialLabel(item)
 
-            {history
-              .slice()
-              .reverse()
-              .map((item) => {
-                const historySpecialLabel =
-                  getHistorySpecialLabel(item)
+                  const historyResultSummary =
+                    getHistoryResultSummary(item)
 
-                return (
-                  <div
-                    key={`${item.hole}-${item.winner}`}
-                    className="rounded-[28px] border border-white/70 bg-white/[0.42] px-5 py-4 shadow-sm backdrop-blur-xl"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="text-xl font-black tracking-[-0.035em] text-slate-950">
-                            Loch {item.hole}
+                  return (
+                    <div
+                      key={`${item.hole}-${item.winner}`}
+                      className="rounded-[24px] border border-white/70 bg-white/[0.42] px-4 py-3 shadow-sm backdrop-blur-xl"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="text-lg font-black tracking-[-0.035em] text-slate-950">
+                              Loch {item.hole}
+                            </div>
+
+                            {historySpecialLabel && (
+                              <div className="flex items-center gap-1 rounded-full bg-orange-500 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-white">
+                                <Sparkles size={9} />
+                                {historySpecialLabel}
+                              </div>
+                            )}
                           </div>
 
-                          {historySpecialLabel && (
-                            <div className="flex items-center gap-1 rounded-full bg-orange-500 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-white">
-                              <Sparkles size={10} />
-                              {historySpecialLabel}
-                            </div>
-                          )}
+                          <div className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                            Par {item.par}
+                          </div>
+
+                          <div className="mt-2 rounded-full bg-white/[0.62] px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 shadow-sm">
+                            {historyResultSummary}
+                          </div>
+
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            {toNumber(item.carryoverSkins, 0) > 0 && (
+                              <div className="rounded-full bg-orange-50 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-orange-600">
+                                Carry {getSkinsLabel(item.carryoverSkins)}
+                              </div>
+                            )}
+
+                            {toNumber(item.carryoverAdded, 0) > 0 && item.hasTie && (
+                              <div className="rounded-full bg-amber-50 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-amber-600">
+                                Add {getSkinsLabel(item.carryoverAdded)}
+                              </div>
+                            )}
+                          </div>
                         </div>
 
-                        <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                          Par {item.par}
-                        </div>
+                        <div className="shrink-0 text-right">
+                          <div className="text-lg font-black tracking-[-0.035em] text-slate-950">
+                            {item.hasTie
+                              ? "Carryover"
+                              : item.winner}
+                          </div>
 
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {toNumber(item.carryoverSkins, 0) > 0 && (
-                            <div className="rounded-full bg-orange-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-orange-600">
-                              Carry {getSkinsLabel(item.carryoverSkins)}
-                            </div>
-                          )}
-
-                          {toNumber(item.carryoverAdded, 0) > 0 && item.hasTie && (
-                            <div className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-amber-600">
-                              Add {getSkinsLabel(item.carryoverAdded)}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="shrink-0 text-right">
-                        <div className="text-xl font-black tracking-[-0.035em] text-slate-950">
-                          {item.hasTie
-                            ? "Carryover"
-                            : item.winner}
-                        </div>
-
-                        <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-amber-500">
-                          {getSkinsLabel(item.skins || 0)} · {formatPlainMoney(item.pot || 0)}
+                          <div className="mt-1 text-[9px] font-black uppercase tracking-widest text-amber-500">
+                            {getSkinsLabel(item.skins || 0)} · {formatPlainMoney(item.pot || 0)}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )
-              })}
-          </div>
-        </motion.div>
+                  )
+                })}
+            </div>
+          </motion.div>
 
-        {!matchFinished && (
-          <motion.button
-            type="button"
-            whileTap={{
-              scale: 0.98,
-            }}
-            onClick={() => setShowAbortModal(true)}
-            className="mt-6 w-full rounded-[30px] border border-red-100 bg-white/[0.58] py-5 text-sm font-black text-red-500 shadow-sm backdrop-blur-xl"
-          >
-            Match abbrechen
-          </motion.button>
-        )}
+          {!matchFinished && (
+            <motion.button
+              type="button"
+              whileTap={{
+                scale: 0.98,
+              }}
+              onClick={() => setShowAbortModal(true)}
+              className="mt-5 w-full rounded-[28px] border border-red-100 bg-white/[0.46] py-4 text-sm font-black text-red-500 shadow-sm backdrop-blur-xl"
+            >
+              Match abbrechen
+            </motion.button>
+          )}
+        </div>
       </div>
 
       {!matchFinished && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center px-5 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+        <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center px-5 pb-[calc(1.35rem+env(safe-area-inset-bottom))]">
           <div className="relative w-full max-w-md">
             <AnimatePresence>
               {showSavedFeedback && (
@@ -1224,7 +1285,7 @@ export default function LiveScoringScreen() {
               }}
               disabled={!wolffnSetupComplete}
               onClick={handleFinishHole}
-              className={`flex w-full items-center justify-between rounded-[34px] px-6 py-6 text-xl font-black text-white shadow-[0_20px_55px_rgba(15,23,42,0.22)] transition disabled:cursor-not-allowed disabled:opacity-45 ${
+              className={`flex w-full items-center justify-between rounded-[32px] px-6 py-5 text-xl font-black text-white shadow-[0_20px_55px_rgba(15,23,42,0.22)] transition disabled:cursor-not-allowed disabled:opacity-45 ${
                 isWolffnMode
                   ? "bg-slate-950"
                   : specialScoringEnabled
@@ -1238,8 +1299,8 @@ export default function LiveScoringScreen() {
                   : "Loch abschließen"}
               </span>
 
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/20">
-                <ChevronRight size={24} />
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
+                <ChevronRight size={23} />
               </span>
             </motion.button>
           </div>
@@ -1280,35 +1341,42 @@ export default function LiveScoringScreen() {
                 stiffness: 220,
                 damping: 18,
               }}
-              className="w-full max-w-sm overflow-hidden rounded-[42px] border border-white/70 bg-white/[0.78] p-10 text-center shadow-2xl backdrop-blur-2xl"
+              className="relative w-full max-w-sm overflow-hidden rounded-[42px] border border-white/20 bg-[#071819] p-10 text-center text-white shadow-2xl"
             >
               <div
-                className={`inline-flex rounded-2xl px-5 py-3 text-sm font-black ${celebration.color}`}
-              >
-                {celebration.result}
-              </div>
+                aria-hidden="true"
+                className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-emerald-400/32 via-emerald-500/8 to-transparent"
+              />
 
-              {celebration.specialScoringApplied &&
-                celebration.specialScoringLabel && (
-                  <div className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
-                    <Sparkles size={13} />
-                    {celebration.specialScoringLabel}
-                  </div>
-                )}
+              <div className="relative">
+                <div
+                  className={`inline-flex rounded-2xl px-5 py-3 text-sm font-black ${celebration.color}`}
+                >
+                  {celebration.result}
+                </div>
 
-              <div className="mt-6 text-6xl font-black tracking-[-0.06em] text-slate-950">
-                {celebration.player}
-              </div>
+                {celebration.specialScoringApplied &&
+                  celebration.specialScoringLabel && (
+                    <div className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
+                      <Sparkles size={13} />
+                      {celebration.specialScoringLabel}
+                    </div>
+                  )}
 
-              <div className="mt-4 text-lg font-bold text-slate-500">
-                holt {celebration.skins || 1}{" "}
-                {(celebration.skins || 1) === 1
-                  ? "Skin"
-                  : "Skins"}
-              </div>
+                <div className="mt-6 text-6xl font-black tracking-[-0.06em]">
+                  {celebration.player}
+                </div>
 
-              <div className="mt-6 text-7xl font-black tracking-[-0.07em] text-amber-500">
-                {formatMoney(celebration.pot)}
+                <div className="mt-4 text-lg font-bold text-slate-400">
+                  holt {celebration.skins || 1}{" "}
+                  {(celebration.skins || 1) === 1
+                    ? "Skin"
+                    : "Skins"}
+                </div>
+
+                <div className="mt-6 text-7xl font-black tracking-[-0.07em] text-amber-300">
+                  {formatMoney(celebration.pot)}
+                </div>
               </div>
             </motion.div>
           </motion.div>

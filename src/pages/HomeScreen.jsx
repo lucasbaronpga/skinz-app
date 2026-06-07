@@ -55,6 +55,13 @@ function formatMoney(value) {
   return "0€"
 }
 
+function formatPlainMoney(value) {
+  const amount =
+    roundMoney(value)
+
+  return `${formatEuroAmount(amount)}€`
+}
+
 function formatToPar(value) {
   const amount =
     toNumber(value, 0)
@@ -68,6 +75,30 @@ function formatToPar(value) {
   }
 
   return amount
+}
+
+function formatSkins(value) {
+  const amount =
+    toNumber(value, 0)
+
+  if (amount > 0) {
+    return `+${amount}`
+  }
+
+  if (amount < 0) {
+    return `${amount}`
+  }
+
+  return "0"
+}
+
+function formatSkinsAtStake(value) {
+  const amount =
+    toNumber(value, 0)
+
+  return amount === 1
+    ? "1 Skin"
+    : `${amount} Skinz`
 }
 
 function getMoneyColor(value) {
@@ -85,19 +116,19 @@ function getMoneyColor(value) {
   return "text-slate-950"
 }
 
-function getMoneyColorDark(value) {
+function getSkinsColor(value) {
   const amount =
     toNumber(value, 0)
 
   if (amount > 0) {
-    return "text-amber-300"
+    return "text-amber-500"
   }
 
   if (amount < 0) {
-    return "text-red-300"
+    return "text-red-500"
   }
 
-  return "text-white"
+  return "text-slate-950"
 }
 
 function getToParColor(value) {
@@ -246,6 +277,214 @@ function getModeLabel({
   return "Classic"
 }
 
+function getRoundModeLabel(round) {
+  const isWolffn =
+    roundIsWolffn(round)
+
+  const isProfessional =
+    !isWolffn &&
+    roundHasSpecialScoring(round)
+
+  return getModeLabel({
+    isWolffn,
+    isProfessional,
+  })
+}
+
+function getPlayerName(player) {
+  return (
+    player?.name ||
+    player?.playerName ||
+    player?.displayName ||
+    ""
+  )
+}
+
+function getPreferredPlayerName(round, playerStats) {
+  if (round?.playerName) {
+    return round.playerName
+  }
+
+  if (round?.currentPlayerName) {
+    return round.currentPlayerName
+  }
+
+  if (round?.profileName) {
+    return round.profileName
+  }
+
+  if (round?.userName) {
+    return round.userName
+  }
+
+  if (round?.winner) {
+    return round.winner
+  }
+
+  const firstStatsPlayer =
+    Array.isArray(playerStats) &&
+    playerStats.length > 0
+      ? playerStats[0]
+      : null
+
+  if (firstStatsPlayer?.name) {
+    return firstStatsPlayer.name
+  }
+
+  const firstRoundPlayer =
+    getRoundPlayers(round)[0]
+
+  return (
+    getPlayerName(firstRoundPlayer) ||
+    "Spieler"
+  )
+}
+
+function getRoundPlayer(round, playerStats) {
+  const preferredName =
+    getPreferredPlayerName(
+      round,
+      playerStats
+    )
+
+  const players =
+    getRoundPlayers(round)
+
+  const matchedPlayer =
+    players.find(
+      (player) =>
+        getPlayerName(player) === preferredName
+    )
+
+  if (matchedPlayer) {
+    return matchedPlayer
+  }
+
+  const winnerPlayer =
+    players.find(
+      (player) =>
+        getPlayerName(player) === round?.winner
+    )
+
+  if (winnerPlayer) {
+    return winnerPlayer
+  }
+
+  return players[0] || null
+}
+
+function getRoundPar(round) {
+  return toNumber(
+    round?.course?.par ||
+      round?.currentCourse?.par ||
+      round?.coursePar ||
+      round?.par,
+    72
+  )
+}
+
+function getPlayerTotalToPar(player, round) {
+  const directValue =
+    [
+      player?.totalToPar,
+      player?.toPar,
+      round?.totalToPar,
+    ].find((value) =>
+      Number.isFinite(Number(value))
+    )
+
+  if (directValue !== undefined) {
+    return toNumber(directValue, 0)
+  }
+
+  if (Array.isArray(player?.holes)) {
+    const holesWithValues =
+      player.holes.filter(
+        (playedHole) =>
+          Number.isFinite(Number(playedHole?.score)) &&
+          Number.isFinite(Number(playedHole?.par))
+      )
+
+    if (holesWithValues.length > 0) {
+      return holesWithValues.reduce(
+        (sum, playedHole) =>
+          sum +
+          toNumber(playedHole.score, 0) -
+          toNumber(playedHole.par, 0),
+        0
+      )
+    }
+  }
+
+  return 0
+}
+
+function getPlayerTotalStrokes(player, round) {
+  const directValue =
+    [
+      player?.totalStrokes,
+      player?.strokes,
+      player?.totalScore,
+      round?.totalStrokes,
+      round?.strokes,
+      round?.totalScore,
+    ].find((value) =>
+      Number.isFinite(Number(value))
+    )
+
+  if (directValue !== undefined) {
+    return toNumber(directValue, 0)
+  }
+
+  if (Array.isArray(player?.holes)) {
+    const holesWithScores =
+      player.holes.filter((playedHole) =>
+        Number.isFinite(Number(playedHole?.score))
+      )
+
+    if (holesWithScores.length >= 9) {
+      return holesWithScores.reduce(
+        (sum, playedHole) =>
+          sum + toNumber(playedHole.score, 0),
+        0
+      )
+    }
+  }
+
+  return (
+    getRoundPar(round) +
+    getPlayerTotalToPar(player, round)
+  )
+}
+
+function getPlayerSkins(player, round) {
+  const value =
+    [
+      player?.skins,
+      player?.totalSkins,
+      round?.skins,
+    ].find((item) =>
+      Number.isFinite(Number(item))
+    )
+
+  return toNumber(value, 0)
+}
+
+function getPlayerWinnings(player, round) {
+  const value =
+    [
+      player?.winnings,
+      player?.earnings,
+      player?.totalWinnings,
+      round?.winnings,
+      round?.earnings,
+    ].find((item) =>
+      Number.isFinite(Number(item))
+    )
+
+  return toNumber(value, 0)
+}
+
 function DarkBadge({
   children,
 }) {
@@ -263,7 +502,6 @@ export default function HomeScreen() {
     hole,
     currentPot,
     currentCourse,
-    currentBaseSkins,
     currentSkinsAtStake,
     players,
     playerStats,
@@ -275,12 +513,31 @@ export default function HomeScreen() {
     specialScoringEnabled,
   } = useGame()
 
-  const liveLeader =
+  const liveSortedPlayers =
     [...players].sort(
       (a, b) =>
         toNumber(b.winnings, 0) -
         toNumber(a.winnings, 0)
-    )[0] || null
+    )
+
+  const liveLeader =
+    liveSortedPlayers[0] || null
+
+  const liveRunnerUp =
+    liveSortedPlayers[1] || null
+
+  const liveLeaderHasTie =
+    Boolean(
+      liveLeader &&
+        liveRunnerUp &&
+        toNumber(liveLeader.winnings, 0) ===
+          toNumber(liveRunnerUp.winnings, 0)
+    )
+
+  const liveLeaderName =
+    liveLeader && !liveLeaderHasTie
+      ? liveLeader.name
+      : "All Square"
 
   const latestRound =
     [...completedRounds].sort(
@@ -289,11 +546,41 @@ export default function HomeScreen() {
         toNumber(a.createdAt, 0)
     )[0] || null
 
-  const latestRoundIsWolffn =
-    roundIsWolffn(latestRound)
+  const latestRoundPlayer =
+    getRoundPlayer(
+      latestRound,
+      playerStats
+    )
 
-  const latestRoundHasSpecialScoring =
-    roundHasSpecialScoring(latestRound)
+  const latestRoundPlayerName =
+    getPreferredPlayerName(
+      latestRound,
+      playerStats
+    )
+
+  const latestRoundStrokes =
+    getPlayerTotalStrokes(
+      latestRoundPlayer,
+      latestRound
+    )
+
+  const latestRoundTotalToPar =
+    getPlayerTotalToPar(
+      latestRoundPlayer,
+      latestRound
+    )
+
+  const latestRoundSkins =
+    getPlayerSkins(
+      latestRoundPlayer,
+      latestRound
+    )
+
+  const latestRoundWinnings =
+    getPlayerWinnings(
+      latestRoundPlayer,
+      latestRound
+    )
 
   const topPlayers =
     [...playerStats]
@@ -326,7 +613,6 @@ export default function HomeScreen() {
 
       <div className="relative px-6 pt-12">
         <div className="mx-auto max-w-md">
-          {/* Header */}
           <motion.div
             initial={{
               opacity: 0,
@@ -345,13 +631,8 @@ export default function HomeScreen() {
             <h1 className="text-[4.6rem] font-black leading-none tracking-[-0.075em] text-slate-950">
               Skinz
             </h1>
-
-            <div className="mt-3 text-[1.65rem] font-semibold tracking-[-0.04em] text-slate-600">
-              Private Golf Matches
-            </div>
           </motion.div>
 
-          {/* Live / Start Hero */}
           {hasActiveMatch ? (
             <motion.button
               type="button"
@@ -392,7 +673,7 @@ export default function HomeScreen() {
                         {currentModeLabel}
                       </div>
 
-                      <div className="mt-7 text-[3.7rem] font-black uppercase leading-none tracking-[-0.045em]">
+                      <div className="mt-7 text-[3.45rem] font-black uppercase leading-none tracking-[-0.045em]">
                         Loch {hole}
                       </div>
                     </div>
@@ -406,53 +687,41 @@ export default function HomeScreen() {
                     </div>
                   </div>
 
-                  <div
-                    className={`mt-5 text-[4.45rem] font-black leading-none tracking-[-0.07em] ${getMoneyColorDark(currentPot)}`}
-                  >
-                    {formatMoney(currentPot)}
-                  </div>
-
-                  <div className="mt-8 flex items-end justify-between gap-5">
-                    <div className="min-w-0">
-                      <div className="truncate text-2xl font-black tracking-[-0.035em]">
-                        {liveLeader?.name || "-"}
-                      </div>
-
-                      <div className="mt-2 truncate text-sm font-bold text-slate-400">
-                        {getCurrentCourseName(currentCourse)}
-                      </div>
+                  <div className="mt-7 grid grid-cols-2 items-end gap-4">
+                    <div className="min-w-0 text-[3.45rem] font-black leading-none tracking-[-0.07em] text-amber-300">
+                      {formatSkinsAtStake(currentSkinsAtStake)}
                     </div>
 
-                    <div className="shrink-0 text-right">
-                      <div className="text-xl font-semibold tracking-[-0.03em] text-slate-300">
-                        Leading
-                      </div>
-
-                      <div className="mt-2 text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
-                        {activeMatchId || "-"}
-                      </div>
+                    <div className="min-w-0 text-right text-[3.45rem] font-black leading-none tracking-[-0.07em] text-slate-100">
+                      {formatPlainMoney(currentPot)}
                     </div>
                   </div>
 
-                  <div className="mt-7 grid grid-cols-2 gap-3 border-t border-white/10 pt-5">
-                    <div>
-                      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                        Base
+                  <div className="mt-8 border-t border-white/10 pt-5">
+                    <div className="flex items-end justify-between gap-5">
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                          Leading
+                        </div>
+
+                        <div className="mt-2 truncate text-2xl font-black tracking-[-0.035em]">
+                          {liveLeaderName}
+                        </div>
                       </div>
 
-                      <div className="mt-1 text-2xl font-black">
-                        {toNumber(currentBaseSkins, 1)}
+                      <div className="shrink-0 text-right">
+                        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                          Match
+                        </div>
+
+                        <div className="mt-2 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+                          {activeMatchId || "-"}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="text-right">
-                      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                        At Stake
-                      </div>
-
-                      <div className="mt-1 text-2xl font-black">
-                        {toNumber(currentSkinsAtStake, 1)}
-                      </div>
+                    <div className="mt-5 truncate text-sm font-bold text-slate-400">
+                      {getCurrentCourseName(currentCourse)}
                     </div>
                   </div>
                 </div>
@@ -517,7 +786,6 @@ export default function HomeScreen() {
             </motion.div>
           )}
 
-          {/* New Round Shortcut */}
           {hasActiveMatch && (
             <motion.div
               initial={{
@@ -556,7 +824,6 @@ export default function HomeScreen() {
             </motion.div>
           )}
 
-          {/* Last Round Compact Cards */}
           {latestRound && (
             <motion.div
               initial={{
@@ -583,14 +850,44 @@ export default function HomeScreen() {
                   Last Round
                 </div>
 
-                <div className="mt-9 truncate text-[2.35rem] font-black leading-none tracking-[-0.06em]">
-                  {latestRound.winner || "Unbekannt"}
+                <div className="mt-6 truncate text-[2.2rem] font-black leading-none tracking-[-0.06em]">
+                  {latestRoundPlayerName}
                 </div>
 
-                <div
-                  className={`mt-4 text-[2.4rem] font-black leading-none tracking-[-0.06em] ${getMoneyColor(latestRound.winnings)}`}
-                >
-                  {formatMoney(latestRound.winnings)}
+                <div className="mt-4 flex items-end justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                      Schläge
+                    </div>
+
+                    <div className="mt-1 text-[2.15rem] font-black leading-none tracking-[-0.06em] text-slate-950">
+                      {latestRoundStrokes || "-"}
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 text-right">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                      To Par
+                    </div>
+
+                    <div
+                      className={`mt-1 text-[1.9rem] font-black leading-none tracking-[-0.055em] ${getToParColor(latestRoundTotalToPar)}`}
+                    >
+                      {formatToPar(latestRoundTotalToPar)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex items-end justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-black text-slate-950">
+                      {getRoundModeLabel(latestRound)}
+                    </div>
+
+                    <div className="mt-1 truncate text-xs font-semibold text-slate-500">
+                      {latestRound.id || "SKZ-0000"}
+                    </div>
+                  </div>
                 </div>
               </button>
 
@@ -604,37 +901,28 @@ export default function HomeScreen() {
                 </div>
 
                 <div
-                  className={`mt-9 whitespace-nowrap text-[2.65rem] font-black leading-none tracking-[-0.06em] ${getMoneyColor(latestRound.winnings)}`}
+                  className={`mt-8 text-[3.35rem] font-black leading-none tracking-[-0.07em] ${getSkinsColor(latestRoundSkins)}`}
                 >
-                  {formatMoney(latestRound.winnings)}
+                  {formatSkins(latestRoundSkins)}
                 </div>
 
-                <div className="mt-8 flex items-end justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-black text-slate-950">
-                      {latestRoundIsWolffn
-                        ? "🐺 Wolffn"
-                        : latestRoundHasSpecialScoring
-                        ? "Pro"
-                        : "Classic"}
-                    </div>
+                <div className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                  Skinz
+                </div>
 
-                    <div className="mt-1 truncate text-xs font-semibold text-slate-500">
-                      {latestRound.id || "SKZ-0000"}
-                    </div>
-                  </div>
+                <div
+                  className={`mt-8 whitespace-nowrap text-[2.45rem] font-black leading-none tracking-[-0.06em] ${getMoneyColor(latestRoundWinnings)}`}
+                >
+                  {formatMoney(latestRoundWinnings)}
+                </div>
 
-                  <div
-                    className={`shrink-0 text-2xl font-black ${getToParColor(latestRound.totalToPar)}`}
-                  >
-                    {formatToPar(latestRound.totalToPar)}
-                  </div>
+                <div className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                  Earnings
                 </div>
               </button>
             </motion.div>
           )}
 
-          {/* Season Leaderboard */}
           <motion.div
             initial={{
               opacity: 0,
