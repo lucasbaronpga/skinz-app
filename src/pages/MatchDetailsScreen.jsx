@@ -1,6 +1,4 @@
-import {
-  useState,
-} from "react"
+import { useState } from "react"
 
 import {
   AnimatePresence,
@@ -39,24 +37,18 @@ function roundMoney(value) {
 }
 
 function formatEuroAmount(value) {
-  const amount =
-    roundMoney(Math.abs(value))
-
-  const hasCents =
-    Math.abs(amount % 1) > 0
+  const amount = roundMoney(Math.abs(value))
+  const hasCents = Math.abs(amount % 1) > 0
 
   if (hasCents) {
-    return amount
-      .toFixed(2)
-      .replace(".", ",")
+    return amount.toFixed(2).replace(".", ",")
   }
 
   return amount.toFixed(0)
 }
 
 function formatMoney(value) {
-  const amount =
-    roundMoney(value)
+  const amount = roundMoney(value)
 
   if (amount > 0) {
     return `+${formatEuroAmount(amount)}€`
@@ -70,54 +62,23 @@ function formatMoney(value) {
 }
 
 function formatPlainMoney(value) {
-  const amount =
-    roundMoney(value)
+  const amount = roundMoney(value)
 
   return `${formatEuroAmount(amount)}€`
-}
-
-function getMoneyColor(value) {
-  const amount = toNumber(value, 0)
-
-  if (amount > 0) {
-    return "text-yellow-500"
-  }
-
-  if (amount < 0) {
-    return "text-red-500"
-  }
-
-  return "text-slate-950"
 }
 
 function getMoneyColorDark(value) {
   const amount = toNumber(value, 0)
 
   if (amount > 0) {
-    return "text-yellow-400"
+    return "text-yellow-300"
   }
 
   if (amount < 0) {
-    return "text-red-400"
+    return "text-red-300"
   }
 
   return "text-white"
-}
-
-function formatSkinSaldo(value) {
-  return Math.abs(
-    toNumber(value, 0)
-  )
-}
-
-function getSkinColor(value) {
-  const amount = toNumber(value, 0)
-
-  if (amount < 0) {
-    return "text-red-500"
-  }
-
-  return "text-slate-950"
 }
 
 function formatToPar(value) {
@@ -152,11 +113,11 @@ function getToParColorDark(value) {
   const amount = toNumber(value, 0)
 
   if (amount < 0) {
-    return "text-emerald-400"
+    return "text-emerald-300"
   }
 
   if (amount > 0) {
-    return "text-red-400"
+    return "text-red-300"
   }
 
   return "text-white"
@@ -164,7 +125,7 @@ function getToParColorDark(value) {
 
 function getScoreStyle(label) {
   if (label === "Albatross") {
-    return "bg-yellow-400 border-yellow-400 text-black"
+    return "bg-yellow-300 border-yellow-300 text-black"
   }
 
   if (label === "Eagle") {
@@ -192,7 +153,7 @@ function getScoreStyle(label) {
 
 function getRankStyle(index) {
   if (index === 0) {
-    return "bg-yellow-400 text-black"
+    return "bg-yellow-300 text-black shadow-lg shadow-yellow-500/20"
   }
 
   if (index === 1) {
@@ -212,111 +173,15 @@ function getRoundPlayers(round) {
     : []
 }
 
-function getSortedPlayers(round) {
-  return [...getRoundPlayers(round)].sort(
-    (a, b) =>
-      toNumber(b.winnings, 0) -
-        toNumber(a.winnings, 0) ||
-      toNumber(a.totalToPar, 0) -
-        toNumber(b.totalToPar, 0)
-  )
-}
-
-function getWinner(round) {
-  const players = getRoundPlayers(round)
-
-  return (
-    players.find(
-      (player) =>
-        player.name === round?.winner
-    ) ||
-    getSortedPlayers(round)[0] ||
-    null
-  )
-}
-
-function getCourseName(round) {
-  return (
-    round?.course?.name ||
-    "Erster Golfclub Westpfalz"
-  )
-}
-
-function getCourseLocation(round) {
-  return (
-    round?.course?.location ||
-    "Westpfalz"
-  )
-}
-
-function getCoursePar(round) {
-  return (
-    round?.course?.par ||
-    72
-  )
-}
-
-function getRoundDate(round) {
-  return (
-    round?.date ||
-    "Unbekannt"
-  )
-}
-
-function getRoundId(round) {
-  return (
-    round?.id ||
-    "SKZ-0000"
-  )
-}
-
 function getPlayerHoles(player) {
   return Array.isArray(player?.holes)
     ? player.holes
     : []
 }
 
-function countResult(player, result) {
-  return getPlayerHoles(player).filter(
-    (hole) =>
-      hole.result?.label === result
-  ).length
-}
-
-function getHoleToPar(hole) {
-  return (
-    toNumber(hole?.score, 0) -
-    toNumber(hole?.par, 0)
-  )
-}
-
-function getNineTotal(holes) {
-  return holes.reduce(
-    (total, hole) =>
-      total + toNumber(hole.score, 0),
-    0
-  )
-}
-
-function getNinePar(holes) {
-  return holes.reduce(
-    (total, hole) =>
-      total + toNumber(hole.par, 0),
-    0
-  )
-}
-
-function getNineToPar(holes) {
-  return (
-    getNineTotal(holes) -
-    getNinePar(holes)
-  )
-}
-
 function getPlayerTotalScore(player) {
   return getPlayerHoles(player).reduce(
-    (total, hole) =>
-      total + toNumber(hole.score, 0),
+    (total, hole) => total + toNumber(hole.score, 0),
     0
   )
 }
@@ -329,10 +194,92 @@ function getPlayerTotalPar(player, fallbackPar) {
   }
 
   return holes.reduce(
-    (total, hole) =>
-      total + toNumber(hole.par, 0),
+    (total, hole) => total + toNumber(hole.par, 0),
     0
   )
+}
+
+function getCoursePar(round) {
+  return round?.course?.par || 72
+}
+
+function getSortedPlayers(round) {
+  const coursePar = getCoursePar(round)
+
+  return [...getRoundPlayers(round)].sort((a, b) => {
+    const scoreA = getPlayerTotalScore(a)
+    const scoreB = getPlayerTotalScore(b)
+    const parA = getPlayerTotalPar(a, coursePar)
+    const parB = getPlayerTotalPar(b, coursePar)
+    const toParA = scoreA - parA
+    const toParB = scoreB - parB
+
+    return (
+      toParA - toParB ||
+      scoreA - scoreB ||
+      toNumber(b.winnings, 0) - toNumber(a.winnings, 0)
+    )
+  })
+}
+
+function getWinner(round) {
+  const players = getRoundPlayers(round)
+
+  return (
+    players.find(
+      (player) => player.name === round?.winner
+    ) ||
+    getSortedPlayers(round)[0] ||
+    null
+  )
+}
+
+function getCourseName(round) {
+  return round?.course?.name || "Erster Golfclub Westpfalz"
+}
+
+function getCourseLocation(round) {
+  return round?.course?.location || "Westpfalz"
+}
+
+function getRoundDate(round) {
+  return round?.date || "Unbekannt"
+}
+
+function getRoundId(round) {
+  return round?.id || "SKZ-0000"
+}
+
+function countResult(player, result) {
+  return getPlayerHoles(player).filter(
+    (hole) => hole.result?.label === result
+  ).length
+}
+
+function countPars(player) {
+  return countResult(player, "Par")
+}
+
+function getHoleToPar(hole) {
+  return toNumber(hole?.score, 0) - toNumber(hole?.par, 0)
+}
+
+function getNineTotal(holes) {
+  return holes.reduce(
+    (total, hole) => total + toNumber(hole.score, 0),
+    0
+  )
+}
+
+function getNinePar(holes) {
+  return holes.reduce(
+    (total, hole) => total + toNumber(hole.par, 0),
+    0
+  )
+}
+
+function getNineToPar(holes) {
+  return getNineTotal(holes) - getNinePar(holes)
 }
 
 function isWolffnItem(item) {
@@ -360,8 +307,7 @@ function getHoleBonusSkins(hole) {
 }
 
 function getHoleBonusLabel(hole) {
-  const bonusSkins =
-    getHoleBonusSkins(hole)
+  const bonusSkins = getHoleBonusSkins(hole)
 
   if (bonusSkins <= 0) {
     return null
@@ -384,8 +330,7 @@ function getHoleBonusLabel(hole) {
 }
 
 function getHoleBonusStyle(hole) {
-  const label =
-    getHoleBonusLabel(hole)
+  const label = getHoleBonusLabel(hole)
 
   if (!label) {
     return ""
@@ -415,8 +360,7 @@ function getHistoryBonusSkins(item) {
 }
 
 function getHistoryBonusLabel(item) {
-  const bonusSkins =
-    getHistoryBonusSkins(item)
+  const bonusSkins = getHistoryBonusSkins(item)
 
   if (bonusSkins <= 0) {
     return null
@@ -439,8 +383,7 @@ function getHistoryBonusLabel(item) {
 }
 
 function getHistoryBonusStyle(item) {
-  const label =
-    getHistoryBonusLabel(item)
+  const label = getHistoryBonusLabel(item)
 
   if (!label) {
     return ""
@@ -454,8 +397,7 @@ function getHistoryBonusStyle(item) {
 }
 
 function formatSkinsText(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
   return amount === 1
     ? "1 Skin"
@@ -476,6 +418,142 @@ function getWolffnFormatLabel(item) {
   return "Wolffn"
 }
 
+function getWonHoleNumbers(history, index) {
+  const item = history[index]
+
+  if (!item || item.hasTie) {
+    return []
+  }
+
+  const holes = [item.hole]
+
+  for (
+    let previousIndex = index - 1;
+    previousIndex >= 0;
+    previousIndex -= 1
+  ) {
+    const previousItem = history[previousIndex]
+
+    if (!previousItem?.hasTie) {
+      break
+    }
+
+    holes.unshift(previousItem.hole)
+  }
+
+  return holes.filter(
+    (hole) => hole !== undefined && hole !== null
+  )
+}
+
+function formatWonHolesLabel(holes) {
+  if (!holes.length || holes.length === 1) {
+    return null
+  }
+
+  return `Holes: ${holes.join(" + ")}`
+}
+
+function normalizeResultLabel(value) {
+  if (!value) {
+    return "Par"
+  }
+
+  const label = String(value)
+
+  if (label.includes("Albatross")) {
+    return "Albatross"
+  }
+
+  if (label.includes("Eagle")) {
+    return "Eagle"
+  }
+
+  if (label.includes("Birdie")) {
+    return "Birdie"
+  }
+
+  if (label.includes("Double")) {
+    return "Double Bogey"
+  }
+
+  if (label.includes("Triple")) {
+    return "Triple+"
+  }
+
+  if (label.includes("Bogey")) {
+    return "Bogey"
+  }
+
+  if (label.includes("Par")) {
+    return "Par"
+  }
+
+  return label
+}
+
+function getHistoryResultLabel(item) {
+  return normalizeResultLabel(
+    item?.winningResult ||
+      item?.tieResult ||
+      item?.bestResult ||
+      item?.scoreMultiplierLabel ||
+      item?.bonusResult ||
+      item?.result?.label ||
+      item?.resultLabel ||
+      "Par"
+  )
+}
+
+function getHistoryOutcomeLabel(item) {
+  const resultLabel = getHistoryResultLabel(item)
+
+  return item?.hasTie
+    ? `Tied with ${resultLabel}`
+    : `Won with ${resultLabel}`
+}
+
+function getHistoryOutcomeStyle(item) {
+  const resultLabel = getHistoryResultLabel(item)
+
+  if (item?.hasTie) {
+    if (resultLabel === "Birdie") {
+      return "bg-red-50 text-red-600"
+    }
+
+    if (
+      resultLabel === "Eagle" ||
+      resultLabel === "Albatross"
+    ) {
+      return "bg-orange-50 text-orange-600"
+    }
+
+    return "bg-slate-100 text-slate-600"
+  }
+
+  if (resultLabel === "Albatross") {
+    return "bg-yellow-300 text-black"
+  }
+
+  if (resultLabel === "Eagle") {
+    return "bg-orange-500 text-white"
+  }
+
+  if (resultLabel === "Birdie") {
+    return "bg-red-500 text-white"
+  }
+
+  if (
+    resultLabel === "Bogey" ||
+    resultLabel === "Double Bogey" ||
+    resultLabel === "Triple+"
+  ) {
+    return "bg-blue-500 text-white"
+  }
+
+  return "bg-emerald-100 text-emerald-700"
+}
+
 function SummaryCard({
   label,
   score,
@@ -483,22 +561,20 @@ function SummaryCard({
   toPar,
 }) {
   return (
-    <div className="rounded-[24px] border border-slate-100 bg-white p-4 text-center shadow-sm">
-      <div className="text-xs font-black uppercase tracking-widest text-slate-400">
+    <div className="rounded-[24px] border border-white/60 bg-white/70 p-4 text-center shadow-sm backdrop-blur-xl">
+      <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
         {label}
       </div>
 
-      <div className="mt-2 text-3xl font-black text-slate-950">
+      <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
         {score}
       </div>
 
-      <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
+      <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
         Par {par}
       </div>
 
-      <div
-        className={`mt-2 text-lg font-black ${getToParColor(toPar)}`}
-      >
+      <div className={`mt-2 text-lg font-black ${getToParColor(toPar)}`}>
         {formatToPar(toPar)}
       </div>
     </div>
@@ -528,7 +604,7 @@ function HoleGrid({
 }) {
   if (!holes.length) {
     return (
-      <div className="rounded-[24px] border border-slate-100 bg-white p-5 text-center text-sm font-bold text-slate-400 shadow-sm">
+      <div className="rounded-[24px] border border-white/60 bg-white/70 p-5 text-center text-sm font-bold text-slate-400 shadow-sm backdrop-blur-xl">
         Keine Lochdaten vorhanden.
       </div>
     )
@@ -537,35 +613,22 @@ function HoleGrid({
   return (
     <div className="grid grid-cols-3 gap-3">
       {holes.map((hole) => {
-        const toPar =
-          getHoleToPar(hole)
-
-        const score =
-          toNumber(hole?.score, 0)
-
-        const par =
-          toNumber(hole?.par, 0)
-
-        const holeNumber =
-          hole?.hole || "-"
-
-        const resultLabel =
-          hole?.result?.label || "Par"
-
-        const bonusLabel =
-          getHoleBonusLabel(hole)
-
-        const bonusStyle =
-          getHoleBonusStyle(hole)
+        const toPar = getHoleToPar(hole)
+        const score = toNumber(hole?.score, 0)
+        const par = toNumber(hole?.par, 0)
+        const holeNumber = hole?.hole || "-"
+        const resultLabel = hole?.result?.label || "Par"
+        const bonusLabel = getHoleBonusLabel(hole)
+        const bonusStyle = getHoleBonusStyle(hole)
 
         return (
           <div
             key={`${holeNumber}-${score}-${par}`}
-            className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm"
+            className="rounded-[24px] border border-white/60 bg-white/70 p-4 shadow-sm backdrop-blur-xl"
           >
             <div className="flex items-center justify-between">
-              <div className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
-                Loch
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                Hole
               </div>
 
               <div className="text-xl font-black text-slate-950">
@@ -582,7 +645,7 @@ function HoleGrid({
             </div>
 
             <div className="mt-4 flex items-center justify-between gap-2">
-              <div className="text-xs font-black uppercase tracking-widest text-slate-400">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                 Par {par}
               </div>
 
@@ -601,14 +664,6 @@ function HoleGrid({
               label={bonusLabel}
               className={bonusStyle}
             />
-
-            {hole?.skinDelta !== undefined && (
-              <div
-                className={`mt-3 text-center text-[10px] font-black uppercase tracking-widest ${getSkinColor(hole.skinDelta)}`}
-              >
-                {formatSkinSaldo(hole.skinDelta)} Skin
-              </div>
-            )}
           </div>
         )
       })}
@@ -617,32 +672,24 @@ function HoleGrid({
 }
 
 export default function MatchDetailsScreen() {
-  const {
-    id,
-  } = useParams()
-
+  const { id } = useParams()
   const navigate = useNavigate()
-
-  const {
-    completedRounds,
-  } = useGame()
+  const { completedRounds } = useGame()
 
   const [
     expandedPlayer,
     setExpandedPlayer,
   ] = useState(null)
 
-  const round =
-    completedRounds.find(
-      (completedRound) =>
-        String(completedRound.id) ===
-        String(id)
-    )
+  const round = completedRounds.find(
+    (completedRound) =>
+      String(completedRound.id) === String(id)
+  )
 
   if (!round) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f5f5f7] px-5">
-        <div className="w-full max-w-sm rounded-[40px] bg-white/90 p-10 text-center shadow-sm backdrop-blur-xl">
+        <div className="w-full max-w-sm rounded-[40px] border border-white/70 bg-white/80 p-10 text-center shadow-sm backdrop-blur-2xl">
           <div
             className="text-5xl"
             aria-hidden="true"
@@ -670,31 +717,19 @@ export default function MatchDetailsScreen() {
     )
   }
 
-  const sortedPlayers =
-    getSortedPlayers(round)
-
-  const winner =
-    getWinner(round)
+  const sortedPlayers = getSortedPlayers(round)
+  const winner = getWinner(round)
 
   const winnerName =
     round.winner ||
     winner?.name ||
     "Unbekannt"
 
-  const courseName =
-    getCourseName(round)
-
-  const courseLocation =
-    getCourseLocation(round)
-
-  const coursePar =
-    getCoursePar(round)
-
-  const roundId =
-    getRoundId(round)
-
-  const roundDate =
-    getRoundDate(round)
+  const courseName = getCourseName(round)
+  const courseLocation = getCourseLocation(round)
+  const coursePar = getCoursePar(round)
+  const roundId = getRoundId(round)
+  const roundDate = getRoundDate(round)
 
   const roundHistory =
     Array.isArray(round.history)
@@ -706,24 +741,28 @@ export default function MatchDetailsScreen() {
     winner?.winnings ??
     0
 
-  const wolffnRound =
-    isWolffnRound(round)
+  const wolffnRound = isWolffnRound(round)
 
   const bonusModeWasEnabled =
     !wolffnRound &&
     Boolean(
       round.specialScoringEnabled ||
-      round.bonusSkinsEnabled ||
-      round.eagleBonusEnabled ||
-      roundHistory.some((item) =>
-        getHistoryBonusSkins(item) > 0
-      )
+        round.bonusSkinsEnabled ||
+        round.eagleBonusEnabled ||
+        roundHistory.some((item) =>
+          getHistoryBonusSkins(item) > 0
+        )
     )
 
   return (
     <div className="min-h-screen bg-[#f5f5f7] pb-[calc(9rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
-      <div className="mx-auto max-w-md px-5">
-        {/* Header */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -left-28 top-0 h-80 w-80 rounded-full bg-emerald-300/30 blur-3xl" />
+        <div className="absolute -right-28 top-40 h-80 w-80 rounded-full bg-yellow-200/40 blur-3xl" />
+        <div className="absolute bottom-0 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-white blur-3xl" />
+      </div>
+
+      <div className="relative mx-auto max-w-md px-5">
         <div className="flex items-center justify-between">
           <motion.button
             type="button"
@@ -732,7 +771,7 @@ export default function MatchDetailsScreen() {
             }}
             onClick={() => navigate("/matches")}
             aria-label="Zurück zum Rundenarchiv"
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm"
+            className="flex h-14 w-14 items-center justify-center rounded-full border border-white/70 bg-white/70 text-slate-950 shadow-sm backdrop-blur-xl"
           >
             <ArrowLeft size={22} />
           </motion.button>
@@ -748,11 +787,10 @@ export default function MatchDetailsScreen() {
           </div>
         </div>
 
-        {/* Winner Hero */}
         <motion.div
           initial={{
             opacity: 0,
-            y: 20,
+            y: 18,
           }}
           animate={{
             opacity: 1,
@@ -762,90 +800,90 @@ export default function MatchDetailsScreen() {
             duration: 0.35,
             ease: "easeOut",
           }}
-          className="mt-8 overflow-hidden rounded-[42px] bg-slate-950 text-white shadow-2xl"
+          className="mt-7 overflow-hidden rounded-[38px] bg-[#071819] text-white shadow-2xl shadow-slate-950/20"
         >
-          <div className="p-8">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <div className="text-xs font-black uppercase tracking-[0.3em] text-slate-500">
-                  Winner
+          <div className="relative p-6">
+            <div className="absolute -right-16 -top-16 h-52 w-52 rounded-full bg-yellow-300/20 blur-3xl" />
+            <div className="absolute -left-16 bottom-0 h-52 w-52 rounded-full bg-emerald-300/15 blur-3xl" />
+
+            <div className="relative">
+              <div className="text-xs font-black uppercase tracking-[0.3em] text-white/40">
+                Winner
+              </div>
+
+              <div className="mt-3 flex items-center gap-3">
+                <div className="truncate text-5xl font-black tracking-tight">
+                  {winnerName}
                 </div>
 
-                <div className="mt-4 flex items-center gap-3">
-                  <div className="truncate text-6xl font-black tracking-tight">
-                    {winnerName}
-                  </div>
-
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-yellow-400 text-black shadow-lg">
-                    <Trophy size={26} />
-                  </div>
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-yellow-300 text-black shadow-lg shadow-yellow-400/20">
+                  <Trophy size={23} />
                 </div>
               </div>
-            </div>
 
-            <div className="mt-6 flex flex-wrap gap-2">
-              <div className="inline-flex rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
-                Match {roundId}
-              </div>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <div className="inline-flex rounded-full bg-white/12 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-white">
+                  Match {roundId}
+                </div>
 
-              <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
-                <MapPin size={13} />
+                <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-white">
+                  <MapPin size={13} />
 
-                <span className="max-w-[230px] truncate">
-                  {courseName}
-                </span>
-              </div>
-
-              {wolffnRound && (
-                <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-950">
-                  <span aria-hidden="true">
-                    🐺
+                  <span className="max-w-[230px] truncate">
+                    {courseName}
                   </span>
-                  Wolffn
-                </div>
-              )}
-
-              {bonusModeWasEnabled && (
-                <div className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
-                  <Sparkles size={13} />
-                  Skinz Professional
-                </div>
-              )}
-            </div>
-
-            <div className="mt-10 flex items-end justify-between gap-5">
-              <div>
-                <div className="text-xs font-black uppercase tracking-widest text-slate-500">
-                  Earnings
                 </div>
 
-                <div
-                  className={`mt-2 text-6xl font-black ${getMoneyColorDark(displayEarnings)}`}
-                >
-                  {formatMoney(displayEarnings)}
-                </div>
+                {wolffnRound && (
+                  <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[11px] font-black uppercase tracking-widest text-slate-950">
+                    <span aria-hidden="true">
+                      🐺
+                    </span>
+                    Wolffn
+                  </div>
+                )}
+
+                {bonusModeWasEnabled && (
+                  <div className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-white">
+                    <Sparkles size={13} />
+                    Skinz Professional
+                  </div>
+                )}
               </div>
 
-              <div className="text-right">
-                <div className="text-xs font-black uppercase tracking-widest text-slate-500">
-                  To Par
+              <div className="mt-7 grid grid-cols-2 gap-3">
+                <div className="rounded-[28px] bg-black/24 p-5">
+                  <div className="text-[11px] font-black uppercase tracking-widest text-white/40">
+                    Earnings
+                  </div>
+
+                  <div
+                    className={`mt-2 text-4xl font-black tracking-tight ${getMoneyColorDark(displayEarnings)}`}
+                  >
+                    {formatMoney(displayEarnings)}
+                  </div>
                 </div>
 
-                <div
-                  className={`mt-2 text-5xl font-black ${getToParColorDark(winner?.totalToPar)}`}
-                >
-                  {formatToPar(winner?.totalToPar)}
+                <div className="rounded-[28px] bg-black/24 p-5 text-right">
+                  <div className="text-[11px] font-black uppercase tracking-widest text-white/40">
+                    To Par
+                  </div>
+
+                  <div
+                    className={`mt-2 text-4xl font-black tracking-tight ${getToParColorDark(winner?.totalToPar)}`}
+                  >
+                    {formatToPar(winner?.totalToPar)}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </motion.div>
 
-        {/* Golfplatz Card */}
         <motion.div
           initial={{
             opacity: 0,
-            y: 20,
+            y: 18,
           }}
           animate={{
             opacity: 1,
@@ -856,15 +894,15 @@ export default function MatchDetailsScreen() {
             duration: 0.35,
             ease: "easeOut",
           }}
-          className="mt-8 rounded-[36px] bg-white/90 p-6 shadow-sm backdrop-blur-xl"
+          className="mt-5 rounded-[34px] border border-white/70 bg-white/62 p-6 shadow-sm backdrop-blur-2xl"
         >
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 text-slate-400">
+              <div className="flex items-center gap-2 text-slate-500">
                 <MapPin size={18} />
 
                 <div className="text-xs font-black uppercase tracking-[0.25em]">
-                  Golfplatz
+                  Course
                 </div>
               </div>
 
@@ -872,7 +910,7 @@ export default function MatchDetailsScreen() {
                 {courseName}
               </div>
 
-              <div className="mt-2 text-sm font-bold text-slate-400">
+              <div className="mt-2 text-sm font-bold text-slate-500">
                 {courseLocation}
               </div>
             </div>
@@ -882,24 +920,23 @@ export default function MatchDetailsScreen() {
                 {coursePar}
               </div>
 
-              <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
+              <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-500">
                 Par
               </div>
             </div>
           </div>
         </motion.div>
 
-        {/* Hole Results */}
         {roundHistory.length > 0 && (
-          <div className="mt-8 rounded-[40px] bg-white/90 p-5 shadow-sm backdrop-blur-xl">
+          <div className="mt-5 rounded-[38px] border border-white/70 bg-white/62 p-5 shadow-sm backdrop-blur-2xl">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
+                <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-500">
                   Match Details
                 </div>
 
                 <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-                  Löcher
+                  Holes
                 </div>
               </div>
 
@@ -912,43 +949,44 @@ export default function MatchDetailsScreen() {
             </div>
 
             <div className="mt-6 space-y-3">
-              {roundHistory.map((item) => {
-                const wolffnHole =
-                  isWolffnItem(item)
-
-                const bonusLabel =
-                  getHistoryBonusLabel(item)
-
-                const bonusStyle =
-                  getHistoryBonusStyle(item)
-
-                const bonusSkins =
-                  getHistoryBonusSkins(item)
-
-                const carryoverSkins =
-                  toNumber(item.carryoverSkins, 0)
-
-                const currentHoleValue =
-                  toNumber(item.currentHoleValue, 0)
-
+              {roundHistory.map((item, index) => {
+                const wolffnHole = isWolffnItem(item)
+                const bonusLabel = getHistoryBonusLabel(item)
+                const bonusStyle = getHistoryBonusStyle(item)
+                const bonusSkins = getHistoryBonusSkins(item)
+                const currentHoleValue = toNumber(item.currentHoleValue, 0)
                 const scoreMultiplierLabel =
                   item.scoreMultiplierLabel ||
                   item.bonusResult ||
                   null
-
-                const wolffnMultiplier =
-                  toNumber(item.wolffnMultiplier, 1)
+                const wolffnMultiplier = toNumber(item.wolffnMultiplier, 1)
+                const wonHoles = getWonHoleNumbers(roundHistory, index)
+                const wonHolesLabel = formatWonHolesLabel(wonHoles)
+                const outcomeLabel = getHistoryOutcomeLabel(item)
+                const outcomeStyle = getHistoryOutcomeStyle(item)
 
                 return (
                   <div
-                    key={`${roundId}-history-${item.hole}-${item.winner}`}
-                    className="rounded-[24px] border border-slate-100 bg-white px-5 py-4 shadow-sm"
+                    key={`${roundId}-history-${item.hole}-${item.winner || index}`}
+                    className="rounded-[26px] border border-white/70 bg-white/74 px-5 py-4 shadow-sm backdrop-blur-xl"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div>
                           <div className="text-lg font-black text-slate-950">
-                            Loch {item.hole}
+                            Hole {item.hole}
+                          </div>
+
+                          <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
+                            Par {item.par}
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <div
+                            className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-widest ${outcomeStyle}`}
+                          >
+                            {outcomeLabel}
                           </div>
 
                           {wolffnHole && (
@@ -968,21 +1006,23 @@ export default function MatchDetailsScreen() {
                               {bonusLabel}
                             </div>
                           )}
-                        </div>
 
-                        <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                          Par {item.par}
+                          {wonHolesLabel && !item.hasTie && (
+                            <div className="rounded-full bg-slate-950 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white">
+                              {wonHolesLabel}
+                            </div>
+                          )}
                         </div>
 
                         {wolffnHole && (
-                          <div className="mt-3 rounded-[20px] bg-slate-50 px-4 py-3">
-                            <div className="text-xs font-black uppercase tracking-widest text-slate-400">
+                          <div className="mt-3 rounded-[20px] bg-slate-950 px-4 py-3 text-white">
+                            <div className="text-xs font-black uppercase tracking-widest text-white/40">
                               Teams
                             </div>
 
-                            <div className="mt-2 text-sm font-black leading-relaxed text-slate-950">
+                            <div className="mt-2 text-sm font-black leading-relaxed">
                               {joinTeamNames(item.wolffnTeamA)}
-                              <span className="mx-2 text-slate-400">
+                              <span className="mx-2 text-white/40">
                                 vs
                               </span>
                               {joinTeamNames(item.wolffnTeamB)}
@@ -1010,19 +1050,13 @@ export default function MatchDetailsScreen() {
                           )}
 
                           {wolffnHole && currentHoleValue > 0 && (
-                            <div className="rounded-full bg-yellow-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-yellow-600">
+                            <div className="rounded-full bg-yellow-100 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-yellow-700">
                               Value {formatSkinsText(currentHoleValue)}
                             </div>
                           )}
 
-                          {carryoverSkins > 0 && (
-                            <div className="rounded-full bg-orange-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-orange-600">
-                              Carry {formatSkinsText(carryoverSkins)}
-                            </div>
-                          )}
-
                           {!wolffnHole && bonusSkins > 0 && (
-                            <div className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                            <div className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
                               Bonus {formatSkinsText(bonusSkins)}
                             </div>
                           )}
@@ -1048,55 +1082,23 @@ export default function MatchDetailsScreen() {
           </div>
         )}
 
-        {/* Final Leaderboard */}
-        <div className="mt-8 rounded-[40px] bg-white/90 p-5 shadow-sm backdrop-blur-xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
-                Final Scores
-              </div>
-
-              <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-                Leaderboard
-              </div>
-            </div>
-
-            <div
-              className="text-4xl"
-              aria-hidden="true"
-            >
-              🏆
+        <div className="mt-5 rounded-[38px] border border-white/70 bg-white/62 p-5 shadow-sm backdrop-blur-2xl">
+          <div>
+            <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-500">
+              Final Scores
             </div>
           </div>
 
           <div className="mt-6 space-y-4">
             {sortedPlayers.map((player, index) => {
-              const isExpanded =
-                expandedPlayer === player.name
-
-              const playerHoles =
-                getPlayerHoles(player)
-
-              const frontNine =
-                playerHoles.slice(0, 9)
-
-              const backNine =
-                playerHoles.slice(9, 18)
-
-              const totalScore =
-                getPlayerTotalScore(player)
-
-              const totalPar =
-                getPlayerTotalPar(
-                  player,
-                  coursePar
-                )
-
-              const totalToPar =
-                totalScore - totalPar
-
-              const isWinner =
-                player.name === winnerName
+              const isExpanded = expandedPlayer === player.name
+              const playerHoles = getPlayerHoles(player)
+              const frontNine = playerHoles.slice(0, 9)
+              const backNine = playerHoles.slice(9, 18)
+              const totalScore = getPlayerTotalScore(player)
+              const totalPar = getPlayerTotalPar(player, coursePar)
+              const totalToPar = totalScore - totalPar
+              const isWinner = index === 0
 
               return (
                 <div key={`${roundId}-${player.name}`}>
@@ -1113,10 +1115,10 @@ export default function MatchDetailsScreen() {
                       )
                     }
                     aria-expanded={isExpanded}
-                    className={`w-full rounded-[32px] border px-5 py-5 text-left transition-all duration-300 ${
+                    className={`w-full rounded-[32px] border px-5 py-5 text-left shadow-sm transition-all duration-300 ${
                       isWinner
-                        ? "border-emerald-100 bg-emerald-50"
-                        : "border-slate-100 bg-white"
+                        ? "border-yellow-300/70 bg-yellow-100/80"
+                        : "border-white/70 bg-white/74"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-4">
@@ -1132,18 +1134,8 @@ export default function MatchDetailsScreen() {
                             {player.name}
                           </div>
 
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            <div
-                              className={`text-sm font-black uppercase tracking-widest ${getSkinColor(player.skins)}`}
-                            >
-                              {formatSkinSaldo(player.skins)} Skinz
-                            </div>
-
-                            <div
-                              className={`text-sm font-black uppercase tracking-widest ${getMoneyColor(player.winnings)}`}
-                            >
-                              {formatMoney(player.winnings)}
-                            </div>
+                          <div className="mt-2 text-sm font-black uppercase tracking-widest text-slate-400">
+                            Score {totalScore} · Par {totalPar}
                           </div>
                         </div>
                       </div>
@@ -1151,9 +1143,9 @@ export default function MatchDetailsScreen() {
                       <div className="flex shrink-0 items-center gap-3">
                         <div className="text-right">
                           <div
-                            className={`text-5xl font-black ${getToParColor(player.totalToPar)}`}
+                            className={`text-5xl font-black ${getToParColor(totalToPar)}`}
                           >
-                            {formatToPar(player.totalToPar)}
+                            {formatToPar(totalToPar)}
                           </div>
 
                           <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
@@ -1201,7 +1193,7 @@ export default function MatchDetailsScreen() {
                         className="overflow-hidden"
                       >
                         <div className="mt-4 grid grid-cols-3 gap-3">
-                          <div className="rounded-[24px] border border-slate-100 bg-white p-4 text-center shadow-sm">
+                          <div className="rounded-[24px] border border-white/60 bg-white/70 p-4 text-center shadow-sm backdrop-blur-xl">
                             <div className="flex justify-center">
                               <Flame
                                 size={24}
@@ -1213,12 +1205,12 @@ export default function MatchDetailsScreen() {
                               {countResult(player, "Birdie")}
                             </div>
 
-                            <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
+                            <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
                               Birdies
                             </div>
                           </div>
 
-                          <div className="rounded-[24px] border border-slate-100 bg-white p-4 text-center shadow-sm">
+                          <div className="rounded-[24px] border border-white/60 bg-white/70 p-4 text-center shadow-sm backdrop-blur-xl">
                             <div
                               className="text-2xl"
                               aria-hidden="true"
@@ -1230,27 +1222,25 @@ export default function MatchDetailsScreen() {
                               {countResult(player, "Eagle")}
                             </div>
 
-                            <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
+                            <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
                               Eagles
                             </div>
                           </div>
 
-                          <div className="rounded-[24px] border border-slate-100 bg-white p-4 text-center shadow-sm">
+                          <div className="rounded-[24px] border border-white/60 bg-white/70 p-4 text-center shadow-sm backdrop-blur-xl">
                             <div
                               className="text-2xl"
                               aria-hidden="true"
                             >
-                              💰
+                              ⛳️
                             </div>
 
-                            <div
-                              className={`mt-3 text-3xl font-black ${getMoneyColor(player.winnings)}`}
-                            >
-                              {formatMoney(player.winnings)}
+                            <div className="mt-3 text-3xl font-black text-slate-950">
+                              {countPars(player)}
                             </div>
 
-                            <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                              Earnings
+                            <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                              Pars
                             </div>
                           </div>
                         </div>
