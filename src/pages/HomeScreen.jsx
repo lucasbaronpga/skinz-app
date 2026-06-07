@@ -602,19 +602,24 @@ export default function HomeScreen() {
     })
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#e8ebe5] pb-[calc(13rem+env(safe-area-inset-bottom))] text-slate-950">
+    <div className="relative min-h-[100dvh] overflow-hidden bg-[#e8ebe5] pb-[calc(13rem+env(safe-area-inset-bottom))] text-slate-950">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(255,255,255,0.95),transparent_30%),radial-gradient(circle_at_85%_18%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_50%_78%,rgba(234,179,8,0.16),transparent_36%)]"
+        className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_15%_8%,rgba(255,255,255,0.96),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(16,185,129,0.20),transparent_32%),radial-gradient(circle_at_48%_82%,rgba(234,179,8,0.16),transparent_36%)]"
       />
 
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-5 top-6 bottom-8 rounded-[56px] border border-white/70 bg-white/18 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_35px_90px_rgba(15,23,42,0.18)] backdrop-blur-3xl"
+        className="pointer-events-none fixed inset-0 bg-white/[0.18] shadow-[inset_0_1px_1px_rgba(255,255,255,0.75)] backdrop-blur-3xl"
       />
 
-      <div className="relative px-6 pt-12">
-        <div className="mx-auto max-w-md">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.42),rgba(255,255,255,0.08)_45%,rgba(255,255,255,0.24))]"
+      />
+
+      <div className="relative px-5 pt-10 sm:pt-12">
+        <div className="mx-auto w-full max-w-md">
           <motion.div
             initial={{
               opacity: 0,
@@ -659,7 +664,7 @@ export default function HomeScreen() {
               }
               className="mt-10 w-full overflow-hidden rounded-[38px] border border-white/20 bg-[#071819] text-left text-white shadow-[0_28px_70px_rgba(7,24,25,0.42)]"
             >
-              <div className="relative p-8">
+              <div className="relative p-7">
                 <div
                   aria-hidden="true"
                   className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-emerald-400/32 via-emerald-500/8 to-transparent"
@@ -748,7 +753,7 @@ export default function HomeScreen() {
               }}
               className="mt-10 overflow-hidden rounded-[38px] border border-white/20 bg-[#071819] text-white shadow-[0_28px_70px_rgba(7,24,25,0.42)]"
             >
-              <div className="relative p-8">
+              <div className="relative p-7">
                 <div
                   aria-hidden="true"
                   className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-emerald-400/32 via-emerald-500/8 to-transparent"
