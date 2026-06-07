@@ -7,8 +7,8 @@ import {
 } from "framer-motion"
 
 import {
-  Home,
   ClipboardList,
+  Home,
   Plus,
   Trophy,
   User,
@@ -96,8 +96,11 @@ export default function BottomNav() {
         className="pointer-events-auto grid w-full max-w-md grid-cols-5 items-center rounded-full border border-white/60 bg-white/85 px-4 py-4 shadow-[0_20px_60px_rgba(15,23,42,0.14)] backdrop-blur-2xl"
       >
         {navItems.map((item) => {
-          const Icon = item.icon
-          const isPrimary = Boolean(item.primary)
+          const Icon =
+            item.icon
+
+          const isPrimary =
+            Boolean(item.primary)
 
           return (
             <NavLink

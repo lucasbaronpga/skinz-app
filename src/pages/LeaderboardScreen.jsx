@@ -16,9 +16,9 @@ import {
   ChevronDown,
   Crown,
   Flame,
-  Trophy,
   MapPin,
   Sparkles,
+  Trophy,
 } from "lucide-react"
 
 import {
@@ -244,7 +244,10 @@ function getRoundId(round) {
 }
 
 function getPlayerTotalScore(player) {
-  if (Array.isArray(player?.holes) && player.holes.length > 0) {
+  if (
+    Array.isArray(player?.holes) &&
+    player.holes.length > 0
+  ) {
     return player.holes.reduce(
       (total, hole) =>
         total + toNumber(hole.score, 0),
@@ -308,23 +311,20 @@ function roundHasSpecialScoring(round) {
     return true
   }
 
-  const playerHoleHasSpecialScoring =
-    getRoundPlayers(round).some((player) =>
-      Array.isArray(player?.holes) &&
-      player.holes.some(
-        (playedHole) =>
-          !roundIsWolffn(playedHole) &&
-          (
-            playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
-            playedHole?.specialScoringEnabled ||
-            playedHole?.specialScoringApplied ||
-            toNumber(playedHole?.bonusSkins, 0) > 0 ||
-            playedHole?.eagleBonusApplied
-          )
-      )
+  return getRoundPlayers(round).some((player) =>
+    Array.isArray(player?.holes) &&
+    player.holes.some(
+      (playedHole) =>
+        !roundIsWolffn(playedHole) &&
+        (
+          playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
+          playedHole?.specialScoringEnabled ||
+          playedHole?.specialScoringApplied ||
+          toNumber(playedHole?.bonusSkins, 0) > 0 ||
+          playedHole?.eagleBonusApplied
+        )
     )
-
-  return playerHoleHasSpecialScoring
+  )
 }
 
 function playerHasSpecialScoringInRound(player) {
@@ -357,8 +357,14 @@ export default function LeaderboardScreen() {
     setExpandedPlayer,
   ] = useState(null)
 
+  const rankedPlayers =
+    playerStats.filter(
+      (player) =>
+        toNumber(player?.roundsPlayed, 0) > 0
+    )
+
   const sortedPlayers =
-    [...playerStats].sort(
+    [...rankedPlayers].sort(
       (a, b) =>
         toNumber(b.totalWinnings, 0) -
           toNumber(a.totalWinnings, 0) ||
@@ -383,7 +389,6 @@ export default function LeaderboardScreen() {
   return (
     <div className="min-h-screen bg-[#f5f5f7] pb-[calc(9rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
       <div className="mx-auto max-w-md px-5">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <motion.button
             type="button"
@@ -408,7 +413,6 @@ export default function LeaderboardScreen() {
           </div>
         </div>
 
-        {/* Title */}
         <motion.div
           initial={{
             opacity: 0,
@@ -433,7 +437,6 @@ export default function LeaderboardScreen() {
           </p>
         </motion.div>
 
-        {/* Empty State */}
         {sortedPlayers.length === 0 && (
           <motion.div
             initial={{
@@ -476,7 +479,6 @@ export default function LeaderboardScreen() {
           </motion.div>
         )}
 
-        {/* Season Leader */}
         {seasonLeader && (
           <motion.div
             initial={{
@@ -540,10 +542,9 @@ export default function LeaderboardScreen() {
           </motion.div>
         )}
 
-        {/* Rankings */}
         {sortedPlayers.length > 0 && (
           <div className="mt-8">
-            <div className="flex items-center justify-between">
+            <div className="flex items-end justify-between gap-5">
               <div>
                 <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
                   Global Ranking
@@ -554,7 +555,7 @@ export default function LeaderboardScreen() {
                 </h2>
               </div>
 
-              <div className="text-sm font-black uppercase tracking-widest text-slate-400">
+              <div className="pb-1 text-right text-sm font-black uppercase tracking-widest text-slate-400">
                 Winnings
               </div>
             </div>
@@ -594,7 +595,6 @@ export default function LeaderboardScreen() {
                       ease: "easeOut",
                     }}
                   >
-                    {/* Player Card */}
                     <motion.button
                       type="button"
                       whileTap={{
@@ -676,7 +676,6 @@ export default function LeaderboardScreen() {
                         </div>
                       </div>
 
-                      {/* Quick Stats */}
                       <div className="mt-5 grid grid-cols-3 gap-3">
                         <div className="rounded-[22px] border border-slate-100 bg-white p-3 text-center shadow-sm">
                           <div className="text-2xl font-black text-slate-950">
@@ -712,7 +711,6 @@ export default function LeaderboardScreen() {
                       </div>
                     </motion.button>
 
-                    {/* Expanded Details */}
                     <AnimatePresence>
                       {isExpanded && (
                         <motion.div
@@ -858,11 +856,10 @@ export default function LeaderboardScreen() {
                               })}
                             </div>
 
-                            {/* Performance */}
                             <div className="mt-6 grid grid-cols-2 gap-4">
                               <div className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm">
                                 <div className="text-sm font-bold text-slate-400">
-                                  Score
+                                  Last Score
                                 </div>
 
                                 <div className="mt-2 text-5xl font-black text-slate-950">
@@ -872,7 +869,7 @@ export default function LeaderboardScreen() {
 
                               <div className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm">
                                 <div className="text-sm font-bold text-slate-400">
-                                  Winnings
+                                  Earnings
                                 </div>
 
                                 <div

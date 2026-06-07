@@ -1,4 +1,4 @@
-const CACHE_NAME = "skinz-cache-v2"
+const CACHE_NAME = "skinz-cache-v3"
 
 const APP_SHELL = [
   "/",
@@ -15,7 +15,13 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) => cache.addAll(APP_SHELL))
+      .then((cache) =>
+        Promise.allSettled(
+          APP_SHELL.map((url) =>
+            cache.add(url)
+          )
+        )
+      )
       .then(() => self.skipWaiting())
   )
 })
@@ -36,12 +42,16 @@ self.addEventListener("activate", (event) => {
 })
 
 self.addEventListener("fetch", (event) => {
-  const { request } = event
-  const url = new URL(request.url)
+  const {
+    request,
+  } = event
 
   if (request.method !== "GET") {
     return
   }
+
+  const url =
+    new URL(request.url)
 
   if (url.origin !== self.location.origin) {
     return
@@ -50,8 +60,28 @@ self.addEventListener("fetch", (event) => {
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
-        .catch(() => caches.match("/index.html"))
-        .then((response) => response || caches.match("/"))
+        .then((response) => {
+          const responseClone =
+            response.clone()
+
+          caches
+            .open(CACHE_NAME)
+            .then((cache) =>
+              cache.put("/index.html", responseClone)
+            )
+            .catch(() => {
+              // Cache-Update darf Navigation nicht blockieren.
+            })
+
+          return response
+        })
+        .catch(() =>
+          caches
+            .match("/index.html")
+            .then((cachedResponse) =>
+              cachedResponse || caches.match("/")
+            )
+        )
     )
 
     return
@@ -73,11 +103,17 @@ self.addEventListener("fetch", (event) => {
             return networkResponse
           }
 
-          const responseClone = networkResponse.clone()
+          const responseClone =
+            networkResponse.clone()
 
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseClone)
-          })
+          caches
+            .open(CACHE_NAME)
+            .then((cache) =>
+              cache.put(request, responseClone)
+            )
+            .catch(() => {
+              // Cache-Write darf die Response nicht verhindern.
+            })
 
           return networkResponse
         })

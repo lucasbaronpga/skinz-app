@@ -115,7 +115,8 @@ function getNextStakePreset(currentStake) {
 }
 
 function buildInitialPlayers(userName) {
-  const cleanedUserName = userName?.trim()
+  const cleanedUserName =
+    userName?.trim()
 
   if (!cleanedUserName) {
     return [
@@ -389,7 +390,6 @@ export default function RoundSetupScreen() {
       />
 
       <div className="relative mx-auto max-w-md px-6">
-        {/* Header */}
         <motion.div
           initial={{
             opacity: 0,
@@ -418,7 +418,6 @@ export default function RoundSetupScreen() {
           </p>
         </motion.div>
 
-        {/* Active Match Warning */}
         {hasActiveMatch && (
           <motion.div
             initial={{
@@ -450,7 +449,6 @@ export default function RoundSetupScreen() {
           </motion.div>
         )}
 
-        {/* Main Setup Hero */}
         <motion.div
           initial={{
             opacity: 0,
@@ -562,7 +560,6 @@ export default function RoundSetupScreen() {
           </div>
         </motion.div>
 
-        {/* Game Mode */}
         <motion.div
           initial={{
             opacity: 0,
@@ -593,6 +590,10 @@ export default function RoundSetupScreen() {
             <ModePill>
               {gameModeMeta.shortLabel}
             </ModePill>
+          </div>
+
+          <div className="mt-3 text-sm font-semibold leading-relaxed text-slate-500">
+            {gameModeMeta.description}
           </div>
 
           <div className="mt-6 space-y-3">
@@ -700,7 +701,6 @@ export default function RoundSetupScreen() {
           )}
         </motion.div>
 
-        {/* Course Selection */}
         <motion.div
           initial={{
             opacity: 0,
@@ -796,7 +796,6 @@ export default function RoundSetupScreen() {
           </div>
         </motion.div>
 
-        {/* Flight */}
         <motion.div
           initial={{
             opacity: 0,

@@ -1494,7 +1494,8 @@ export function GameProvider({ children }) {
             ? 0
             : bonusSkins,
 
-        carryoverSkins: carryover,
+        carryoverSkins:
+          carryover,
 
         carryoverAdded:
           hasTie
@@ -1524,7 +1525,8 @@ export function GameProvider({ children }) {
             ? "Carryover"
             : winner?.name,
 
-        winningScore: lowestScore,
+        winningScore:
+          lowestScore,
 
         course: {
           id: courseSnapshot.id,

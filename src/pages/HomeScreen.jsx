@@ -193,15 +193,12 @@ function roundIsWolffn(round) {
     return true
   }
 
-  const playerHoleHasWolffn =
-    getRoundPlayers(round).some((player) =>
-      Array.isArray(player?.holes) &&
-      player.holes.some((playedHole) =>
-        itemIsWolffn(playedHole)
-      )
+  return getRoundPlayers(round).some((player) =>
+    Array.isArray(player?.holes) &&
+    player.holes.some((playedHole) =>
+      itemIsWolffn(playedHole)
     )
-
-  return playerHoleHasWolffn
+  )
 }
 
 function roundHasSpecialScoring(round) {
@@ -242,24 +239,21 @@ function roundHasSpecialScoring(round) {
     return true
   }
 
-  const playerHoleHasSpecialScoring =
-    getRoundPlayers(round).some((player) =>
-      Array.isArray(player?.holes) &&
-      player.holes.some(
-        (playedHole) =>
-          !itemIsWolffn(playedHole) &&
-          (
-            playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
-            playedHole?.gameModeLabel === "Skinz Professional" ||
-            playedHole?.specialScoringEnabled ||
-            playedHole?.specialScoringApplied ||
-            toNumber(playedHole?.bonusSkins, 0) > 0 ||
-            playedHole?.eagleBonusApplied
-          )
-      )
+  return getRoundPlayers(round).some((player) =>
+    Array.isArray(player?.holes) &&
+    player.holes.some(
+      (playedHole) =>
+        !itemIsWolffn(playedHole) &&
+        (
+          playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
+          playedHole?.gameModeLabel === "Skinz Professional" ||
+          playedHole?.specialScoringEnabled ||
+          playedHole?.specialScoringApplied ||
+          toNumber(playedHole?.bonusSkins, 0) > 0 ||
+          playedHole?.eagleBonusApplied
+        )
     )
-
-  return playerHoleHasSpecialScoring
+  )
 }
 
 function getModeLabel({
@@ -496,7 +490,8 @@ function DarkBadge({
 }
 
 export default function HomeScreen() {
-  const navigate = useNavigate()
+  const navigate =
+    useNavigate()
 
   const {
     hole,
@@ -546,6 +541,9 @@ export default function HomeScreen() {
         toNumber(a.createdAt, 0)
     )[0] || null
 
+  const latestRoundId =
+    latestRound?.id || "SKZ-0000"
+
   const latestRoundPlayer =
     getRoundPlayer(
       latestRound,
@@ -584,6 +582,10 @@ export default function HomeScreen() {
 
   const topPlayers =
     [...playerStats]
+      .filter(
+        (player) =>
+          toNumber(player?.roundsPlayed, 0) > 0
+      )
       .sort(
         (a, b) =>
           toNumber(b.totalWinnings, 0) -
@@ -652,7 +654,9 @@ export default function HomeScreen() {
                 duration: 0.35,
                 ease: "easeOut",
               }}
-              onClick={() => navigate("/live")}
+              onClick={() =>
+                navigate("/live")
+              }
               className="mt-10 w-full overflow-hidden rounded-[38px] border border-white/20 bg-[#071819] text-left text-white shadow-[0_28px_70px_rgba(7,24,25,0.42)]"
             >
               <div className="relative p-8">
@@ -805,7 +809,7 @@ export default function HomeScreen() {
             >
               <Link
                 to="/round"
-                className="flex items-center justify-between rounded-[32px] border border-white/70 bg-white/46 px-6 py-5 shadow-[0_18px_48px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
+                className="flex items-center justify-between rounded-[32px] border border-white/70 bg-white/[0.46] px-6 py-5 shadow-[0_18px_48px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
               >
                 <div>
                   <div className="text-2xl font-black tracking-[-0.035em]">
@@ -843,8 +847,10 @@ export default function HomeScreen() {
             >
               <button
                 type="button"
-                onClick={() => navigate(`/matches/${latestRound.id}`)}
-                className="min-h-[14rem] rounded-[34px] border border-white/70 bg-white/46 p-6 text-left shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
+                onClick={() =>
+                  navigate(`/matches/${latestRoundId}`)
+                }
+                className="min-h-[14rem] rounded-[34px] border border-white/70 bg-white/[0.46] p-6 text-left shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
               >
                 <div className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">
                   Last Round
@@ -885,7 +891,7 @@ export default function HomeScreen() {
                     </div>
 
                     <div className="mt-1 truncate text-xs font-semibold text-slate-500">
-                      {latestRound.id || "SKZ-0000"}
+                      {latestRoundId}
                     </div>
                   </div>
                 </div>
@@ -893,8 +899,10 @@ export default function HomeScreen() {
 
               <button
                 type="button"
-                onClick={() => navigate(`/matches/${latestRound.id}`)}
-                className="min-h-[14rem] rounded-[34px] border border-white/70 bg-white/46 p-6 text-left shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
+                onClick={() =>
+                  navigate(`/matches/${latestRoundId}`)
+                }
+                className="min-h-[14rem] rounded-[34px] border border-white/70 bg-white/[0.46] p-6 text-left shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
               >
                 <div className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">
                   Result
@@ -937,7 +945,7 @@ export default function HomeScreen() {
               duration: 0.35,
               ease: "easeOut",
             }}
-            className="mt-7 rounded-[34px] border border-white/70 bg-white/48 p-6 shadow-[0_18px_55px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
+            className="mt-7 rounded-[34px] border border-white/70 bg-white/[0.48] p-6 shadow-[0_18px_55px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -948,15 +956,17 @@ export default function HomeScreen() {
 
               <button
                 type="button"
-                onClick={() => navigate("/leaderboard")}
-                className="rounded-full border border-white/70 bg-white/46 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600 backdrop-blur-xl"
+                onClick={() =>
+                  navigate("/leaderboard")
+                }
+                className="rounded-full border border-white/70 bg-white/[0.46] px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600 backdrop-blur-xl"
               >
                 Alle
               </button>
             </div>
 
             {topPlayers.length === 0 && (
-              <div className="mt-6 rounded-[24px] border border-white/70 bg-white/40 p-5 text-center text-sm font-bold text-slate-500 backdrop-blur-xl">
+              <div className="mt-6 rounded-[24px] border border-white/70 bg-white/[0.40] p-5 text-center text-sm font-bold text-slate-500 backdrop-blur-xl">
                 Noch kein Leaderboard vorhanden.
               </div>
             )}
@@ -966,7 +976,9 @@ export default function HomeScreen() {
                 <button
                   type="button"
                   key={player.name}
-                  onClick={() => navigate("/leaderboard")}
+                  onClick={() =>
+                    navigate("/leaderboard")
+                  }
                   className="flex w-full items-baseline justify-between gap-5 text-left"
                 >
                   <div className="min-w-0 truncate text-[1.75rem] font-black leading-none tracking-[-0.045em]">
@@ -998,7 +1010,7 @@ export default function HomeScreen() {
                 duration: 0.35,
                 ease: "easeOut",
               }}
-              className="mt-7 rounded-[34px] border border-white/70 bg-white/46 p-6 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
+              className="mt-7 rounded-[34px] border border-white/70 bg-white/[0.46] p-6 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
             >
               <div className="text-[12px] font-black uppercase tracking-[0.24em] text-slate-500">
                 Ready

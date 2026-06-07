@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useMemo,
   useState,
@@ -11,7 +12,7 @@ const STORAGE_KEY = "skinz-user"
 
 function createUser(name) {
   return {
-    name: name.trim(),
+    name: String(name || "").trim(),
     createdAt: Date.now(),
   }
 }
@@ -27,13 +28,15 @@ function isValidUser(user) {
 
 function getInitialUser() {
   try {
-    const savedUser = localStorage.getItem(STORAGE_KEY)
+    const savedUser =
+      localStorage.getItem(STORAGE_KEY)
 
     if (!savedUser) {
       return null
     }
 
-    const parsedUser = JSON.parse(savedUser)
+    const parsedUser =
+      JSON.parse(savedUser)
 
     if (!isValidUser(parsedUser)) {
       localStorage.removeItem(STORAGE_KEY)
@@ -45,39 +48,58 @@ function getInitialUser() {
       name: parsedUser.name.trim(),
     }
   } catch {
-    localStorage.removeItem(STORAGE_KEY)
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+    } catch {
+      // localStorage kann z. B. im Private Mode blockiert sein.
+    }
+
     return null
   }
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => getInitialUser())
+  const [
+    user,
+    setUser,
+  ] = useState(() => getInitialUser())
 
   const isLoading = false
 
-  function login(name) {
-    const cleanedName = String(name ?? "").trim()
+  const login = useCallback((name) => {
+    const cleanedName =
+      String(name ?? "").trim()
 
     if (!cleanedName) {
       return false
     }
 
-    const userData = createUser(cleanedName)
+    const userData =
+      createUser(cleanedName)
 
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(userData)
-    )
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(userData)
+      )
+    } catch {
+      // Login soll auch funktionieren, wenn localStorage nicht verfügbar ist.
+    }
 
     setUser(userData)
 
     return true
-  }
+  }, [])
 
-  function logout() {
-    localStorage.removeItem(STORAGE_KEY)
+  const logout = useCallback(() => {
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+    } catch {
+      // Logout soll auch funktionieren, wenn localStorage nicht verfügbar ist.
+    }
+
     setUser(null)
-  }
+  }, [])
 
   const value = useMemo(
     () => ({
@@ -87,7 +109,12 @@ export function AuthProvider({ children }) {
       isLoading,
       isAuthenticated: Boolean(user),
     }),
-    [user, isLoading]
+    [
+      user,
+      login,
+      logout,
+      isLoading,
+    ]
   )
 
   return (
@@ -98,7 +125,8 @@ export function AuthProvider({ children }) {
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext)
+  const context =
+    useContext(AuthContext)
 
   if (!context) {
     throw new Error("useAuth must be used within an AuthProvider.")

@@ -3,13 +3,13 @@ import {
 } from "framer-motion"
 
 import {
+  Crown,
   DollarSign,
-  Target,
   Flag,
   LogOut,
-  Crown,
   MapPin,
   Sparkles,
+  Target,
   Trophy,
   User,
 } from "lucide-react"
@@ -71,7 +71,8 @@ function formatMoney(value) {
 }
 
 function getMoneyColor(value) {
-  const amount = toNumber(value, 0)
+  const amount =
+    toNumber(value, 0)
 
   if (amount > 0) {
     return "text-yellow-500"
@@ -85,7 +86,8 @@ function getMoneyColor(value) {
 }
 
 function getMoneyColorDark(value) {
-  const amount = toNumber(value, 0)
+  const amount =
+    toNumber(value, 0)
 
   if (amount > 0) {
     return "text-yellow-300"
@@ -114,7 +116,8 @@ function formatSkinSaldo(value) {
 }
 
 function getSkinColor(value) {
-  const amount = toNumber(value, 0)
+  const amount =
+    toNumber(value, 0)
 
   if (amount > 0) {
     return "text-slate-950"
@@ -128,7 +131,8 @@ function getSkinColor(value) {
 }
 
 function formatToPar(value) {
-  const amount = toNumber(value, 0)
+  const amount =
+    toNumber(value, 0)
 
   if (amount === 0) {
     return "E"
@@ -142,7 +146,8 @@ function formatToPar(value) {
 }
 
 function getToParColor(value) {
-  const amount = toNumber(value, 0)
+  const amount =
+    toNumber(value, 0)
 
   if (amount < 0) {
     return "text-emerald-500"
@@ -229,8 +234,46 @@ function getInitials(name) {
   return cleanedName.charAt(0).toUpperCase()
 }
 
+function itemIsWolffn(item) {
+  return Boolean(
+    item?.gameMode === GAME_MODES.WOLFFN ||
+      item?.gameModeLabel === "Wolffn" ||
+      item?.wolffnSetup ||
+      item?.wolffnFormat ||
+      item?.wolffnPlayer ||
+      Array.isArray(item?.wolffnTeamA) ||
+      Array.isArray(item?.wolffnTeamB)
+  )
+}
+
 function roundIsWolffn(round) {
-  return round?.gameMode === GAME_MODES.WOLFFN
+  if (!round) {
+    return false
+  }
+
+  if (
+    round?.gameMode === GAME_MODES.WOLFFN ||
+    round?.gameModeLabel === "Wolffn"
+  ) {
+    return true
+  }
+
+  const historyHasWolffn =
+    Array.isArray(round?.history) &&
+    round.history.some((playedHole) =>
+      itemIsWolffn(playedHole)
+    )
+
+  if (historyHasWolffn) {
+    return true
+  }
+
+  return getRoundPlayers(round).some((player) =>
+    Array.isArray(player?.holes) &&
+    player.holes.some((playedHole) =>
+      itemIsWolffn(playedHole)
+    )
+  )
 }
 
 function roundHasSpecialScoring(round) {
@@ -244,6 +287,7 @@ function roundHasSpecialScoring(round) {
 
   if (
     round?.gameMode === GAME_MODES.PROFESSIONAL ||
+    round?.gameModeLabel === "Skinz Professional" ||
     round?.specialScoringEnabled ||
     round?.bonusSkinsEnabled ||
     round?.eagleBonusEnabled
@@ -255,9 +299,10 @@ function roundHasSpecialScoring(round) {
     Array.isArray(round?.history) &&
     round.history.some(
       (playedHole) =>
-        !roundIsWolffn(playedHole) &&
+        !itemIsWolffn(playedHole) &&
         (
           playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
+          playedHole?.gameModeLabel === "Skinz Professional" ||
           playedHole?.specialScoringEnabled ||
           playedHole?.specialScoringApplied ||
           toNumber(playedHole?.bonusSkins, 0) > 0 ||
@@ -269,23 +314,21 @@ function roundHasSpecialScoring(round) {
     return true
   }
 
-  const playerHoleHasSpecialScoring =
-    getRoundPlayers(round).some((player) =>
-      Array.isArray(player?.holes) &&
-      player.holes.some(
-        (playedHole) =>
-          !roundIsWolffn(playedHole) &&
-          (
-            playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
-            playedHole?.specialScoringEnabled ||
-            playedHole?.specialScoringApplied ||
-            toNumber(playedHole?.bonusSkins, 0) > 0 ||
-            playedHole?.eagleBonusApplied
-          )
-      )
+  return getRoundPlayers(round).some((player) =>
+    Array.isArray(player?.holes) &&
+    player.holes.some(
+      (playedHole) =>
+        !itemIsWolffn(playedHole) &&
+        (
+          playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
+          playedHole?.gameModeLabel === "Skinz Professional" ||
+          playedHole?.specialScoringEnabled ||
+          playedHole?.specialScoringApplied ||
+          toNumber(playedHole?.bonusSkins, 0) > 0 ||
+          playedHole?.eagleBonusApplied
+        )
     )
-
-  return playerHoleHasSpecialScoring
+  )
 }
 
 function getRoundSortValue(round) {
@@ -337,7 +380,8 @@ function getPerformanceMoneyTextSize(value) {
 }
 
 export default function ProfileScreen() {
-  const navigate = useNavigate()
+  const navigate =
+    useNavigate()
 
   const {
     user,
@@ -414,8 +458,18 @@ export default function ProfileScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7] pb-[calc(9rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
-      <div className="mx-auto max-w-md px-5">
+    <div className="relative min-h-screen overflow-hidden bg-[#e8ebe5] pb-[calc(9.5rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_8%,rgba(255,255,255,0.95),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_45%_80%,rgba(234,179,8,0.14),transparent_36%)]"
+      />
+
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-5 top-6 bottom-8 rounded-[56px] border border-white/70 bg-white/18 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_35px_90px_rgba(15,23,42,0.18)] backdrop-blur-3xl"
+      />
+
+      <div className="relative mx-auto max-w-md px-5">
         <motion.div
           initial={{
             opacity: 0,
@@ -429,12 +483,13 @@ export default function ProfileScreen() {
             duration: 0.35,
             ease: "easeOut",
           }}
+          className="pt-8"
         >
-          <div className="text-xs font-black uppercase tracking-[0.28em] text-slate-400">
+          <div className="text-[12px] font-black uppercase tracking-[0.28em] text-emerald-700/80">
             Skinz
           </div>
 
-          <h1 className="mt-2 text-6xl font-black tracking-tight">
+          <h1 className="mt-3 text-[4rem] font-black leading-none tracking-[-0.075em] text-slate-950">
             Profile
           </h1>
         </motion.div>
@@ -453,11 +508,23 @@ export default function ProfileScreen() {
             duration: 0.35,
             ease: "easeOut",
           }}
-          className="mt-8 overflow-hidden rounded-[42px] bg-[#071819] text-white shadow-2xl shadow-slate-900/20"
+          className="mt-8 overflow-hidden rounded-[42px] border border-white/20 bg-[#071819] text-white shadow-[0_28px_70px_rgba(7,24,25,0.42)]"
         >
           <div className="relative p-7">
-            <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-emerald-400/20 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-28 -left-20 h-56 w-56 rounded-full bg-yellow-300/10 blur-3xl" />
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-emerald-400/32 via-emerald-500/8 to-transparent"
+            />
+
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-emerald-400/20 blur-3xl"
+            />
+
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -bottom-28 -left-20 h-56 w-56 rounded-full bg-yellow-300/10 blur-3xl"
+            />
 
             <div className="relative">
               <div className="flex items-start justify-between gap-5">
@@ -465,7 +532,7 @@ export default function ProfileScreen() {
                   {getInitials(userName)}
                 </div>
 
-                <div className="rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-white/70 backdrop-blur-xl">
+                <div className="rounded-full border border-white/15 bg-white/[0.10] px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-white/70 backdrop-blur-xl">
                   Player
                 </div>
               </div>
@@ -482,7 +549,7 @@ export default function ProfileScreen() {
               </div>
 
               <div className="mt-8 grid grid-cols-3 gap-3">
-                <div className="rounded-[26px] bg-white/10 p-4 text-center backdrop-blur-xl">
+                <div className="rounded-[26px] bg-white/[0.10] p-4 text-center backdrop-blur-xl">
                   <div className="text-xs font-black uppercase tracking-widest text-white/40">
                     Wins
                   </div>
@@ -492,7 +559,7 @@ export default function ProfileScreen() {
                   </div>
                 </div>
 
-                <div className="rounded-[26px] bg-white/10 p-4 text-center backdrop-blur-xl">
+                <div className="rounded-[26px] bg-white/[0.10] p-4 text-center backdrop-blur-xl">
                   <div className="text-xs font-black uppercase tracking-widest text-white/40">
                     Rounds
                   </div>
@@ -502,7 +569,7 @@ export default function ProfileScreen() {
                   </div>
                 </div>
 
-                <div className="rounded-[26px] bg-white/10 p-4 text-center backdrop-blur-xl">
+                <div className="rounded-[26px] bg-white/[0.10] p-4 text-center backdrop-blur-xl">
                   <div className="text-xs font-black uppercase tracking-widest text-white/40">
                     Earnings
                   </div>
@@ -532,11 +599,11 @@ export default function ProfileScreen() {
             duration: 0.35,
             ease: "easeOut",
           }}
-          className="mt-8 rounded-[38px] bg-white/48 p-5 shadow-sm backdrop-blur-xl"
+          className="mt-8 rounded-[38px] border border-white/70 bg-white/[0.48] p-5 shadow-[0_18px_55px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
         >
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
+              <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-500">
                 Stats
               </div>
 
@@ -551,7 +618,7 @@ export default function ProfileScreen() {
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-4">
-            <div className="rounded-[28px] bg-white/80 p-5 shadow-sm backdrop-blur-xl">
+            <div className="rounded-[28px] border border-white/70 bg-white/[0.80] p-5 shadow-sm backdrop-blur-xl">
               <div className="flex items-center gap-2 text-slate-400">
                 <Target size={18} />
 
@@ -565,7 +632,7 @@ export default function ProfileScreen() {
               </div>
             </div>
 
-            <div className="rounded-[28px] bg-white/80 p-5 shadow-sm backdrop-blur-xl">
+            <div className="rounded-[28px] border border-white/70 bg-white/[0.80] p-5 shadow-sm backdrop-blur-xl">
               <div className="flex items-center gap-2 text-slate-400">
                 <Crown size={18} />
 
@@ -579,7 +646,7 @@ export default function ProfileScreen() {
               </div>
             </div>
 
-            <div className="rounded-[28px] bg-white/80 p-5 shadow-sm backdrop-blur-xl">
+            <div className="rounded-[28px] border border-white/70 bg-white/[0.80] p-5 shadow-sm backdrop-blur-xl">
               <div className="flex items-center gap-2 text-slate-400">
                 <Flag size={18} />
 
@@ -595,7 +662,7 @@ export default function ProfileScreen() {
               </div>
             </div>
 
-            <div className="rounded-[28px] bg-white/80 p-5 text-center shadow-sm backdrop-blur-xl">
+            <div className="rounded-[28px] border border-white/70 bg-white/[0.80] p-5 text-center shadow-sm backdrop-blur-xl">
               <div className="flex items-center justify-center gap-2 text-slate-400">
                 <DollarSign size={18} />
 
@@ -627,11 +694,11 @@ export default function ProfileScreen() {
             duration: 0.35,
             ease: "easeOut",
           }}
-          className="mt-8 rounded-[38px] bg-white/48 p-5 shadow-sm backdrop-blur-xl"
+          className="mt-8 rounded-[38px] border border-white/70 bg-white/[0.48] p-5 shadow-[0_18px_55px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
         >
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
+              <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-500">
                 Scorecards
               </div>
 
@@ -640,14 +707,14 @@ export default function ProfileScreen() {
               </div>
             </div>
 
-            <div className="rounded-full bg-white/80 px-3 py-1 text-xs font-black uppercase tracking-widest text-slate-500 shadow-sm backdrop-blur-xl">
+            <div className="rounded-full border border-white/70 bg-white/[0.80] px-3 py-1 text-xs font-black uppercase tracking-widest text-slate-500 shadow-sm backdrop-blur-xl">
               Latest
             </div>
           </div>
 
           <div className="mt-5 space-y-3">
             {recentMatches.length === 0 && (
-              <div className="rounded-[28px] bg-white/80 p-6 text-center shadow-sm backdrop-blur-xl">
+              <div className="rounded-[28px] border border-white/70 bg-white/[0.80] p-6 text-center shadow-sm backdrop-blur-xl">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
                   <Flag size={20} />
                 </div>
@@ -698,7 +765,7 @@ export default function ProfileScreen() {
                   onClick={() =>
                     navigate(`/matches/${roundId}`)
                   }
-                  className="w-full rounded-[30px] bg-white/82 p-5 text-left shadow-sm backdrop-blur-xl"
+                  className="w-full rounded-[30px] border border-white/70 bg-white/[0.82] p-5 text-left shadow-sm backdrop-blur-xl"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
@@ -793,7 +860,7 @@ export default function ProfileScreen() {
             ease: "easeOut",
           }}
           onClick={handleLogout}
-          className="mt-8 flex w-full items-center justify-between rounded-[30px] bg-white/70 px-5 py-4 text-red-500 shadow-sm backdrop-blur-xl"
+          className="mt-8 flex w-full items-center justify-between rounded-[30px] border border-white/70 bg-white/[0.70] px-5 py-4 text-red-500 shadow-sm backdrop-blur-xl"
         >
           <div>
             <div className="text-xl font-black">
