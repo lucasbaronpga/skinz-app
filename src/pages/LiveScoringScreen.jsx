@@ -139,32 +139,59 @@ function getToParColor(value) {
   return "text-slate-950"
 }
 
-function getScoreStyle(label) {
+function getScoreStyle() {
+  return "bg-slate-950 text-white shadow-[0_14px_30px_rgba(15,23,42,0.30)]"
+}
+
+function getResultBadgeStyle(label) {
   if (label === "Albatross") {
-    return "border-amber-300 bg-amber-300 text-black"
+    return "bg-amber-300 text-black"
   }
 
   if (label === "Eagle") {
-    return "border-orange-500 bg-orange-500 text-white"
+    return "bg-orange-500 text-white"
   }
 
   if (label === "Birdie") {
-    return "border-red-500 bg-red-500 text-white"
+    return "bg-red-500 text-white"
   }
 
   if (label === "Bogey") {
-    return "border-blue-500 bg-blue-500 text-white"
+    return "bg-blue-500 text-white"
   }
 
   if (label === "Double Bogey") {
-    return "border-blue-900 bg-blue-900 text-white"
+    return "bg-blue-900 text-white"
   }
 
   if (label === "Triple+") {
-    return "border-purple-600 bg-purple-600 text-white"
+    return "bg-purple-600 text-white"
   }
 
-  return "border-white/80 bg-white/[0.88] text-slate-950"
+  return "bg-white/[0.68] text-slate-400"
+}
+
+function getToParBadgeStyle(value) {
+  const amount =
+    toNumber(value, 0)
+
+  if (amount < 0) {
+    return "bg-red-500 text-white"
+  }
+
+  if (amount > 0) {
+    if (amount === 1) {
+      return "bg-blue-500 text-white"
+    }
+
+    if (amount === 2) {
+      return "bg-blue-900 text-white"
+    }
+
+    return "bg-purple-600 text-white"
+  }
+
+  return "bg-white/[0.68] text-slate-950"
 }
 
 function getCourseName(course) {
@@ -213,9 +240,12 @@ function getSpecialLabelForScore(score, par, specialScoringEnabled) {
 }
 
 function getResultLabelFromScore(score, par) {
+  const safePar =
+    toNumber(par, 4)
+
   const scoreToPar =
-    toNumber(score, par) -
-    toNumber(par, 0)
+    toNumber(score, safePar) -
+    safePar
 
   if (scoreToPar <= -3) {
     return "Albatross"
@@ -289,7 +319,7 @@ function getHistoryResultLabel(item) {
 
   return getResultLabelFromScore(
     historyScore,
-    item?.par
+    item?.par || 4
   )
 }
 
@@ -335,6 +365,47 @@ function getHistorySpecialLabel(item) {
   }
 
   return null
+}
+
+function formatHoleListLabel(holes) {
+  if (!Array.isArray(holes) || holes.length === 0) {
+    return null
+  }
+
+  return holes
+    .map((holeNumber) => String(holeNumber))
+    .join(" + ")
+}
+
+function buildHistoryDisplayItems(history) {
+  const openCarryoverHoles = []
+
+  if (!Array.isArray(history)) {
+    return []
+  }
+
+  return history.map((item) => {
+    if (item?.hasTie) {
+      openCarryoverHoles.push(item.hole)
+
+      return {
+        ...item,
+        displayWonHoles: [],
+      }
+    }
+
+    const displayWonHoles = [
+      ...openCarryoverHoles,
+      item.hole,
+    ]
+
+    openCarryoverHoles.length = 0
+
+    return {
+      ...item,
+      displayWonHoles,
+    }
+  })
 }
 
 function getWolffnTeeOrder(players, hole) {
@@ -517,6 +588,9 @@ export default function LiveScoringScreen() {
 
   const champion =
     sortedPlayers[0] || null
+
+  const historyDisplayItems =
+    buildHistoryDisplayItems(history)
 
   const safeHole =
     Math.min(
@@ -741,7 +815,7 @@ export default function LiveScoringScreen() {
                 </h1>
 
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <div className="text-[1.4rem] font-semibold leading-none tracking-[-0.04em] text-slate-600">
+                  <div className="text-[1.45rem] font-black leading-none tracking-[-0.055em] text-slate-600">
                     Par {currentPar}
                   </div>
 
@@ -761,7 +835,7 @@ export default function LiveScoringScreen() {
                   }}
                   onClick={handleCloseLive}
                   aria-label="Live-Ansicht schließen"
-                  className="mt-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/70 bg-white/[0.46] text-slate-600 shadow-sm backdrop-blur-2xl"
+                  className="mt-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-950 text-white shadow-[0_14px_34px_rgba(15,23,42,0.24)]"
                 >
                   <X size={21} />
                 </motion.button>
@@ -964,7 +1038,7 @@ export default function LiveScoringScreen() {
 
           <div
             ref={scoreEntryRef}
-            className="mt-5 space-y-2.5 scroll-mt-5"
+            className="mt-5 space-y-4 scroll-mt-5"
           >
             {players.map((player, index) => {
               const playerScore =
@@ -1005,31 +1079,33 @@ export default function LiveScoringScreen() {
                     duration: 0.22,
                     ease: "easeOut",
                   }}
-                  className={`rounded-[28px] border px-4 py-3 shadow-[0_14px_38px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition ${
+                  className={`rounded-[32px] border px-6 py-6 shadow-[0_18px_46px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition ${
                     isWinning
-                      ? "border-emerald-300/70 bg-emerald-50/[0.82]"
+                      ? "border-emerald-300/80 bg-emerald-50/[0.72]"
                       : "border-white/70 bg-white/[0.46]"
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-[1.75rem] font-black leading-none tracking-[-0.06em] text-slate-950">
+                      <div className="truncate text-[2rem] font-black leading-none tracking-[-0.07em] text-slate-950">
                         {player.name}
                       </div>
 
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        <div className="rounded-full bg-white/[0.62] px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-slate-400 shadow-sm">
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <div
+                          className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] shadow-sm ${getResultBadgeStyle(golfResult.label)}`}
+                        >
                           {golfResult.label}
                         </div>
 
                         <div
-                          className={`rounded-full bg-white/[0.62] px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] shadow-sm ${getToParColor(currentToPar)}`}
+                          className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] shadow-sm ${getToParBadgeStyle(currentToPar)}`}
                         >
                           {formatToPar(currentToPar)}
                         </div>
 
                         {isWinning && !hasTie && (
-                          <div className="rounded-full bg-emerald-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-white">
+                          <div className="rounded-full bg-emerald-500 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-sm">
                             Leader
                           </div>
                         )}
@@ -1037,15 +1113,15 @@ export default function LiveScoringScreen() {
                         {isWinning &&
                           specialScoringEnabled &&
                           playerSpecialLabel && (
-                            <div className="flex items-center gap-1 rounded-full bg-orange-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-white">
-                              <Sparkles size={9} />
+                            <div className="flex items-center gap-1 rounded-full bg-orange-500 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-sm">
+                              <Sparkles size={10} />
                               {playerSpecialLabel}
                             </div>
                           )}
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-[2.55rem_3.55rem_2.55rem] items-center gap-1.5">
+                    <div className="grid grid-cols-[3rem_3.75rem_3rem] items-center gap-2">
                       <motion.button
                         type="button"
                         whileTap={{
@@ -1065,7 +1141,7 @@ export default function LiveScoringScreen() {
                           )
                         }
                         aria-label={`Score von ${player.name} verringern`}
-                        className="flex h-[2.85rem] w-[2.55rem] items-center justify-center rounded-[18px] border border-white/80 bg-white/[0.74] text-[1.65rem] font-black leading-none text-slate-500 shadow-[0_8px_18px_rgba(15,23,42,0.09)] transition disabled:opacity-35"
+                        className="flex h-12 w-12 items-center justify-center rounded-[20px] bg-slate-950 text-[1.75rem] font-black leading-none text-white shadow-[0_12px_26px_rgba(15,23,42,0.24)] transition disabled:opacity-35"
                       >
                         −
                       </motion.button>
@@ -1087,7 +1163,7 @@ export default function LiveScoringScreen() {
                           stiffness: 280,
                           damping: 18,
                         }}
-                        className={`flex h-[3.25rem] w-[3.55rem] items-center justify-center rounded-[20px] border-2 text-[2.45rem] font-black leading-none tracking-[-0.07em] shadow-[0_10px_22px_rgba(15,23,42,0.12)] ${getScoreStyle(golfResult.label)}`}
+                        className={`flex h-[3.75rem] w-[3.75rem] items-center justify-center rounded-[22px] text-[2.65rem] font-black leading-none tracking-[-0.075em] ${getScoreStyle()}`}
                       >
                         {playerScore}
                       </motion.div>
@@ -1105,7 +1181,7 @@ export default function LiveScoringScreen() {
                           )
                         }
                         aria-label={`Score von ${player.name} erhöhen`}
-                        className="flex h-[2.85rem] w-[2.55rem] items-center justify-center rounded-[18px] border border-white/80 bg-white/[0.74] text-[1.65rem] font-black leading-none text-slate-500 shadow-[0_8px_18px_rgba(15,23,42,0.09)] transition disabled:opacity-35"
+                        className="flex h-12 w-12 items-center justify-center rounded-[20px] bg-slate-950 text-[1.75rem] font-black leading-none text-white shadow-[0_12px_26px_rgba(15,23,42,0.24)] transition disabled:opacity-35"
                       >
                         +
                       </motion.button>
@@ -1130,12 +1206,12 @@ export default function LiveScoringScreen() {
               duration: 0.32,
               ease: "easeOut",
             }}
-            className="mt-6 rounded-[32px] border border-white/70 bg-white/[0.48] p-5 shadow-[0_16px_48px_rgba(15,23,42,0.09)] backdrop-blur-2xl"
+            className="mt-7 rounded-[32px] border border-white/70 bg-white/[0.48] p-5 shadow-[0_16px_48px_rgba(15,23,42,0.09)] backdrop-blur-2xl"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-600">
-                  Scorekarte
+                  Scorecard
                 </div>
               </div>
 
@@ -1151,19 +1227,22 @@ export default function LiveScoringScreen() {
                 </div>
               )}
 
-              {history
+              {historyDisplayItems
                 .slice()
                 .reverse()
-                .map((item) => {
+                .map((item, index) => {
                   const historySpecialLabel =
                     getHistorySpecialLabel(item)
 
                   const historyResultSummary =
                     getHistoryResultSummary(item)
 
+                  const wonHolesLabel =
+                    formatHoleListLabel(item.displayWonHoles)
+
                   return (
                     <div
-                      key={`${item.hole}-${item.winner}`}
+                      key={`${item.hole}-${item.winner || "carryover"}-${index}`}
                       className="rounded-[24px] border border-white/70 bg-white/[0.42] px-4 py-3 shadow-sm backdrop-blur-xl"
                     >
                       <div className="flex items-start justify-between gap-4">
@@ -1189,19 +1268,13 @@ export default function LiveScoringScreen() {
                             {historyResultSummary}
                           </div>
 
-                          <div className="mt-1.5 flex flex-wrap gap-1.5">
-                            {toNumber(item.carryoverSkins, 0) > 0 && (
-                              <div className="rounded-full bg-orange-50 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-orange-600">
-                                Carry {getSkinsLabel(item.carryoverSkins)}
+                          {!item.hasTie && wonHolesLabel && (
+                            <div className="mt-2">
+                              <div className="inline-flex w-fit max-w-full rounded-full bg-slate-950 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-white shadow-sm">
+                                Holes: {wonHolesLabel}
                               </div>
-                            )}
-
-                            {toNumber(item.carryoverAdded, 0) > 0 && item.hasTie && (
-                              <div className="rounded-full bg-amber-50 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-amber-600">
-                                Add {getSkinsLabel(item.carryoverAdded)}
-                              </div>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </div>
 
                         <div className="shrink-0 text-right">
@@ -1211,7 +1284,13 @@ export default function LiveScoringScreen() {
                               : item.winner}
                           </div>
 
-                          <div className="mt-1 text-[9px] font-black uppercase tracking-widest text-amber-500">
+                          <div
+                            className={`mt-1 text-[9px] font-black uppercase tracking-widest ${
+                              item.hasTie
+                                ? "text-slate-950"
+                                : "text-amber-500"
+                            }`}
+                          >
                             {getSkinsLabel(item.skins || 0)} · {formatPlainMoney(item.pot || 0)}
                           </div>
                         </div>
