@@ -44,6 +44,34 @@ const navItems = [
   },
 ]
 
+function cn(...classes) {
+  return classes
+    .filter(Boolean)
+    .join(" ")
+}
+
+function getItemClasses({
+  isActive,
+  isPrimary,
+}) {
+  if (isPrimary) {
+    return cn(
+      "h-16 w-16 rounded-full text-white",
+      "shadow-[0_15px_35px_rgba(16,185,129,0.42)]",
+      isActive
+        ? "bg-emerald-600"
+        : "bg-emerald-500"
+    )
+  }
+
+  return cn(
+    "h-11 w-11 rounded-full",
+    isActive
+      ? "bg-slate-950 text-white shadow-sm"
+      : "text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+  )
+}
+
 export default function BottomNav() {
   return (
     <nav
@@ -53,7 +81,7 @@ export default function BottomNav() {
       <motion.div
         initial={{
           opacity: 0,
-          y: 40,
+          y: 36,
           scale: 0.96,
         }}
         animate={{
@@ -69,6 +97,7 @@ export default function BottomNav() {
       >
         {navItems.map((item) => {
           const Icon = item.icon
+          const isPrimary = Boolean(item.primary)
 
           return (
             <NavLink
@@ -77,78 +106,64 @@ export default function BottomNav() {
               end={item.end}
               aria-label={item.label}
               title={item.label}
-              className="flex justify-center outline-none"
+              className="flex min-h-16 items-center justify-center rounded-full outline-none focus-visible:ring-4 focus-visible:ring-emerald-100"
             >
-              {({ isActive }) => {
-                const isPrimaryActive =
-                  item.primary && isActive
-
-                return (
-                  <motion.div
-                    whileTap={{
-                      scale: 0.9,
-                    }}
-                    animate={{
-                      y: isActive ? -2 : 0,
-                    }}
-                    transition={{
-                      duration: 0.2,
-                      ease: "easeOut",
-                    }}
-                    className={[
-                      "relative flex items-center justify-center transition-all duration-300",
-                      "focus-visible:ring-4 focus-visible:ring-emerald-100",
-                      item.primary
-                        ? [
-                            "h-16 w-16 rounded-full text-white shadow-[0_15px_35px_rgba(16,185,129,0.42)]",
-                            isPrimaryActive
-                              ? "bg-emerald-600"
-                              : "bg-emerald-500",
-                          ].join(" ")
-                        : [
-                            "h-11 w-11 rounded-full",
-                            isActive
-                              ? "bg-slate-950 text-white shadow-sm"
-                              : "text-slate-400 hover:bg-slate-100 hover:text-slate-700",
-                          ].join(" "),
-                    ].join(" ")}
-                  >
-                    {isPrimaryActive && (
-                      <motion.div
-                        layoutId="primaryActiveGlow"
-                        className="absolute inset-0 -z-10 rounded-full bg-emerald-400/40 blur-xl"
-                        transition={{
-                          type: "spring",
-                          stiffness: 320,
-                          damping: 28,
-                        }}
-                      />
-                    )}
-
-                    {isActive && !item.primary && (
-                      <motion.div
-                        layoutId="activeDot"
-                        transition={{
-                          type: "spring",
-                          stiffness: 320,
-                          damping: 28,
-                        }}
-                        className="absolute -bottom-3 h-1.5 w-1.5 rounded-full bg-slate-950"
-                      />
-                    )}
-
-                    <Icon
-                      size={item.primary ? 31 : 23}
-                      strokeWidth={2.6}
-                      aria-hidden="true"
+              {({ isActive }) => (
+                <motion.div
+                  whileTap={{
+                    scale: 0.9,
+                  }}
+                  animate={{
+                    y: isActive ? -2 : 0,
+                  }}
+                  transition={{
+                    duration: 0.2,
+                    ease: "easeOut",
+                  }}
+                  className={cn(
+                    "relative flex items-center justify-center",
+                    "transition-all duration-300 will-change-transform",
+                    getItemClasses({
+                      isActive,
+                      isPrimary,
+                    })
+                  )}
+                >
+                  {isActive && isPrimary && (
+                    <motion.div
+                      layoutId="primaryActiveGlow"
+                      className="absolute inset-0 -z-10 rounded-full bg-emerald-400/40 blur-xl"
+                      transition={{
+                        type: "spring",
+                        stiffness: 320,
+                        damping: 28,
+                      }}
                     />
+                  )}
 
-                    <span className="sr-only">
-                      {item.label}
-                    </span>
-                  </motion.div>
-                )
-              }}
+                  {isActive && !isPrimary && (
+                    <motion.div
+                      layoutId="bottomNavActiveDot"
+                      className="absolute -bottom-3 h-1.5 w-1.5 rounded-full bg-slate-950"
+                      transition={{
+                        type: "spring",
+                        stiffness: 320,
+                        damping: 28,
+                      }}
+                    />
+                  )}
+
+                  <Icon
+                    size={isPrimary ? 31 : 23}
+                    strokeWidth={2.6}
+                    aria-hidden="true"
+                  />
+
+                  <span className="sr-only">
+                    {item.label}
+                  </span>
+                </motion.div>
+              )}
             </NavLink>
           )
         })}
