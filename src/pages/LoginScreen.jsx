@@ -1,54 +1,28 @@
-import {
-  useState,
-} from "react"
+import { useState } from "react"
 
-import {
-  motion,
-} from "framer-motion"
+import { motion } from "framer-motion"
 
-import {
-  ArrowRight,
-  Flag,
-} from "lucide-react"
+import { ArrowRight, Flag } from "lucide-react"
 
-import {
-  useLocation,
-  useNavigate,
-} from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 
-import {
-  useAuth,
-} from "../context/AuthContext"
+import AppBackground from "../components/AppBackground"
+
+import { useAuth } from "../context/AuthContext"
 
 export default function LoginScreen() {
-  const [
-    name,
-    setName,
-  ] = useState("")
+  const [name, setName] = useState("")
+  const [touched, setTouched] = useState(false)
 
-  const [
-    touched,
-    setTouched,
-  ] = useState(false)
+  const { login } = useAuth()
 
-  const {
-    login,
-  } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
 
-  const navigate =
-    useNavigate()
+  const cleanedName = name.trim()
+  const canLogin = cleanedName.length > 0
 
-  const location =
-    useLocation()
-
-  const cleanedName =
-    name.trim()
-
-  const canLogin =
-    cleanedName.length > 0
-
-  const redirectPath =
-    location.state?.from?.pathname || "/"
+  const redirectPath = location.state?.from?.pathname || "/"
 
   function handleLogin() {
     setTouched(true)
@@ -57,8 +31,7 @@ export default function LoginScreen() {
       return
     }
 
-    const success =
-      login(cleanedName)
+    const success = login(cleanedName)
 
     if (success) {
       navigate(redirectPath, {
@@ -73,16 +46,8 @@ export default function LoginScreen() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#e8ebe5] px-6 py-10 text-slate-950">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_8%,rgba(255,255,255,0.95),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_45%_80%,rgba(234,179,8,0.14),transparent_36%)]"
-      />
-
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-5 top-6 bottom-8 rounded-[56px] border border-white/70 bg-white/18 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_35px_90px_rgba(15,23,42,0.18)] backdrop-blur-3xl"
-      />
+    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#e8ebe5] px-6 py-10 text-slate-950">
+      <AppBackground />
 
       <motion.div
         initial={{
@@ -132,10 +97,7 @@ export default function LoginScreen() {
                 }}
                 className="mx-auto flex h-24 w-24 items-center justify-center rounded-[32px] border border-white/15 bg-white/10 text-white shadow-2xl backdrop-blur-xl"
               >
-                <Flag
-                  size={38}
-                  strokeWidth={2.6}
-                />
+                <Flag size={38} strokeWidth={2.6} />
               </motion.div>
 
               <div className="mt-8 text-[12px] font-black uppercase tracking-[0.28em] text-emerald-200/85">
@@ -229,15 +191,10 @@ export default function LoginScreen() {
             disabled={!canLogin}
             className="mt-8 flex h-16 w-full items-center justify-between rounded-[30px] bg-slate-950 px-6 text-white shadow-[0_18px_45px_rgba(15,23,42,0.25)] transition-all disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <span className="text-2xl font-black">
-              Weiter
-            </span>
+            <span className="text-2xl font-black">Weiter</span>
 
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500">
-              <ArrowRight
-                size={22}
-                strokeWidth={2.8}
-              />
+              <ArrowRight size={22} strokeWidth={2.8} />
             </span>
           </motion.button>
         </motion.form>

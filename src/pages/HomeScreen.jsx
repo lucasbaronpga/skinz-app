@@ -1,23 +1,14 @@
-import {
-  Link,
-  useNavigate,
-} from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
+import { motion } from "framer-motion"
 
-import {
-  motion,
-} from "framer-motion"
+import AppBackground from "../components/AppBackground"
 
-import {
-  GAME_MODES,
-  useGame,
-} from "../context/GameContext"
+import { GAME_MODES, useGame } from "../context/GameContext"
 
 function toNumber(value, fallback = 0) {
   const number = Number(value)
 
-  return Number.isFinite(number)
-    ? number
-    : fallback
+  return Number.isFinite(number) ? number : fallback
 }
 
 function roundMoney(value) {
@@ -25,24 +16,19 @@ function roundMoney(value) {
 }
 
 function formatEuroAmount(value) {
-  const amount =
-    roundMoney(Math.abs(value))
+  const amount = roundMoney(Math.abs(value))
 
-  const hasCents =
-    Math.abs(amount % 1) > 0
+  const hasCents = Math.abs(amount % 1) > 0
 
   if (hasCents) {
-    return amount
-      .toFixed(2)
-      .replace(".", ",")
+    return amount.toFixed(2).replace(".", ",")
   }
 
   return amount.toFixed(0)
 }
 
 function formatMoney(value) {
-  const amount =
-    roundMoney(value)
+  const amount = roundMoney(value)
 
   if (amount > 0) {
     return `+${formatEuroAmount(amount)}€`
@@ -56,15 +42,13 @@ function formatMoney(value) {
 }
 
 function formatPlainMoney(value) {
-  const amount =
-    roundMoney(value)
+  const amount = roundMoney(value)
 
   return `${formatEuroAmount(amount)}€`
 }
 
 function formatToPar(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
   if (amount === 0) {
     return "E"
@@ -78,8 +62,7 @@ function formatToPar(value) {
 }
 
 function formatSkins(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
   if (amount > 0) {
     return `+${amount}`
@@ -93,17 +76,13 @@ function formatSkins(value) {
 }
 
 function formatSkinsAtStake(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
-  return amount === 1
-    ? "1 Skin"
-    : `${amount} Skinz`
+  return amount === 1 ? "1 Skin" : `${amount} Skinz`
 }
 
 function getMoneyColor(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
   if (amount > 0) {
     return "text-amber-500"
@@ -117,8 +96,7 @@ function getMoneyColor(value) {
 }
 
 function getSkinsColor(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
   if (amount > 0) {
     return "text-amber-500"
@@ -132,8 +110,7 @@ function getSkinsColor(value) {
 }
 
 function getToParColor(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
   if (amount < 0) {
     return "text-emerald-500"
@@ -147,16 +124,11 @@ function getToParColor(value) {
 }
 
 function getCurrentCourseName(course) {
-  return (
-    course?.name ||
-    "Erster Golfclub Westpfalz"
-  )
+  return course?.name || "Erster Golfclub Westpfalz"
 }
 
 function getRoundPlayers(round) {
-  return Array.isArray(round?.players)
-    ? round.players
-    : []
+  return Array.isArray(round?.players) ? round.players : []
 }
 
 function itemIsWolffn(item) {
@@ -185,19 +157,16 @@ function roundIsWolffn(round) {
 
   const historyHasWolffn =
     Array.isArray(round?.history) &&
-    round.history.some((playedHole) =>
-      itemIsWolffn(playedHole)
-    )
+    round.history.some((playedHole) => itemIsWolffn(playedHole))
 
   if (historyHasWolffn) {
     return true
   }
 
-  return getRoundPlayers(round).some((player) =>
-    Array.isArray(player?.holes) &&
-    player.holes.some((playedHole) =>
-      itemIsWolffn(playedHole)
-    )
+  return getRoundPlayers(round).some(
+    (player) =>
+      Array.isArray(player?.holes) &&
+      player.holes.some((playedHole) => itemIsWolffn(playedHole))
   )
 }
 
@@ -225,41 +194,35 @@ function roundHasSpecialScoring(round) {
     round.history.some(
       (playedHole) =>
         !itemIsWolffn(playedHole) &&
-        (
-          playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
+        (playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
           playedHole?.gameModeLabel === "Skinz Professional" ||
           playedHole?.specialScoringEnabled ||
           playedHole?.specialScoringApplied ||
           toNumber(playedHole?.bonusSkins, 0) > 0 ||
-          playedHole?.eagleBonusApplied
-        )
+          playedHole?.eagleBonusApplied)
     )
 
   if (historyHasSpecialScoring) {
     return true
   }
 
-  return getRoundPlayers(round).some((player) =>
-    Array.isArray(player?.holes) &&
-    player.holes.some(
-      (playedHole) =>
-        !itemIsWolffn(playedHole) &&
-        (
-          playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
-          playedHole?.gameModeLabel === "Skinz Professional" ||
-          playedHole?.specialScoringEnabled ||
-          playedHole?.specialScoringApplied ||
-          toNumber(playedHole?.bonusSkins, 0) > 0 ||
-          playedHole?.eagleBonusApplied
-        )
-    )
+  return getRoundPlayers(round).some(
+    (player) =>
+      Array.isArray(player?.holes) &&
+      player.holes.some(
+        (playedHole) =>
+          !itemIsWolffn(playedHole) &&
+          (playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
+            playedHole?.gameModeLabel === "Skinz Professional" ||
+            playedHole?.specialScoringEnabled ||
+            playedHole?.specialScoringApplied ||
+            toNumber(playedHole?.bonusSkins, 0) > 0 ||
+            playedHole?.eagleBonusApplied)
+      )
   )
 }
 
-function getModeLabel({
-  isWolffn,
-  isProfessional,
-}) {
+function getModeLabel({ isWolffn, isProfessional }) {
   if (isWolffn) {
     return "🐺 Wolffn"
   }
@@ -272,12 +235,9 @@ function getModeLabel({
 }
 
 function getRoundModeLabel(round) {
-  const isWolffn =
-    roundIsWolffn(round)
+  const isWolffn = roundIsWolffn(round)
 
-  const isProfessional =
-    !isWolffn &&
-    roundHasSpecialScoring(round)
+  const isProfessional = !isWolffn && roundHasSpecialScoring(round)
 
   return getModeLabel({
     isWolffn,
@@ -286,12 +246,7 @@ function getRoundModeLabel(round) {
 }
 
 function getPlayerName(player) {
-  return (
-    player?.name ||
-    player?.playerName ||
-    player?.displayName ||
-    ""
-  )
+  return player?.name || player?.playerName || player?.displayName || ""
 }
 
 function getPreferredPlayerName(round, playerStats) {
@@ -316,8 +271,7 @@ function getPreferredPlayerName(round, playerStats) {
   }
 
   const firstStatsPlayer =
-    Array.isArray(playerStats) &&
-    playerStats.length > 0
+    Array.isArray(playerStats) && playerStats.length > 0
       ? playerStats[0]
       : null
 
@@ -325,40 +279,27 @@ function getPreferredPlayerName(round, playerStats) {
     return firstStatsPlayer.name
   }
 
-  const firstRoundPlayer =
-    getRoundPlayers(round)[0]
+  const firstRoundPlayer = getRoundPlayers(round)[0]
 
-  return (
-    getPlayerName(firstRoundPlayer) ||
-    "Spieler"
-  )
+  return getPlayerName(firstRoundPlayer) || "Spieler"
 }
 
 function getRoundPlayer(round, playerStats) {
-  const preferredName =
-    getPreferredPlayerName(
-      round,
-      playerStats
-    )
+  const preferredName = getPreferredPlayerName(round, playerStats)
 
-  const players =
-    getRoundPlayers(round)
+  const players = getRoundPlayers(round)
 
-  const matchedPlayer =
-    players.find(
-      (player) =>
-        getPlayerName(player) === preferredName
-    )
+  const matchedPlayer = players.find(
+    (player) => getPlayerName(player) === preferredName
+  )
 
   if (matchedPlayer) {
     return matchedPlayer
   }
 
-  const winnerPlayer =
-    players.find(
-      (player) =>
-        getPlayerName(player) === round?.winner
-    )
+  const winnerPlayer = players.find(
+    (player) => getPlayerName(player) === round?.winner
+  )
 
   if (winnerPlayer) {
     return winnerPlayer
@@ -369,42 +310,33 @@ function getRoundPlayer(round, playerStats) {
 
 function getRoundPar(round) {
   return toNumber(
-    round?.course?.par ||
-      round?.currentCourse?.par ||
-      round?.coursePar ||
-      round?.par,
+    round?.course?.par || round?.currentCourse?.par || round?.coursePar || round?.par,
     72
   )
 }
 
 function getPlayerTotalToPar(player, round) {
-  const directValue =
-    [
-      player?.totalToPar,
-      player?.toPar,
-      round?.totalToPar,
-    ].find((value) =>
-      Number.isFinite(Number(value))
-    )
+  const directValue = [
+    player?.totalToPar,
+    player?.toPar,
+    round?.totalToPar,
+  ].find((value) => Number.isFinite(Number(value)))
 
   if (directValue !== undefined) {
     return toNumber(directValue, 0)
   }
 
   if (Array.isArray(player?.holes)) {
-    const holesWithValues =
-      player.holes.filter(
-        (playedHole) =>
-          Number.isFinite(Number(playedHole?.score)) &&
-          Number.isFinite(Number(playedHole?.par))
-      )
+    const holesWithValues = player.holes.filter(
+      (playedHole) =>
+        Number.isFinite(Number(playedHole?.score)) &&
+        Number.isFinite(Number(playedHole?.par))
+    )
 
     if (holesWithValues.length > 0) {
       return holesWithValues.reduce(
         (sum, playedHole) =>
-          sum +
-          toNumber(playedHole.score, 0) -
-          toNumber(playedHole.par, 0),
+          sum + toNumber(playedHole.score, 0) - toNumber(playedHole.par, 0),
         0
       )
     }
@@ -414,74 +346,56 @@ function getPlayerTotalToPar(player, round) {
 }
 
 function getPlayerTotalStrokes(player, round) {
-  const directValue =
-    [
-      player?.totalStrokes,
-      player?.strokes,
-      player?.totalScore,
-      round?.totalStrokes,
-      round?.strokes,
-      round?.totalScore,
-    ].find((value) =>
-      Number.isFinite(Number(value))
-    )
+  const directValue = [
+    player?.totalStrokes,
+    player?.strokes,
+    player?.totalScore,
+    round?.totalStrokes,
+    round?.strokes,
+    round?.totalScore,
+  ].find((value) => Number.isFinite(Number(value)))
 
   if (directValue !== undefined) {
     return toNumber(directValue, 0)
   }
 
   if (Array.isArray(player?.holes)) {
-    const holesWithScores =
-      player.holes.filter((playedHole) =>
-        Number.isFinite(Number(playedHole?.score))
-      )
+    const holesWithScores = player.holes.filter((playedHole) =>
+      Number.isFinite(Number(playedHole?.score))
+    )
 
     if (holesWithScores.length >= 9) {
       return holesWithScores.reduce(
-        (sum, playedHole) =>
-          sum + toNumber(playedHole.score, 0),
+        (sum, playedHole) => sum + toNumber(playedHole.score, 0),
         0
       )
     }
   }
 
-  return (
-    getRoundPar(round) +
-    getPlayerTotalToPar(player, round)
-  )
+  return getRoundPar(round) + getPlayerTotalToPar(player, round)
 }
 
 function getPlayerSkins(player, round) {
-  const value =
-    [
-      player?.skins,
-      player?.totalSkins,
-      round?.skins,
-    ].find((item) =>
-      Number.isFinite(Number(item))
-    )
+  const value = [player?.skins, player?.totalSkins, round?.skins].find((item) =>
+    Number.isFinite(Number(item))
+  )
 
   return toNumber(value, 0)
 }
 
 function getPlayerWinnings(player, round) {
-  const value =
-    [
-      player?.winnings,
-      player?.earnings,
-      player?.totalWinnings,
-      round?.winnings,
-      round?.earnings,
-    ].find((item) =>
-      Number.isFinite(Number(item))
-    )
+  const value = [
+    player?.winnings,
+    player?.earnings,
+    player?.totalWinnings,
+    round?.winnings,
+    round?.earnings,
+  ].find((item) => Number.isFinite(Number(item)))
 
   return toNumber(value, 0)
 }
 
-function DarkBadge({
-  children,
-}) {
+function DarkBadge({ children }) {
   return (
     <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-200 backdrop-blur-xl">
       {children}
@@ -490,8 +404,7 @@ function DarkBadge({
 }
 
 export default function HomeScreen() {
-  const navigate =
-    useNavigate()
+  const navigate = useNavigate()
 
   const {
     hole,
@@ -508,115 +421,64 @@ export default function HomeScreen() {
     specialScoringEnabled,
   } = useGame()
 
-  const liveSortedPlayers =
-    [...players].sort(
-      (a, b) =>
-        toNumber(b.winnings, 0) -
-        toNumber(a.winnings, 0)
-    )
+  const liveSortedPlayers = [...players].sort(
+    (a, b) => toNumber(b.winnings, 0) - toNumber(a.winnings, 0)
+  )
 
-  const liveLeader =
-    liveSortedPlayers[0] || null
+  const liveLeader = liveSortedPlayers[0] || null
+  const liveRunnerUp = liveSortedPlayers[1] || null
 
-  const liveRunnerUp =
-    liveSortedPlayers[1] || null
-
-  const liveLeaderHasTie =
-    Boolean(
-      liveLeader &&
-        liveRunnerUp &&
-        toNumber(liveLeader.winnings, 0) ===
-          toNumber(liveRunnerUp.winnings, 0)
-    )
+  const liveLeaderHasTie = Boolean(
+    liveLeader &&
+      liveRunnerUp &&
+      toNumber(liveLeader.winnings, 0) === toNumber(liveRunnerUp.winnings, 0)
+  )
 
   const liveLeaderName =
-    liveLeader && !liveLeaderHasTie
-      ? liveLeader.name
-      : "All Square"
+    liveLeader && !liveLeaderHasTie ? liveLeader.name : "All Square"
 
   const latestRound =
     [...completedRounds].sort(
-      (a, b) =>
-        toNumber(b.createdAt, 0) -
-        toNumber(a.createdAt, 0)
+      (a, b) => toNumber(b.createdAt, 0) - toNumber(a.createdAt, 0)
     )[0] || null
 
-  const latestRoundId =
-    latestRound?.id || "SKZ-0000"
+  const latestRoundId = latestRound?.id || "SKZ-0000"
 
-  const latestRoundPlayer =
-    getRoundPlayer(
-      latestRound,
-      playerStats
+  const latestRoundPlayer = getRoundPlayer(latestRound, playerStats)
+  const latestRoundPlayerName = getPreferredPlayerName(latestRound, playerStats)
+
+  const latestRoundStrokes = getPlayerTotalStrokes(
+    latestRoundPlayer,
+    latestRound
+  )
+
+  const latestRoundTotalToPar = getPlayerTotalToPar(
+    latestRoundPlayer,
+    latestRound
+  )
+
+  const latestRoundSkins = getPlayerSkins(latestRoundPlayer, latestRound)
+
+  const latestRoundWinnings = getPlayerWinnings(
+    latestRoundPlayer,
+    latestRound
+  )
+
+  const topPlayers = [...playerStats]
+    .filter((player) => toNumber(player?.roundsPlayed, 0) > 0)
+    .sort(
+      (a, b) => toNumber(b.totalWinnings, 0) - toNumber(a.totalWinnings, 0)
     )
+    .slice(0, 3)
 
-  const latestRoundPlayerName =
-    getPreferredPlayerName(
-      latestRound,
-      playerStats
-    )
-
-  const latestRoundStrokes =
-    getPlayerTotalStrokes(
-      latestRoundPlayer,
-      latestRound
-    )
-
-  const latestRoundTotalToPar =
-    getPlayerTotalToPar(
-      latestRoundPlayer,
-      latestRound
-    )
-
-  const latestRoundSkins =
-    getPlayerSkins(
-      latestRoundPlayer,
-      latestRound
-    )
-
-  const latestRoundWinnings =
-    getPlayerWinnings(
-      latestRoundPlayer,
-      latestRound
-    )
-
-  const topPlayers =
-    [...playerStats]
-      .filter(
-        (player) =>
-          toNumber(player?.roundsPlayed, 0) > 0
-      )
-      .sort(
-        (a, b) =>
-          toNumber(b.totalWinnings, 0) -
-          toNumber(a.totalWinnings, 0)
-      )
-      .slice(0, 3)
-
-  const currentModeLabel =
-    getModeLabel({
-      isWolffn: isWolffnMode,
-      isProfessional:
-        !isWolffnMode &&
-        specialScoringEnabled,
-    })
+  const currentModeLabel = getModeLabel({
+    isWolffn: isWolffnMode,
+    isProfessional: !isWolffnMode && specialScoringEnabled,
+  })
 
   return (
     <div className="relative min-h-[100dvh] overflow-hidden bg-[#e8ebe5] pb-[calc(13rem+env(safe-area-inset-bottom))] text-slate-950">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_15%_8%,rgba(255,255,255,0.96),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(16,185,129,0.20),transparent_32%),radial-gradient(circle_at_48%_82%,rgba(234,179,8,0.16),transparent_36%)]"
-      />
-
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-0 bg-white/[0.18] shadow-[inset_0_1px_1px_rgba(255,255,255,0.75)] backdrop-blur-3xl"
-      />
-
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.42),rgba(255,255,255,0.08)_45%,rgba(255,255,255,0.24))]"
-      />
+      <AppBackground />
 
       <div className="relative px-5 pt-10 sm:pt-12">
         <div className="mx-auto w-full max-w-md">
@@ -659,9 +521,7 @@ export default function HomeScreen() {
                 duration: 0.35,
                 ease: "easeOut",
               }}
-              onClick={() =>
-                navigate("/live")
-              }
+              onClick={() => navigate("/live")}
               className="mt-10 w-full overflow-hidden rounded-[38px] border border-white/20 bg-[#071819] text-left text-white shadow-[0_28px_70px_rgba(7,24,25,0.42)]"
             >
               <div className="relative p-7">
@@ -688,11 +548,7 @@ export default function HomeScreen() {
                     </div>
 
                     <div className="shrink-0 text-right">
-                      <DarkBadge>
-                        {matchFinished
-                          ? "Beendet"
-                          : "Live"}
-                      </DarkBadge>
+                      <DarkBadge>{matchFinished ? "Beendet" : "Live"}</DarkBadge>
                     </div>
                   </div>
 
@@ -769,7 +625,8 @@ export default function HomeScreen() {
                   </div>
 
                   <div className="mt-5 max-w-xs text-base font-semibold leading-relaxed text-slate-400">
-                    Course, Flight und Einsatz wählen. Danach direkt zur Score-Eingabe.
+                    Course, Flight und Einsatz wählen. Danach direkt zur
+                    Score-Eingabe.
                   </div>
 
                   <Link
@@ -826,9 +683,7 @@ export default function HomeScreen() {
                   </div>
                 </div>
 
-                <div className="text-2xl font-black">
-                  →
-                </div>
+                <div className="text-2xl font-black">→</div>
               </Link>
             </motion.div>
           )}
@@ -852,9 +707,7 @@ export default function HomeScreen() {
             >
               <button
                 type="button"
-                onClick={() =>
-                  navigate(`/matches/${latestRoundId}`)
-                }
+                onClick={() => navigate(`/matches/${latestRoundId}`)}
                 className="min-h-[14rem] rounded-[34px] border border-white/70 bg-white/[0.46] p-6 text-left shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
               >
                 <div className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">
@@ -882,7 +735,9 @@ export default function HomeScreen() {
                     </div>
 
                     <div
-                      className={`mt-1 text-[1.9rem] font-black leading-none tracking-[-0.055em] ${getToParColor(latestRoundTotalToPar)}`}
+                      className={`mt-1 text-[1.9rem] font-black leading-none tracking-[-0.055em] ${getToParColor(
+                        latestRoundTotalToPar
+                      )}`}
                     >
                       {formatToPar(latestRoundTotalToPar)}
                     </div>
@@ -904,9 +759,7 @@ export default function HomeScreen() {
 
               <button
                 type="button"
-                onClick={() =>
-                  navigate(`/matches/${latestRoundId}`)
-                }
+                onClick={() => navigate(`/matches/${latestRoundId}`)}
                 className="min-h-[14rem] rounded-[34px] border border-white/70 bg-white/[0.46] p-6 text-left shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
               >
                 <div className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">
@@ -914,7 +767,9 @@ export default function HomeScreen() {
                 </div>
 
                 <div
-                  className={`mt-8 text-[3.35rem] font-black leading-none tracking-[-0.07em] ${getSkinsColor(latestRoundSkins)}`}
+                  className={`mt-8 text-[3.35rem] font-black leading-none tracking-[-0.07em] ${getSkinsColor(
+                    latestRoundSkins
+                  )}`}
                 >
                   {formatSkins(latestRoundSkins)}
                 </div>
@@ -924,7 +779,9 @@ export default function HomeScreen() {
                 </div>
 
                 <div
-                  className={`mt-8 whitespace-nowrap text-[2.45rem] font-black leading-none tracking-[-0.06em] ${getMoneyColor(latestRoundWinnings)}`}
+                  className={`mt-8 whitespace-nowrap text-[2.45rem] font-black leading-none tracking-[-0.06em] ${getMoneyColor(
+                    latestRoundWinnings
+                  )}`}
                 >
                   {formatMoney(latestRoundWinnings)}
                 </div>
@@ -961,9 +818,7 @@ export default function HomeScreen() {
 
               <button
                 type="button"
-                onClick={() =>
-                  navigate("/leaderboard")
-                }
+                onClick={() => navigate("/leaderboard")}
                 className="rounded-full border border-white/70 bg-white/[0.46] px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600 backdrop-blur-xl"
               >
                 Alle
@@ -981,9 +836,7 @@ export default function HomeScreen() {
                 <button
                   type="button"
                   key={player.name}
-                  onClick={() =>
-                    navigate("/leaderboard")
-                  }
+                  onClick={() => navigate("/leaderboard")}
                   className="flex w-full items-baseline justify-between gap-5 text-left"
                 >
                   <div className="min-w-0 truncate text-[1.75rem] font-black leading-none tracking-[-0.045em]">
@@ -991,7 +844,9 @@ export default function HomeScreen() {
                   </div>
 
                   <div
-                    className={`shrink-0 whitespace-nowrap text-[1.65rem] font-black leading-none tracking-[-0.045em] ${getMoneyColor(player.totalWinnings)}`}
+                    className={`shrink-0 whitespace-nowrap text-[1.65rem] font-black leading-none tracking-[-0.045em] ${getMoneyColor(
+                      player.totalWinnings
+                    )}`}
                   >
                     {formatMoney(player.totalWinnings)}
                   </div>
@@ -1026,7 +881,8 @@ export default function HomeScreen() {
               </div>
 
               <div className="mt-3 text-sm font-semibold leading-relaxed text-slate-500">
-                Sobald eine Runde abgeschlossen ist, erscheinen hier Last Round und Season Leaderboard.
+                Sobald eine Runde abgeschlossen ist, erscheinen hier Last Round
+                und Season Leaderboard.
               </div>
             </motion.div>
           )}

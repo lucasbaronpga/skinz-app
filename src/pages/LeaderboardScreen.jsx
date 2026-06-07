@@ -1,15 +1,8 @@
-import {
-  useState,
-} from "react"
+import { useState } from "react"
 
-import {
-  AnimatePresence,
-  motion,
-} from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion"
 
-import {
-  useNavigate,
-} from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 
 import {
   ArrowLeft,
@@ -21,17 +14,14 @@ import {
   Trophy,
 } from "lucide-react"
 
-import {
-  GAME_MODES,
-  useGame,
-} from "../context/GameContext"
+import AppBackground from "../components/AppBackground"
+
+import { GAME_MODES, useGame } from "../context/GameContext"
 
 function toNumber(value, fallback = 0) {
   const number = Number(value)
 
-  return Number.isFinite(number)
-    ? number
-    : fallback
+  return Number.isFinite(number) ? number : fallback
 }
 
 function roundMoney(value) {
@@ -39,24 +29,19 @@ function roundMoney(value) {
 }
 
 function formatEuroAmount(value) {
-  const amount =
-    roundMoney(Math.abs(value))
+  const amount = roundMoney(Math.abs(value))
 
-  const hasCents =
-    Math.abs(amount % 1) > 0
+  const hasCents = Math.abs(amount % 1) > 0
 
   if (hasCents) {
-    return amount
-      .toFixed(2)
-      .replace(".", ",")
+    return amount.toFixed(2).replace(".", ",")
   }
 
   return amount.toFixed(0)
 }
 
 function formatMoney(value) {
-  const amount =
-    roundMoney(value)
+  const amount = roundMoney(value)
 
   if (amount > 0) {
     return `+${formatEuroAmount(amount)}€`
@@ -73,7 +58,7 @@ function getMoneyColor(value) {
   const amount = toNumber(value, 0)
 
   if (amount > 0) {
-    return "text-yellow-500"
+    return "text-amber-500"
   }
 
   if (amount < 0) {
@@ -87,7 +72,7 @@ function getMoneyColorDark(value) {
   const amount = toNumber(value, 0)
 
   if (amount > 0) {
-    return "text-yellow-400"
+    return "text-amber-300"
   }
 
   if (amount < 0) {
@@ -98,13 +83,15 @@ function getMoneyColorDark(value) {
 }
 
 function formatSkinSaldo(value) {
-  return Math.abs(
-    toNumber(value, 0)
-  )
+  return Math.abs(toNumber(value, 0))
 }
 
 function getSkinColor(value) {
   const amount = toNumber(value, 0)
+
+  if (amount > 0) {
+    return "text-amber-500"
+  }
 
   if (amount < 0) {
     return "text-red-500"
@@ -143,7 +130,7 @@ function getToParColor(value) {
 
 function getRankStyle(index) {
   if (index === 0) {
-    return "bg-yellow-400 text-black"
+    return "bg-amber-400 text-black"
   }
 
   if (index === 1) {
@@ -154,7 +141,7 @@ function getRankStyle(index) {
     return "bg-[#cd7f32] text-white"
   }
 
-  return "border border-slate-200 bg-white text-slate-700"
+  return "border border-white/70 bg-white/70 text-slate-700"
 }
 
 function isHotPlayer(player) {
@@ -165,64 +152,43 @@ function isHotPlayer(player) {
 }
 
 function getWinRate(player) {
-  const wins =
-    toNumber(player?.wins, 0)
+  const wins = toNumber(player?.wins, 0)
 
-  const roundsPlayed =
-    toNumber(player?.roundsPlayed, 0)
+  const roundsPlayed = toNumber(player?.roundsPlayed, 0)
 
   if (!roundsPlayed) {
     return 0
   }
 
-  return Math.round(
-    (wins / roundsPlayed) * 100
-  )
+  return Math.round((wins / roundsPlayed) * 100)
 }
 
 function getRoundPlayers(round) {
-  return Array.isArray(round?.players)
-    ? round.players
-    : []
+  return Array.isArray(round?.players) ? round.players : []
 }
 
 function getRecentMatches(completedRounds, playerName) {
   return completedRounds
     .filter((round) =>
-      getRoundPlayers(round).some(
-        (player) =>
-          player.name === playerName
-      )
+      getRoundPlayers(round).some((player) => player?.name === playerName)
     )
-    .sort(
-      (a, b) =>
-        toNumber(b.createdAt, 0) -
-        toNumber(a.createdAt, 0)
-    )
+    .sort((a, b) => toNumber(b.createdAt, 0) - toNumber(a.createdAt, 0))
     .slice(0, 3)
 }
 
 function getRoundPlayer(round, playerName) {
   return (
-    getRoundPlayers(round).find(
-      (player) =>
-        player.name === playerName
-    ) || null
+    getRoundPlayers(round).find((player) => player?.name === playerName) ||
+    null
   )
 }
 
 function getRoundCourseName(round) {
-  return (
-    round?.course?.name ||
-    "Erster Golfclub Westpfalz"
-  )
+  return round?.course?.name || "Erster Golfclub Westpfalz"
 }
 
 function getRoundCoursePar(round) {
-  return (
-    round?.course?.par ||
-    72
-  )
+  return toNumber(round?.course?.par, 72)
 }
 
 function getRoundCourseMeta(round) {
@@ -230,27 +196,17 @@ function getRoundCourseMeta(round) {
 }
 
 function getRoundDate(round) {
-  return (
-    round?.date ||
-    "Unbekannt"
-  )
+  return round?.date || "Unbekannt"
 }
 
 function getRoundId(round) {
-  return (
-    round?.id ||
-    "SKZ-0000"
-  )
+  return round?.id || "SKZ-0000"
 }
 
 function getPlayerTotalScore(player) {
-  if (
-    Array.isArray(player?.holes) &&
-    player.holes.length > 0
-  ) {
+  if (Array.isArray(player?.holes) && player.holes.length > 0) {
     return player.holes.reduce(
-      (total, hole) =>
-        total + toNumber(hole.score, 0),
+      (total, playedHole) => total + toNumber(playedHole?.score, 0),
       0
     )
   }
@@ -259,20 +215,50 @@ function getPlayerTotalScore(player) {
 }
 
 function getLatestScore(recentMatches, playerName) {
-  const latestRound =
-    recentMatches[0]
+  const latestRound = recentMatches[0]
 
-  const latestPlayer =
-    getRoundPlayer(
-      latestRound,
-      playerName
-    )
+  const latestPlayer = getRoundPlayer(latestRound, playerName)
 
   return getPlayerTotalScore(latestPlayer)
 }
 
+function itemIsWolffn(item) {
+  return Boolean(
+    item?.gameMode === GAME_MODES.WOLFFN ||
+      item?.gameModeLabel === "Wolffn" ||
+      item?.wolffnSetup ||
+      item?.wolffnFormat ||
+      item?.wolffnPlayer ||
+      Array.isArray(item?.wolffnTeamA) ||
+      Array.isArray(item?.wolffnTeamB)
+  )
+}
+
 function roundIsWolffn(round) {
-  return round?.gameMode === GAME_MODES.WOLFFN
+  if (!round) {
+    return false
+  }
+
+  if (
+    round?.gameMode === GAME_MODES.WOLFFN ||
+    round?.gameModeLabel === "Wolffn"
+  ) {
+    return true
+  }
+
+  const historyHasWolffn =
+    Array.isArray(round?.history) &&
+    round.history.some((playedHole) => itemIsWolffn(playedHole))
+
+  if (historyHasWolffn) {
+    return true
+  }
+
+  return getRoundPlayers(round).some(
+    (player) =>
+      Array.isArray(player?.holes) &&
+      player.holes.some((playedHole) => itemIsWolffn(playedHole))
+  )
 }
 
 function roundHasSpecialScoring(round) {
@@ -286,6 +272,7 @@ function roundHasSpecialScoring(round) {
 
   if (
     round?.gameMode === GAME_MODES.PROFESSIONAL ||
+    round?.gameModeLabel === "Skinz Professional" ||
     round?.specialScoringEnabled ||
     round?.bonusSkinsEnabled ||
     round?.eagleBonusEnabled
@@ -297,33 +284,32 @@ function roundHasSpecialScoring(round) {
     Array.isArray(round?.history) &&
     round.history.some(
       (playedHole) =>
-        !roundIsWolffn(playedHole) &&
-        (
-          playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
+        !itemIsWolffn(playedHole) &&
+        (playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
+          playedHole?.gameModeLabel === "Skinz Professional" ||
           playedHole?.specialScoringEnabled ||
           playedHole?.specialScoringApplied ||
           toNumber(playedHole?.bonusSkins, 0) > 0 ||
-          playedHole?.eagleBonusApplied
-        )
+          playedHole?.eagleBonusApplied)
     )
 
   if (historyHasSpecialScoring) {
     return true
   }
 
-  return getRoundPlayers(round).some((player) =>
-    Array.isArray(player?.holes) &&
-    player.holes.some(
-      (playedHole) =>
-        !roundIsWolffn(playedHole) &&
-        (
-          playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
-          playedHole?.specialScoringEnabled ||
-          playedHole?.specialScoringApplied ||
-          toNumber(playedHole?.bonusSkins, 0) > 0 ||
-          playedHole?.eagleBonusApplied
-        )
-    )
+  return getRoundPlayers(round).some(
+    (player) =>
+      Array.isArray(player?.holes) &&
+      player.holes.some(
+        (playedHole) =>
+          !itemIsWolffn(playedHole) &&
+          (playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
+            playedHole?.gameModeLabel === "Skinz Professional" ||
+            playedHole?.specialScoringEnabled ||
+            playedHole?.specialScoringApplied ||
+            toNumber(playedHole?.bonusSkins, 0) > 0 ||
+            playedHole?.eagleBonusApplied)
+      )
   )
 }
 
@@ -332,14 +318,13 @@ function playerHasSpecialScoringInRound(player) {
     Array.isArray(player?.holes) &&
     player.holes.some(
       (playedHole) =>
-        !roundIsWolffn(playedHole) &&
-        (
-          playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
+        !itemIsWolffn(playedHole) &&
+        (playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
+          playedHole?.gameModeLabel === "Skinz Professional" ||
           playedHole?.specialScoringEnabled ||
           playedHole?.specialScoringApplied ||
           toNumber(playedHole?.bonusSkins, 0) > 0 ||
-          playedHole?.eagleBonusApplied
-        )
+          playedHole?.eagleBonusApplied)
     )
   )
 }
@@ -347,35 +332,28 @@ function playerHasSpecialScoringInRound(player) {
 export default function LeaderboardScreen() {
   const navigate = useNavigate()
 
-  const {
-    playerStats,
-    completedRounds,
-  } = useGame()
+  const { playerStats, completedRounds } = useGame()
 
-  const [
-    expandedPlayer,
-    setExpandedPlayer,
-  ] = useState(null)
+  const safePlayerStats = Array.isArray(playerStats) ? playerStats : []
 
-  const rankedPlayers =
-    playerStats.filter(
-      (player) =>
-        toNumber(player?.roundsPlayed, 0) > 0
-    )
+  const safeCompletedRounds = Array.isArray(completedRounds)
+    ? completedRounds
+    : []
 
-  const sortedPlayers =
-    [...rankedPlayers].sort(
-      (a, b) =>
-        toNumber(b.totalWinnings, 0) -
-          toNumber(a.totalWinnings, 0) ||
-        toNumber(b.wins, 0) -
-          toNumber(a.wins, 0) ||
-        toNumber(a.avgToPar, 0) -
-          toNumber(b.avgToPar, 0)
-    )
+  const [expandedPlayer, setExpandedPlayer] = useState(null)
 
-  const seasonLeader =
-    sortedPlayers[0] || null
+  const rankedPlayers = safePlayerStats.filter(
+    (player) => toNumber(player?.roundsPlayed, 0) > 0
+  )
+
+  const sortedPlayers = [...rankedPlayers].sort(
+    (a, b) =>
+      toNumber(b.totalWinnings, 0) - toNumber(a.totalWinnings, 0) ||
+      toNumber(b.wins, 0) - toNumber(a.wins, 0) ||
+      toNumber(a.avgToPar, 0) - toNumber(b.avgToPar, 0)
+  )
+
+  const seasonLeader = sortedPlayers[0] || null
 
   function handleBack() {
     if (window.history.length > 1) {
@@ -387,8 +365,10 @@ export default function LeaderboardScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7] pb-[calc(9rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
-      <div className="mx-auto max-w-md px-5">
+    <div className="relative min-h-[100dvh] overflow-hidden bg-[#e8ebe5] pb-[calc(9rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
+      <AppBackground />
+
+      <div className="relative mx-auto max-w-md px-5">
         <div className="flex items-center justify-between">
           <motion.button
             type="button"
@@ -397,13 +377,13 @@ export default function LeaderboardScreen() {
             }}
             onClick={handleBack}
             aria-label="Zurück"
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm"
+            className="flex h-14 w-14 items-center justify-center rounded-full border border-white/70 bg-white/[0.48] shadow-[0_14px_38px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
           >
             <ArrowLeft size={22} />
           </motion.button>
 
           <div className="text-right">
-            <div className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">
+            <div className="text-xs font-black uppercase tracking-[0.3em] text-emerald-700">
               Season
             </div>
 
@@ -428,11 +408,11 @@ export default function LeaderboardScreen() {
           }}
           className="mt-8"
         >
-          <h1 className="text-6xl font-black tracking-tight text-slate-950">
+          <h1 className="text-6xl font-black tracking-[-0.055em] text-slate-950">
             Leaderboard
           </h1>
 
-          <p className="mt-4 max-w-sm text-sm font-bold leading-relaxed text-slate-400">
+          <p className="mt-4 max-w-sm text-sm font-bold leading-relaxed text-slate-500">
             Season Rankings, Winnings & Performance of all Players.
           </p>
         </motion.div>
@@ -452,12 +432,9 @@ export default function LeaderboardScreen() {
               duration: 0.35,
               ease: "easeOut",
             }}
-            className="mt-16 rounded-[40px] bg-white/90 p-10 text-center shadow-sm backdrop-blur-xl"
+            className="mt-16 rounded-[40px] border border-white/70 bg-white/[0.48] p-10 text-center shadow-[0_18px_55px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
           >
-            <div
-              className="text-7xl"
-              aria-hidden="true"
-            >
+            <div className="text-7xl" aria-hidden="true">
               🏌️
             </div>
 
@@ -465,14 +442,14 @@ export default function LeaderboardScreen() {
               Noch kein Leaderboard
             </div>
 
-            <div className="mt-3 text-sm font-bold leading-relaxed text-slate-400">
+            <div className="mt-3 text-sm font-bold leading-relaxed text-slate-500">
               Spiele deine erste Runde, um Rankings und Scorecards zu sehen.
             </div>
 
             <button
               type="button"
               onClick={() => navigate("/round")}
-              className="mt-8 w-full rounded-[28px] bg-emerald-500 py-5 text-lg font-black text-white shadow-lg"
+              className="mt-8 w-full rounded-[28px] bg-[#071819] py-5 text-lg font-black text-white shadow-[0_18px_48px_rgba(7,24,25,0.28)] transition active:scale-[0.985]"
             >
               Runde starten
             </button>
@@ -494,47 +471,61 @@ export default function LeaderboardScreen() {
               duration: 0.35,
               ease: "easeOut",
             }}
-            className="mt-8 overflow-hidden rounded-[42px] bg-slate-950 text-white shadow-2xl"
+            className="mt-8 overflow-hidden rounded-[42px] border border-white/20 bg-[#071819] text-white shadow-[0_28px_70px_rgba(7,24,25,0.42)]"
           >
-            <div className="p-8">
-              <div className="flex items-start justify-between gap-5">
-                <div className="min-w-0">
-                  <div className="text-xs font-black uppercase tracking-[0.3em] text-slate-500">
-                    Season Leader
-                  </div>
+            <div className="relative p-8">
+              <div
+                aria-hidden="true"
+                className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-emerald-400/28 via-emerald-500/8 to-transparent"
+              />
 
-                  <div className="mt-4 flex items-center gap-3">
-                    <div className="truncate text-6xl font-black tracking-tight">
-                      {seasonLeader.name}
+              <div
+                aria-hidden="true"
+                className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/8 blur-3xl"
+              />
+
+              <div className="relative">
+                <div className="flex items-start justify-between gap-5">
+                  <div className="min-w-0">
+                    <div className="text-xs font-black uppercase tracking-[0.3em] text-emerald-200/85">
+                      Season Leader
                     </div>
 
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-yellow-400 text-black shadow-lg">
-                      <Trophy size={26} />
+                    <div className="mt-4 flex items-center gap-3">
+                      <div className="truncate text-6xl font-black tracking-[-0.06em]">
+                        {seasonLeader.name}
+                      </div>
+
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-amber-400 text-black shadow-lg">
+                        <Trophy size={26} />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="mt-10 flex items-end justify-between gap-5">
-                <div>
-                  <div className="text-xs font-black uppercase tracking-widest text-slate-500">
-                    Winnings
+                <div className="mt-10 flex items-end justify-between gap-5">
+                  <div className="min-w-0">
+                    <div className="text-xs font-black uppercase tracking-widest text-slate-500">
+                      Winnings
+                    </div>
+
+                    <div
+                      className={`mt-2 text-6xl font-black tracking-[-0.06em] ${getMoneyColorDark(
+                        seasonLeader.totalWinnings
+                      )}`}
+                    >
+                      {formatMoney(seasonLeader.totalWinnings)}
+                    </div>
                   </div>
 
-                  <div
-                    className={`mt-2 text-6xl font-black ${getMoneyColorDark(seasonLeader.totalWinnings)}`}
-                  >
-                    {formatMoney(seasonLeader.totalWinnings)}
-                  </div>
-                </div>
+                  <div className="shrink-0 text-right">
+                    <div className="text-xs font-black uppercase tracking-widest text-slate-500">
+                      Wins
+                    </div>
 
-                <div className="text-right">
-                  <div className="text-xs font-black uppercase tracking-widest text-slate-500">
-                    Wins
-                  </div>
-
-                  <div className="mt-2 text-5xl font-black text-white">
-                    {toNumber(seasonLeader.wins, 0)}
+                    <div className="mt-2 text-5xl font-black text-white">
+                      {toNumber(seasonLeader.wins, 0)}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -546,7 +537,7 @@ export default function LeaderboardScreen() {
           <div className="mt-8">
             <div className="flex items-end justify-between gap-5">
               <div>
-                <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
+                <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-500">
                   Global Ranking
                 </div>
 
@@ -555,27 +546,21 @@ export default function LeaderboardScreen() {
                 </h2>
               </div>
 
-              <div className="pb-1 text-right text-sm font-black uppercase tracking-widest text-slate-400">
+              <div className="pb-1 text-right text-sm font-black uppercase tracking-widest text-slate-500">
                 Winnings
               </div>
             </div>
 
             <div className="mt-5 space-y-5">
               {sortedPlayers.map((player, index) => {
-                const isExpanded =
-                  expandedPlayer === player.name
+                const isExpanded = expandedPlayer === player.name
 
-                const recentMatches =
-                  getRecentMatches(
-                    completedRounds,
-                    player.name
-                  )
+                const recentMatches = getRecentMatches(
+                  safeCompletedRounds,
+                  player.name
+                )
 
-                const latestScore =
-                  getLatestScore(
-                    recentMatches,
-                    player.name
-                  )
+                const latestScore = getLatestScore(recentMatches, player.name)
 
                 return (
                   <motion.div
@@ -601,31 +586,29 @@ export default function LeaderboardScreen() {
                         scale: 0.985,
                       }}
                       onClick={() =>
-                        setExpandedPlayer(
-                          isExpanded
-                            ? null
-                            : player.name
-                        )
+                        setExpandedPlayer(isExpanded ? null : player.name)
                       }
                       aria-expanded={isExpanded}
-                      className="w-full rounded-[36px] border border-white/70 bg-white/90 p-5 text-left shadow-sm backdrop-blur-xl"
+                      className="w-full rounded-[36px] border border-white/70 bg-white/[0.48] p-5 text-left shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
                     >
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex min-w-0 items-center gap-4">
                           <div
-                            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-xl font-black shadow-sm ${getRankStyle(index)}`}
+                            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-xl font-black shadow-sm ${getRankStyle(
+                              index
+                            )}`}
                           >
                             {index + 1}
                           </div>
 
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <div className="truncate text-3xl font-black tracking-tight text-slate-950">
+                              <div className="truncate text-3xl font-black tracking-[-0.045em] text-slate-950">
                                 {player.name}
                               </div>
 
                               {index === 0 && (
-                                <div className="flex shrink-0 items-center gap-1 rounded-full bg-yellow-400 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-black">
+                                <div className="flex shrink-0 items-center gap-1 rounded-full bg-amber-400 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-black">
                                   <Crown size={10} />
                                   #1
                                 </div>
@@ -639,7 +622,7 @@ export default function LeaderboardScreen() {
                               )}
                             </div>
 
-                            <div className="mt-2 text-sm font-bold text-slate-400">
+                            <div className="mt-2 text-sm font-bold text-slate-500">
                               {toNumber(player.wins, 0)} Wins •{" "}
                               {toNumber(player.birdies, 0)} Birdies
                             </div>
@@ -649,7 +632,9 @@ export default function LeaderboardScreen() {
                         <div className="flex shrink-0 items-center gap-3">
                           <div className="text-right">
                             <div
-                              className={`text-4xl font-black tracking-tight ${getMoneyColor(player.totalWinnings)}`}
+                              className={`text-4xl font-black tracking-[-0.045em] ${getMoneyColor(
+                                player.totalWinnings
+                              )}`}
                             >
                               {formatMoney(player.totalWinnings)}
                             </div>
@@ -668,16 +653,13 @@ export default function LeaderboardScreen() {
                               ease: "easeOut",
                             }}
                           >
-                            <ChevronDown
-                              size={24}
-                              className="text-slate-400"
-                            />
+                            <ChevronDown size={24} className="text-slate-400" />
                           </motion.div>
                         </div>
                       </div>
 
                       <div className="mt-5 grid grid-cols-3 gap-3">
-                        <div className="rounded-[22px] border border-slate-100 bg-white p-3 text-center shadow-sm">
+                        <div className="rounded-[22px] border border-white/70 bg-white/[0.50] p-3 text-center shadow-sm backdrop-blur-xl">
                           <div className="text-2xl font-black text-slate-950">
                             {toNumber(player.roundsPlayed, 0)}
                           </div>
@@ -687,9 +669,11 @@ export default function LeaderboardScreen() {
                           </div>
                         </div>
 
-                        <div className="rounded-[22px] border border-slate-100 bg-white p-3 text-center shadow-sm">
+                        <div className="rounded-[22px] border border-white/70 bg-white/[0.50] p-3 text-center shadow-sm backdrop-blur-xl">
                           <div
-                            className={`text-2xl font-black ${getToParColor(player.avgToPar)}`}
+                            className={`text-2xl font-black ${getToParColor(
+                              player.avgToPar
+                            )}`}
                           >
                             {formatToPar(player.avgToPar)}
                           </div>
@@ -699,8 +683,8 @@ export default function LeaderboardScreen() {
                           </div>
                         </div>
 
-                        <div className="rounded-[22px] border border-slate-100 bg-white p-3 text-center shadow-sm">
-                          <div className="text-2xl font-black text-blue-500">
+                        <div className="rounded-[22px] border border-white/70 bg-white/[0.50] p-3 text-center shadow-sm backdrop-blur-xl">
+                          <div className="text-2xl font-black text-slate-950">
                             {getWinRate(player)}%
                           </div>
 
@@ -732,10 +716,10 @@ export default function LeaderboardScreen() {
                           }}
                           className="overflow-hidden"
                         >
-                          <div className="mt-4 rounded-[34px] bg-white/90 p-5 shadow-sm backdrop-blur-xl">
+                          <div className="mt-4 rounded-[34px] border border-white/70 bg-white/[0.48] p-5 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl">
                             <div className="flex items-center justify-between">
                               <div>
-                                <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">
+                                <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-500">
                                   Scorecards
                                 </div>
 
@@ -744,36 +728,31 @@ export default function LeaderboardScreen() {
                                 </div>
                               </div>
 
-                              <div className="text-sm font-black text-slate-400">
+                              <div className="text-sm font-black text-slate-500">
                                 {recentMatches.length}
                               </div>
                             </div>
 
                             <div className="mt-5 space-y-3">
                               {recentMatches.length === 0 && (
-                                <div className="rounded-[24px] border border-slate-100 bg-white p-5 text-center text-sm font-bold text-slate-400 shadow-sm">
+                                <div className="rounded-[24px] border border-white/70 bg-white/[0.50] p-5 text-center text-sm font-bold text-slate-500 shadow-sm backdrop-blur-xl">
                                   Noch keine Runden gespielt.
                                 </div>
                               )}
 
                               {recentMatches.map((round) => {
-                                const roundPlayer =
-                                  getRoundPlayer(
-                                    round,
-                                    player.name
-                                  )
+                                const roundPlayer = getRoundPlayer(
+                                  round,
+                                  player.name
+                                )
 
-                                const roundId =
-                                  getRoundId(round)
+                                const roundId = getRoundId(round)
 
-                                const courseName =
-                                  getRoundCourseName(round)
+                                const courseName = getRoundCourseName(round)
 
-                                const courseMeta =
-                                  getRoundCourseMeta(round)
+                                const courseMeta = getRoundCourseMeta(round)
 
-                                const isWolffnRound =
-                                  roundIsWolffn(round)
+                                const isWolffnRound = roundIsWolffn(round)
 
                                 const roundHasSpecialMode =
                                   roundHasSpecialScoring(round)
@@ -785,7 +764,7 @@ export default function LeaderboardScreen() {
                                 return (
                                   <div
                                     key={`${player.name}-${roundId}`}
-                                    className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm"
+                                    className="rounded-[24px] border border-white/70 bg-white/[0.50] p-5 shadow-sm backdrop-blur-xl"
                                   >
                                     <div className="flex items-start justify-between gap-4">
                                       <div className="min-w-0">
@@ -794,25 +773,24 @@ export default function LeaderboardScreen() {
                                             {getRoundDate(round)}
                                           </div>
 
-                                          <div className="rounded-full border border-slate-100 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 shadow-sm">
+                                          <div className="rounded-full border border-white/70 bg-white/[0.55] px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 shadow-sm backdrop-blur-xl">
                                             {roundId}
                                           </div>
 
                                           {isWolffnRound && (
                                             <div className="flex items-center gap-1 rounded-full bg-slate-950 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white">
-                                              <span aria-hidden="true">
-                                                🐺
-                                              </span>
+                                              <span aria-hidden="true">🐺</span>
                                               Wolffn
                                             </div>
                                           )}
 
-                                          {!isWolffnRound && roundHasSpecialMode && (
-                                            <div className="flex items-center gap-1 rounded-full bg-orange-500 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white">
-                                              <Sparkles size={10} />
-                                              Skinz Professional
-                                            </div>
-                                          )}
+                                          {!isWolffnRound &&
+                                            roundHasSpecialMode && (
+                                              <div className="flex items-center gap-1 rounded-full bg-orange-500 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white">
+                                                <Sparkles size={10} />
+                                                Skinz Professional
+                                              </div>
+                                            )}
                                         </div>
 
                                         <div className="mt-3 flex items-center gap-2 text-slate-400">
@@ -829,9 +807,14 @@ export default function LeaderboardScreen() {
 
                                         <div className="mt-3 flex flex-wrap items-center gap-2">
                                           <div
-                                            className={`text-xs font-black uppercase tracking-widest ${getSkinColor(roundPlayer?.skins)}`}
+                                            className={`text-xs font-black uppercase tracking-widest ${getSkinColor(
+                                              roundPlayer?.skins
+                                            )}`}
                                           >
-                                            {formatSkinSaldo(roundPlayer?.skins)} Skinz
+                                            {formatSkinSaldo(
+                                              roundPlayer?.skins
+                                            )}{" "}
+                                            Skinz
                                           </div>
 
                                           {playerHasSpecialMode && (
@@ -845,7 +828,9 @@ export default function LeaderboardScreen() {
 
                                       <div className="shrink-0 text-right">
                                         <div
-                                          className={`text-3xl font-black ${getMoneyColor(roundPlayer?.winnings)}`}
+                                          className={`text-3xl font-black ${getMoneyColor(
+                                            roundPlayer?.winnings
+                                          )}`}
                                         >
                                           {formatMoney(roundPlayer?.winnings)}
                                         </div>
@@ -857,8 +842,8 @@ export default function LeaderboardScreen() {
                             </div>
 
                             <div className="mt-6 grid grid-cols-2 gap-4">
-                              <div className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm">
-                                <div className="text-sm font-bold text-slate-400">
+                              <div className="rounded-[24px] border border-white/70 bg-white/[0.50] p-5 shadow-sm backdrop-blur-xl">
+                                <div className="text-sm font-bold text-slate-500">
                                   Last Score
                                 </div>
 
@@ -867,13 +852,15 @@ export default function LeaderboardScreen() {
                                 </div>
                               </div>
 
-                              <div className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm">
-                                <div className="text-sm font-bold text-slate-400">
+                              <div className="rounded-[24px] border border-white/70 bg-white/[0.50] p-5 shadow-sm backdrop-blur-xl">
+                                <div className="text-sm font-bold text-slate-500">
                                   Earnings
                                 </div>
 
                                 <div
-                                  className={`mt-2 text-5xl font-black ${getMoneyColor(player.totalWinnings)}`}
+                                  className={`mt-2 text-5xl font-black ${getMoneyColor(
+                                    player.totalWinnings
+                                  )}`}
                                 >
                                   {formatMoney(player.totalWinnings)}
                                 </div>

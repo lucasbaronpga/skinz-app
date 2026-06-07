@@ -1,17 +1,8 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react"
+import { useEffect, useRef, useState } from "react"
 
-import {
-  AnimatePresence,
-  motion,
-} from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion"
 
-import {
-  useNavigate,
-} from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 
 import {
   Check,
@@ -21,18 +12,16 @@ import {
   X,
 } from "lucide-react"
 
-import {
-  useGame,
-} from "../context/GameContext"
+import AppBackground from "../components/AppBackground"
+
+import { useGame } from "../context/GameContext"
 
 const HOLE_COUNT = 18
 
 function toNumber(value, fallback = 0) {
   const number = Number(value)
 
-  return Number.isFinite(number)
-    ? number
-    : fallback
+  return Number.isFinite(number) ? number : fallback
 }
 
 function roundMoney(value) {
@@ -40,24 +29,19 @@ function roundMoney(value) {
 }
 
 function formatEuroAmount(value) {
-  const amount =
-    roundMoney(Math.abs(value))
+  const amount = roundMoney(Math.abs(value))
 
-  const hasCents =
-    Math.abs(amount % 1) > 0
+  const hasCents = Math.abs(amount % 1) > 0
 
   if (hasCents) {
-    return amount
-      .toFixed(2)
-      .replace(".", ",")
+    return amount.toFixed(2).replace(".", ",")
   }
 
   return amount.toFixed(0)
 }
 
 function formatMoney(value) {
-  const amount =
-    roundMoney(value)
+  const amount = roundMoney(value)
 
   if (amount > 0) {
     return `+${formatEuroAmount(amount)}€`
@@ -71,15 +55,13 @@ function formatMoney(value) {
 }
 
 function formatPlainMoney(value) {
-  const amount =
-    roundMoney(value)
+  const amount = roundMoney(value)
 
   return `${formatEuroAmount(amount)}€`
 }
 
 function getMoneyColor(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
   if (amount > 0) {
     return "text-amber-500"
@@ -93,14 +75,11 @@ function getMoneyColor(value) {
 }
 
 function formatSkinSaldo(value) {
-  return Math.abs(
-    toNumber(value, 0)
-  )
+  return Math.abs(toNumber(value, 0))
 }
 
 function getSkinColor(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
   if (amount < 0) {
     return "text-red-500"
@@ -110,8 +89,7 @@ function getSkinColor(value) {
 }
 
 function formatToPar(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
   if (amount === 0) {
     return "E"
@@ -125,8 +103,7 @@ function formatToPar(value) {
 }
 
 function getToParColor(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
   if (amount < 0) {
     return "text-emerald-500"
@@ -172,8 +149,7 @@ function getResultBadgeStyle(label) {
 }
 
 function getToParBadgeStyle(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
   if (amount < 0) {
     return "bg-red-500 text-white"
@@ -195,24 +171,15 @@ function getToParBadgeStyle(value) {
 }
 
 function getCourseName(course) {
-  return (
-    course?.name ||
-    "Erster Golfclub Westpfalz"
-  )
+  return course?.name || "Erster Golfclub Westpfalz"
 }
 
 function getCourseLocation(course) {
-  return (
-    course?.location ||
-    "Westpfalz"
-  )
+  return course?.location || "Westpfalz"
 }
 
 function getCoursePar(course) {
-  return (
-    course?.par ||
-    72
-  )
+  return course?.par || 72
 }
 
 function getCourseMeta(course) {
@@ -224,9 +191,7 @@ function getSpecialLabelForScore(score, par, specialScoringEnabled) {
     return null
   }
 
-  const toPar =
-    toNumber(score, par) -
-    toNumber(par, 0)
+  const toPar = toNumber(score, par) - toNumber(par, 0)
 
   if (toPar <= -2) {
     return "Eagle 3 Skinz"
@@ -240,12 +205,9 @@ function getSpecialLabelForScore(score, par, specialScoringEnabled) {
 }
 
 function getResultLabelFromScore(score, par) {
-  const safePar =
-    toNumber(par, 4)
+  const safePar = toNumber(par, 4)
 
-  const scoreToPar =
-    toNumber(score, safePar) -
-    safePar
+  const scoreToPar = toNumber(score, safePar) - safePar
 
   if (scoreToPar <= -3) {
     return "Albatross"
@@ -283,14 +245,11 @@ function getHistoryScore(item) {
     item?.score,
   ]
 
-  const foundScore =
-    possibleScores.find((value) =>
-      Number.isFinite(Number(value))
-    )
+  const foundScore = possibleScores.find((value) =>
+    Number.isFinite(Number(value))
+  )
 
-  return foundScore === undefined
-    ? null
-    : toNumber(foundScore, null)
+  return foundScore === undefined ? null : toNumber(foundScore, null)
 }
 
 function getHistoryResultLabel(item) {
@@ -310,22 +269,17 @@ function getHistoryResultLabel(item) {
     return item.winnerResult
   }
 
-  const historyScore =
-    getHistoryScore(item)
+  const historyScore = getHistoryScore(item)
 
   if (historyScore === null) {
     return null
   }
 
-  return getResultLabelFromScore(
-    historyScore,
-    item?.par || 4
-  )
+  return getResultLabelFromScore(historyScore, item?.par || 4)
 }
 
 function getHistoryResultSummary(item) {
-  const resultLabel =
-    getHistoryResultLabel(item)
+  const resultLabel = getHistoryResultLabel(item)
 
   if (item?.hasTie) {
     if (resultLabel) {
@@ -343,12 +297,9 @@ function getHistoryResultSummary(item) {
 }
 
 function getSkinsLabel(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
-  return amount === 1
-    ? "1 Skin"
-    : `${amount} Skins`
+  return amount === 1 ? "1 Skin" : `${amount} Skins`
 }
 
 function getHistorySpecialLabel(item) {
@@ -372,9 +323,7 @@ function formatHoleListLabel(holes) {
     return null
   }
 
-  return holes
-    .map((holeNumber) => String(holeNumber))
-    .join(" + ")
+  return holes.map((holeNumber) => String(holeNumber)).join(" + ")
 }
 
 function buildHistoryDisplayItems(history) {
@@ -394,10 +343,7 @@ function buildHistoryDisplayItems(history) {
       }
     }
 
-    const displayWonHoles = [
-      ...openCarryoverHoles,
-      item.hole,
-    ]
+    const displayWonHoles = [...openCarryoverHoles, item.hole]
 
     openCarryoverHoles.length = 0
 
@@ -409,21 +355,15 @@ function buildHistoryDisplayItems(history) {
 }
 
 function getWolffnTeeOrder(players, hole) {
-  const playerNames =
-    players.map((player) => player.name)
+  const playerNames = players.map((player) => player.name)
 
   if (playerNames.length !== 4) {
     return playerNames
   }
 
-  const offset =
-    (Math.max(toNumber(hole, 1), 1) - 1) %
-    playerNames.length
+  const offset = (Math.max(toNumber(hole, 1), 1) - 1) % playerNames.length
 
-  return [
-    ...playerNames.slice(offset),
-    ...playerNames.slice(0, offset),
-  ]
+  return [...playerNames.slice(offset), ...playerNames.slice(0, offset)]
 }
 
 function getWolffnTeams({
@@ -432,11 +372,7 @@ function getWolffnTeams({
   askedPlayer,
   wolffnDecision,
 }) {
-  if (
-    !Array.isArray(teeOrder) ||
-    teeOrder.length !== 4 ||
-    !decisionPlayer
-  ) {
+  if (!Array.isArray(teeOrder) || teeOrder.length !== 4 || !decisionPlayer) {
     return null
   }
 
@@ -445,14 +381,8 @@ function getWolffnTeams({
       format: "1v3",
       label: "Wolffn",
       wolffnPlayer: decisionPlayer,
-      teamA: [
-        decisionPlayer,
-      ],
-      teamB:
-        teeOrder.filter(
-          (playerName) =>
-            playerName !== decisionPlayer
-        ),
+      teamA: [decisionPlayer],
+      teamB: teeOrder.filter((playerName) => playerName !== decisionPlayer),
     }
   }
 
@@ -461,16 +391,9 @@ function getWolffnTeams({
   }
 
   if (wolffnDecision === "accepted") {
-    const teamA = [
-      decisionPlayer,
-      askedPlayer,
-    ]
+    const teamA = [decisionPlayer, askedPlayer]
 
-    const teamB =
-      teeOrder.filter(
-        (playerName) =>
-          !teamA.includes(playerName)
-      )
+    const teamB = teeOrder.filter((playerName) => !teamA.includes(playerName))
 
     return {
       format: "2v2",
@@ -486,14 +409,8 @@ function getWolffnTeams({
       format: "1v3",
       label: "Wolffn",
       wolffnPlayer: askedPlayer,
-      teamA: [
-        askedPlayer,
-      ],
-      teamB:
-        teeOrder.filter(
-          (playerName) =>
-            playerName !== askedPlayer
-        ),
+      teamA: [askedPlayer],
+      teamB: teeOrder.filter((playerName) => playerName !== askedPlayer),
     }
   }
 
@@ -501,15 +418,10 @@ function getWolffnTeams({
 }
 
 function joinTeamNames(team) {
-  return Array.isArray(team)
-    ? team.join(" + ")
-    : "-"
+  return Array.isArray(team) ? team.join(" + ") : "-"
 }
 
-function ModePill({
-  children,
-  isDark = false,
-}) {
+function ModePill({ children, isDark = false }) {
   return (
     <span
       className={`inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl ${
@@ -526,8 +438,7 @@ function ModePill({
 export default function LiveScoringScreen() {
   const navigate = useNavigate()
 
-  const scoreEntryRef =
-    useRef(null)
+  const scoreEntryRef = useRef(null)
 
   const {
     hole,
@@ -557,116 +468,79 @@ export default function LiveScoringScreen() {
     getGolfResult,
   } = useGame()
 
-  const [
-    showAbortModal,
-    setShowAbortModal,
-  ] = useState(false)
+  const safePlayers = Array.isArray(players) ? players : []
+  const safeHistory = Array.isArray(history) ? history : []
 
-  const [
-    showSavedFeedback,
-    setShowSavedFeedback,
-  ] = useState(false)
+  const [showAbortModal, setShowAbortModal] = useState(false)
+  const [showSavedFeedback, setShowSavedFeedback] = useState(false)
 
-  const [
-    wolffnSetup,
-    setWolffnSetup,
-  ] = useState({
+  const [wolffnSetup, setWolffnSetup] = useState({
     hole: null,
     gameMode: null,
     askedPlayer: null,
     decision: null,
   })
 
-  const sortedPlayers =
-    [...players].sort(
-      (a, b) =>
-        toNumber(b.winnings, 0) -
-          toNumber(a.winnings, 0) ||
-        toNumber(a.totalToPar, 0) -
-          toNumber(b.totalToPar, 0)
-    )
+  const sortedPlayers = [...safePlayers].sort(
+    (a, b) =>
+      toNumber(b.winnings, 0) - toNumber(a.winnings, 0) ||
+      toNumber(a.totalToPar, 0) - toNumber(b.totalToPar, 0)
+  )
 
-  const champion =
-    sortedPlayers[0] || null
+  const champion = sortedPlayers[0] || null
 
-  const historyDisplayItems =
-    buildHistoryDisplayItems(history)
+  const historyDisplayItems = buildHistoryDisplayItems(safeHistory)
 
-  const safeHole =
-    Math.min(
-      Math.max(toNumber(hole, 1), 1),
-      HOLE_COUNT
-    )
+  const safeHole = Math.min(Math.max(toNumber(hole, 1), 1), HOLE_COUNT)
 
-  const currentModeLabel =
-    isWolffnMode
-      ? "🐺 Wolffn"
-      : specialScoringEnabled
+  const currentModeLabel = isWolffnMode
+    ? "🐺 Wolffn"
+    : specialScoringEnabled
       ? "Pro"
       : "Classic"
 
   const wolffnSetupIsCurrent =
-    wolffnSetup.hole === safeHole &&
-    wolffnSetup.gameMode === gameMode
+    wolffnSetup.hole === safeHole && wolffnSetup.gameMode === gameMode
 
-  const wolffnAskedPlayer =
-    wolffnSetupIsCurrent
-      ? wolffnSetup.askedPlayer
-      : null
+  const wolffnAskedPlayer = wolffnSetupIsCurrent
+    ? wolffnSetup.askedPlayer
+    : null
 
-  const wolffnDecision =
-    wolffnSetupIsCurrent
-      ? wolffnSetup.decision
-      : null
+  const wolffnDecision = wolffnSetupIsCurrent ? wolffnSetup.decision : null
 
-  const wolffnTeeOrder =
-    getWolffnTeeOrder(
-      players,
-      safeHole
-    )
+  const wolffnTeeOrder = getWolffnTeeOrder(safePlayers, safeHole)
 
-  const wolffnDecisionPlayer =
-    wolffnTeeOrder[0] || null
+  const wolffnDecisionPlayer = wolffnTeeOrder[0] || null
 
-  const wolffnAvailablePartners =
-    wolffnTeeOrder.filter(
-      (playerName) =>
-        playerName !== wolffnDecisionPlayer
-    )
+  const wolffnAvailablePartners = wolffnTeeOrder.filter(
+    (playerName) => playerName !== wolffnDecisionPlayer
+  )
 
-  const wolffnTeams =
-    getWolffnTeams({
-      teeOrder: wolffnTeeOrder,
-      decisionPlayer: wolffnDecisionPlayer,
-      askedPlayer: wolffnAskedPlayer,
-      wolffnDecision,
-    })
+  const wolffnTeams = getWolffnTeams({
+    teeOrder: wolffnTeeOrder,
+    decisionPlayer: wolffnDecisionPlayer,
+    askedPlayer: wolffnAskedPlayer,
+    wolffnDecision,
+  })
 
-  const wolffnSetupComplete =
-    !isWolffnMode ||
-    Boolean(wolffnTeams)
+  const wolffnSetupComplete = !isWolffnMode || Boolean(wolffnTeams)
 
   useEffect(() => {
     if (!hasActiveMatch || matchFinished) {
       return undefined
     }
 
-    const timeoutId =
-      window.setTimeout(() => {
-        scoreEntryRef.current?.scrollIntoView({
-          block: "start",
-          behavior: "auto",
-        })
-      }, 120)
+    const timeoutId = window.setTimeout(() => {
+      scoreEntryRef.current?.scrollIntoView({
+        block: "start",
+        behavior: "auto",
+      })
+    }, 120)
 
     return () => {
       window.clearTimeout(timeoutId)
     }
-  }, [
-    hasActiveMatch,
-    matchFinished,
-    safeHole,
-  ])
+  }, [hasActiveMatch, matchFinished, safeHole])
 
   function handleCloseLive() {
     navigate("/")
@@ -716,16 +590,8 @@ export default function LiveScoringScreen() {
 
   if (!hasActiveMatch && !matchFinished) {
     return (
-      <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#e8ebe5] px-6 text-slate-950">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(255,255,255,0.95),transparent_30%),radial-gradient(circle_at_85%_18%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_50%_78%,rgba(234,179,8,0.16),transparent_36%)]"
-        />
-
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-5 top-6 bottom-8 rounded-[56px] border border-white/70 bg-white/18 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_35px_90px_rgba(15,23,42,0.18)] backdrop-blur-3xl"
-        />
+      <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#e8ebe5] px-6 text-slate-950">
+        <AppBackground />
 
         <div className="relative w-full max-w-sm overflow-hidden rounded-[40px] border border-white/20 bg-[#071819] p-8 text-center text-white shadow-[0_28px_70px_rgba(7,24,25,0.42)]">
           <div
@@ -743,7 +609,8 @@ export default function LiveScoringScreen() {
             </div>
 
             <div className="mt-4 text-sm font-semibold leading-relaxed text-slate-400">
-              Starte zuerst eine neue Runde, damit Scores geändert und Löcher abgeschlossen werden können.
+              Starte zuerst eine neue Runde, damit Scores geändert und Löcher
+              abgeschlossen werden können.
             </div>
 
             <button
@@ -768,16 +635,8 @@ export default function LiveScoringScreen() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#e8ebe5] pb-[calc(9.5rem+env(safe-area-inset-bottom))] text-slate-950">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(255,255,255,0.95),transparent_30%),radial-gradient(circle_at_85%_18%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_50%_78%,rgba(234,179,8,0.16),transparent_36%)]"
-      />
-
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-5 top-6 bottom-8 rounded-[56px] border border-white/70 bg-white/18 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_35px_90px_rgba(15,23,42,0.18)] backdrop-blur-3xl"
-      />
+    <div className="relative min-h-[100dvh] overflow-x-hidden bg-[#e8ebe5] pb-[calc(9.5rem+env(safe-area-inset-bottom))] text-slate-950">
+      <AppBackground />
 
       <div className="relative px-5 pt-9">
         <div className="mx-auto max-w-md">
@@ -799,15 +658,9 @@ export default function LiveScoringScreen() {
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <ModePill>
-                    {matchFinished
-                      ? "Beendet"
-                      : "Live"}
-                  </ModePill>
+                  <ModePill>{matchFinished ? "Beendet" : "Live"}</ModePill>
 
-                  <ModePill>
-                    {currentModeLabel}
-                  </ModePill>
+                  <ModePill>{currentModeLabel}</ModePill>
                 </div>
 
                 <h1 className="mt-4 text-[4rem] font-black leading-none tracking-[-0.075em] text-slate-950">
@@ -909,8 +762,7 @@ export default function LiveScoringScreen() {
 
                   <div className="mt-4 grid grid-cols-3 gap-2">
                     {wolffnAvailablePartners.map((playerName) => {
-                      const isSelected =
-                        wolffnAskedPlayer === playerName
+                      const isSelected = wolffnAskedPlayer === playerName
 
                       return (
                         <button
@@ -1036,32 +888,21 @@ export default function LiveScoringScreen() {
             </motion.div>
           )}
 
-          <div
-            ref={scoreEntryRef}
-            className="mt-5 space-y-4 scroll-mt-5"
-          >
-            {players.map((player, index) => {
-              const playerScore =
-                toNumber(player.score, currentPar)
+          <div ref={scoreEntryRef} className="mt-5 space-y-4 scroll-mt-5">
+            {safePlayers.map((player, index) => {
+              const playerScore = toNumber(player.score, currentPar)
 
-              const isWinning =
-                playerScore === lowestScore
+              const isWinning = playerScore === lowestScore
 
-              const golfResult =
-                getGolfResult(
-                  playerScore,
-                  currentPar
-                )
+              const golfResult = getGolfResult(playerScore, currentPar)
 
-              const currentToPar =
-                playerScore - currentPar
+              const currentToPar = playerScore - currentPar
 
-              const playerSpecialLabel =
-                getSpecialLabelForScore(
-                  playerScore,
-                  currentPar,
-                  specialScoringEnabled
-                )
+              const playerSpecialLabel = getSpecialLabelForScore(
+                playerScore,
+                currentPar,
+                specialScoringEnabled
+              )
 
               return (
                 <motion.div
@@ -1093,13 +934,17 @@ export default function LiveScoringScreen() {
 
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <div
-                          className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] shadow-sm ${getResultBadgeStyle(golfResult.label)}`}
+                          className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] shadow-sm ${getResultBadgeStyle(
+                            golfResult.label
+                          )}`}
                         >
                           {golfResult.label}
                         </div>
 
                         <div
-                          className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] shadow-sm ${getToParBadgeStyle(currentToPar)}`}
+                          className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] shadow-sm ${getToParBadgeStyle(
+                            currentToPar
+                          )}`}
                         >
                           {formatToPar(currentToPar)}
                         </div>
@@ -1127,18 +972,9 @@ export default function LiveScoringScreen() {
                         whileTap={{
                           scale: matchFinished ? 1 : 0.9,
                         }}
-                        disabled={
-                          matchFinished ||
-                          playerScore <= 1
-                        }
+                        disabled={matchFinished || playerScore <= 1}
                         onClick={() =>
-                          updateScore(
-                            index,
-                            Math.max(
-                              1,
-                              playerScore - 1
-                            )
-                          )
+                          updateScore(index, Math.max(1, playerScore - 1))
                         }
                         aria-label={`Score von ${player.name} verringern`}
                         className="flex h-12 w-12 items-center justify-center rounded-[20px] bg-slate-950 text-[1.75rem] font-black leading-none text-white shadow-[0_12px_26px_rgba(15,23,42,0.24)] transition disabled:opacity-35"
@@ -1174,12 +1010,7 @@ export default function LiveScoringScreen() {
                           scale: matchFinished ? 1 : 0.9,
                         }}
                         disabled={matchFinished}
-                        onClick={() =>
-                          updateScore(
-                            index,
-                            playerScore + 1
-                          )
-                        }
+                        onClick={() => updateScore(index, playerScore + 1)}
                         aria-label={`Score von ${player.name} erhöhen`}
                         className="flex h-12 w-12 items-center justify-center rounded-[20px] bg-slate-950 text-[1.75rem] font-black leading-none text-white shadow-[0_12px_26px_rgba(15,23,42,0.24)] transition disabled:opacity-35"
                       >
@@ -1216,12 +1047,12 @@ export default function LiveScoringScreen() {
               </div>
 
               <ModePill>
-                {history.length}/{HOLE_COUNT}
+                {safeHistory.length}/{HOLE_COUNT}
               </ModePill>
             </div>
 
             <div className="mt-5 space-y-2.5">
-              {history.length === 0 && (
+              {safeHistory.length === 0 && (
                 <div className="rounded-[24px] border border-white/70 bg-white/[0.40] p-4 text-center text-sm font-bold text-slate-500 backdrop-blur-xl">
                   Noch kein Score auf der Karte.
                 </div>
@@ -1231,14 +1062,13 @@ export default function LiveScoringScreen() {
                 .slice()
                 .reverse()
                 .map((item, index) => {
-                  const historySpecialLabel =
-                    getHistorySpecialLabel(item)
+                  const historySpecialLabel = getHistorySpecialLabel(item)
 
-                  const historyResultSummary =
-                    getHistoryResultSummary(item)
+                  const historyResultSummary = getHistoryResultSummary(item)
 
-                  const wonHolesLabel =
-                    formatHoleListLabel(item.displayWonHoles)
+                  const wonHolesLabel = formatHoleListLabel(
+                    item.displayWonHoles
+                  )
 
                   return (
                     <div
@@ -1279,9 +1109,7 @@ export default function LiveScoringScreen() {
 
                         <div className="shrink-0 text-right">
                           <div className="text-lg font-black tracking-[-0.035em] text-slate-950">
-                            {item.hasTie
-                              ? "Carryover"
-                              : item.winner}
+                            {item.hasTie ? "Carryover" : item.winner}
                           </div>
 
                           <div
@@ -1291,7 +1119,8 @@ export default function LiveScoringScreen() {
                                 : "text-amber-500"
                             }`}
                           >
-                            {getSkinsLabel(item.skins || 0)} · {formatPlainMoney(item.pot || 0)}
+                            {getSkinsLabel(item.skins || 0)} ·{" "}
+                            {formatPlainMoney(item.pot || 0)}
                           </div>
                         </div>
                       </div>
@@ -1345,14 +1174,11 @@ export default function LiveScoringScreen() {
                     isWolffnMode
                       ? "bg-slate-950"
                       : specialScoringEnabled
-                      ? "bg-orange-500"
-                      : "bg-emerald-500"
+                        ? "bg-orange-500"
+                        : "bg-emerald-500"
                   }`}
                 >
-                  <Check
-                    size={30}
-                    strokeWidth={3.4}
-                  />
+                  <Check size={30} strokeWidth={3.4} />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1368,14 +1194,12 @@ export default function LiveScoringScreen() {
                 isWolffnMode
                   ? "bg-slate-950"
                   : specialScoringEnabled
-                  ? "bg-orange-500"
-                  : "bg-emerald-500"
+                    ? "bg-orange-500"
+                    : "bg-emerald-500"
               }`}
             >
               <span>
-                {!wolffnSetupComplete
-                  ? "Wolffn Setup wählen"
-                  : "Loch abschließen"}
+                {!wolffnSetupComplete ? "Wolffn Setup wählen" : "Loch abschließen"}
               </span>
 
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
@@ -1448,9 +1272,7 @@ export default function LiveScoringScreen() {
 
                 <div className="mt-4 text-lg font-bold text-slate-400">
                   holt {celebration.skins || 1}{" "}
-                  {(celebration.skins || 1) === 1
-                    ? "Skin"
-                    : "Skins"}
+                  {(celebration.skins || 1) === 1 ? "Skin" : "Skins"}
                 </div>
 
                 <div className="mt-6 text-7xl font-black tracking-[-0.07em] text-amber-300">
@@ -1491,12 +1313,7 @@ export default function LiveScoringScreen() {
             >
               <motion.div
                 animate={{
-                  rotate: [
-                    0,
-                    -4,
-                    4,
-                    0,
-                  ],
+                  rotate: [0, -4, 4, 0],
                 }}
                 transition={{
                   duration: 2.5,
@@ -1517,9 +1334,7 @@ export default function LiveScoringScreen() {
               </h2>
 
               <div className="mt-3 inline-flex max-w-full rounded-full border border-white/70 bg-white/[0.46] px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-500 shadow-sm backdrop-blur-xl">
-                <span className="truncate">
-                  {getCourseName(currentCourse)}
-                </span>
+                <span className="truncate">{getCourseName(currentCourse)}</span>
               </div>
 
               <div className="mt-2 text-sm font-bold text-slate-500">
@@ -1527,7 +1342,9 @@ export default function LiveScoringScreen() {
               </div>
 
               <div
-                className={`mt-5 text-5xl font-black tracking-[-0.06em] ${getMoneyColor(champion?.winnings)}`}
+                className={`mt-5 text-5xl font-black tracking-[-0.06em] ${getMoneyColor(
+                  champion?.winnings
+                )}`}
               >
                 {formatMoney(champion?.winnings)}
               </div>
@@ -1539,7 +1356,9 @@ export default function LiveScoringScreen() {
                   </div>
 
                   <div
-                    className={`mt-2 whitespace-nowrap text-[2rem] font-black leading-none tracking-[-0.045em] ${getSkinColor(champion?.skins)}`}
+                    className={`mt-2 whitespace-nowrap text-[2rem] font-black leading-none tracking-[-0.045em] ${getSkinColor(
+                      champion?.skins
+                    )}`}
                   >
                     {formatSkinSaldo(champion?.skins)}
                   </div>
@@ -1551,7 +1370,9 @@ export default function LiveScoringScreen() {
                   </div>
 
                   <div
-                    className={`mt-2 whitespace-nowrap text-[1.85rem] font-black leading-none tracking-[-0.045em] ${getMoneyColor(champion?.winnings)}`}
+                    className={`mt-2 whitespace-nowrap text-[1.85rem] font-black leading-none tracking-[-0.045em] ${getMoneyColor(
+                      champion?.winnings
+                    )}`}
                   >
                     {formatMoney(champion?.winnings)}
                   </div>
@@ -1563,7 +1384,9 @@ export default function LiveScoringScreen() {
                   </div>
 
                   <div
-                    className={`mt-2 whitespace-nowrap text-[2rem] font-black leading-none tracking-[-0.045em] ${getToParColor(champion?.totalToPar)}`}
+                    className={`mt-2 whitespace-nowrap text-[2rem] font-black leading-none tracking-[-0.045em] ${getToParColor(
+                      champion?.totalToPar
+                    )}`}
                   >
                     {formatToPar(champion?.totalToPar)}
                   </div>
@@ -1582,18 +1405,14 @@ export default function LiveScoringScreen() {
                     </div>
                   </div>
 
-                  <div
-                    className="text-3xl"
-                    aria-hidden="true"
-                  >
+                  <div className="text-3xl" aria-hidden="true">
                     🏆
                   </div>
                 </div>
 
                 <div className="mt-4 space-y-3">
                   {sortedPlayers.map((player, index) => {
-                    const isChampion =
-                      player.name === champion?.name
+                    const isChampion = player.name === champion?.name
 
                     return (
                       <div
@@ -1610,10 +1429,10 @@ export default function LiveScoringScreen() {
                               index === 0
                                 ? "bg-amber-300 text-black"
                                 : index === 1
-                                ? "border border-slate-200 bg-white text-slate-900"
-                                : index === 2
-                                ? "bg-orange-400 text-white"
-                                : "border border-slate-200 bg-white text-slate-900"
+                                  ? "border border-slate-200 bg-white text-slate-900"
+                                  : index === 2
+                                    ? "bg-orange-400 text-white"
+                                    : "border border-slate-200 bg-white text-slate-900"
                             }`}
                           >
                             {index + 1}
@@ -1634,7 +1453,9 @@ export default function LiveScoringScreen() {
                             </div>
 
                             <div
-                              className={`mt-1 text-xs font-black uppercase tracking-widest ${getSkinColor(player.skins)}`}
+                              className={`mt-1 text-xs font-black uppercase tracking-widest ${getSkinColor(
+                                player.skins
+                              )}`}
                             >
                               {formatSkinSaldo(player.skins)} Skinz
                             </div>
@@ -1643,13 +1464,17 @@ export default function LiveScoringScreen() {
 
                         <div className="shrink-0 text-right">
                           <div
-                            className={`text-2xl font-black ${getMoneyColor(player.winnings)}`}
+                            className={`text-2xl font-black ${getMoneyColor(
+                              player.winnings
+                            )}`}
                           >
                             {formatMoney(player.winnings)}
                           </div>
 
                           <div
-                            className={`mt-1 text-xs font-black uppercase tracking-widest ${getToParColor(player.totalToPar)}`}
+                            className={`mt-1 text-xs font-black uppercase tracking-widest ${getToParColor(
+                              player.totalToPar
+                            )}`}
                           >
                             {formatToPar(player.totalToPar)}
                           </div>

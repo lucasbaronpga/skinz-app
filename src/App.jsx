@@ -6,14 +6,12 @@ import {
   useLocation,
 } from "react-router-dom"
 
-import {
-  AnimatePresence,
-  motion,
-} from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion"
 
-import {
-  useAuth,
-} from "./context/AuthContext"
+import AppBackground from "./components/AppBackground"
+import BottomNav from "./components/BottomNav"
+
+import { useAuth } from "./context/AuthContext"
 
 import HomeScreen from "./pages/HomeScreen"
 import LoginScreen from "./pages/LoginScreen"
@@ -24,8 +22,6 @@ import MatchDetailsScreen from "./pages/MatchDetailsScreen"
 import LeaderboardScreen from "./pages/LeaderboardScreen"
 import ProfileScreen from "./pages/ProfileScreen"
 
-import BottomNav from "./components/BottomNav"
-
 export default function App() {
   return (
     <BrowserRouter>
@@ -35,58 +31,39 @@ export default function App() {
 }
 
 function AppShell() {
-  const location =
-    useLocation()
+  const location = useLocation()
 
-  const {
-    isAuthenticated,
-    isLoading,
-  } = useAuth()
+  const { isAuthenticated, isLoading } = useAuth()
 
   const hideBottomNav =
-    location.pathname === "/login" ||
-    location.pathname.startsWith("/live")
+    location.pathname === "/login" || location.pathname.startsWith("/live")
 
   if (isLoading) {
     return <SplashScreen />
   }
 
   return (
-    <div className="min-h-screen bg-[#e8ebe5]">
-      <AnimatedRoutes
-        isAuthenticated={isAuthenticated}
-      />
+    <div className="min-h-[100dvh] bg-[#e8ebe5]">
+      <AnimatedRoutes isAuthenticated={isAuthenticated} />
 
-      {isAuthenticated && !hideBottomNav && (
-        <BottomNav />
-      )}
+      {isAuthenticated && !hideBottomNav && <BottomNav />}
     </div>
   )
 }
 
-function AnimatedRoutes({
-  isAuthenticated,
-}) {
-  const location =
-    useLocation()
+function AnimatedRoutes({ isAuthenticated }) {
+  const location = useLocation()
 
-  const routeKey =
-    `${location.pathname}${location.search}`
+  const routeKey = `${location.pathname}${location.search}`
 
   return (
     <AnimatePresence mode="wait">
-      <Routes
-        location={location}
-        key={routeKey}
-      >
+      <Routes location={location} key={routeKey}>
         <Route
           path="/login"
           element={
             isAuthenticated ? (
-              <Navigate
-                to="/"
-                replace
-              />
+              <Navigate to="/" replace />
             ) : (
               <PageTransition>
                 <LoginScreen />
@@ -98,9 +75,7 @@ function AnimatedRoutes({
         <Route
           path="/"
           element={
-            <ProtectedRoute
-              isAuthenticated={isAuthenticated}
-            >
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
               <PageTransition>
                 <HomeScreen />
               </PageTransition>
@@ -111,9 +86,7 @@ function AnimatedRoutes({
         <Route
           path="/round"
           element={
-            <ProtectedRoute
-              isAuthenticated={isAuthenticated}
-            >
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
               <PageTransition>
                 <RoundSetupScreen />
               </PageTransition>
@@ -124,9 +97,7 @@ function AnimatedRoutes({
         <Route
           path="/live"
           element={
-            <ProtectedRoute
-              isAuthenticated={isAuthenticated}
-            >
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
               <PageTransition>
                 <LiveScoringScreen />
               </PageTransition>
@@ -137,9 +108,7 @@ function AnimatedRoutes({
         <Route
           path="/matches"
           element={
-            <ProtectedRoute
-              isAuthenticated={isAuthenticated}
-            >
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
               <PageTransition>
                 <MatchArchiveScreen />
               </PageTransition>
@@ -150,9 +119,7 @@ function AnimatedRoutes({
         <Route
           path="/matches/:id"
           element={
-            <ProtectedRoute
-              isAuthenticated={isAuthenticated}
-            >
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
               <PageTransition>
                 <MatchDetailsScreen />
               </PageTransition>
@@ -163,9 +130,7 @@ function AnimatedRoutes({
         <Route
           path="/leaderboard"
           element={
-            <ProtectedRoute
-              isAuthenticated={isAuthenticated}
-            >
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
               <PageTransition>
                 <LeaderboardScreen />
               </PageTransition>
@@ -176,9 +141,7 @@ function AnimatedRoutes({
         <Route
           path="/profile"
           element={
-            <ProtectedRoute
-              isAuthenticated={isAuthenticated}
-            >
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
               <PageTransition>
                 <ProfileScreen />
               </PageTransition>
@@ -190,11 +153,7 @@ function AnimatedRoutes({
           path="*"
           element={
             <Navigate
-              to={
-                isAuthenticated
-                  ? "/"
-                  : "/login"
-              }
+              to={isAuthenticated ? "/" : "/login"}
               replace
             />
           }
@@ -204,12 +163,8 @@ function AnimatedRoutes({
   )
 }
 
-function ProtectedRoute({
-  children,
-  isAuthenticated,
-}) {
-  const location =
-    useLocation()
+function ProtectedRoute({ children, isAuthenticated }) {
+  const location = useLocation()
 
   if (!isAuthenticated) {
     return (
@@ -226,9 +181,7 @@ function ProtectedRoute({
   return children
 }
 
-function PageTransition({
-  children,
-}) {
+function PageTransition({ children }) {
   return (
     <motion.div
       initial={{
@@ -247,7 +200,7 @@ function PageTransition({
         duration: 0.24,
         ease: "easeOut",
       }}
-      className="min-h-screen"
+      className="min-h-[100dvh]"
     >
       {children}
     </motion.div>
@@ -256,16 +209,8 @@ function PageTransition({
 
 function SplashScreen() {
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#e8ebe5] px-6 text-slate-950">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_8%,rgba(255,255,255,0.95),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_45%_80%,rgba(234,179,8,0.14),transparent_36%)]"
-      />
-
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-5 top-6 bottom-8 rounded-[56px] border border-white/70 bg-white/18 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_35px_90px_rgba(15,23,42,0.18)] backdrop-blur-3xl"
-      />
+    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#e8ebe5] px-6 text-slate-950">
+      <AppBackground />
 
       <motion.div
         initial={{

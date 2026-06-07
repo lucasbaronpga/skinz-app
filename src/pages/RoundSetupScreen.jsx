@@ -1,40 +1,19 @@
-import {
-  useMemo,
-  useState,
-} from "react"
+import { useMemo, useState } from "react"
 
-import {
-  useNavigate,
-} from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 
-import {
-  AnimatePresence,
-  motion,
-} from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion"
 
-import {
-  useAuth,
-} from "../context/AuthContext"
+import AppBackground from "../components/AppBackground"
 
-import {
-  GAME_MODES,
-  useGame,
-} from "../context/GameContext"
+import { useAuth } from "../context/AuthContext"
+
+import { GAME_MODES, useGame } from "../context/GameContext"
 
 const MIN_STAKE = 0.1
 const MAX_STAKE = 100
 
-const STAKE_PRESETS = [
-  0.1,
-  0.2,
-  0.5,
-  1,
-  2,
-  5,
-  10,
-  20,
-  50,
-]
+const STAKE_PRESETS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50]
 
 function normalizeName(value) {
   return String(value || "")
@@ -45,9 +24,7 @@ function normalizeName(value) {
 function toNumber(value, fallback = 0) {
   const number = Number(value)
 
-  return Number.isFinite(number)
-    ? number
-    : fallback
+  return Number.isFinite(number) ? number : fallback
 }
 
 function roundStake(value) {
@@ -55,11 +32,9 @@ function roundStake(value) {
 }
 
 function formatStake(value) {
-  const amount =
-    roundStake(value)
+  const amount = roundStake(value)
 
-  const hasCents =
-    Math.abs(amount % 1) > 0
+  const hasCents = Math.abs(amount % 1) > 0
 
   if (hasCents) {
     return `${amount.toFixed(2).replace(".", ",")}€`
@@ -73,67 +48,49 @@ function getCourseName(course) {
 }
 
 function getCoursePar(course) {
-  return course?.par || 72
+  return toNumber(course?.par, 72)
 }
 
 function clampStake(value) {
-  const number =
-    roundStake(value)
+  const number = roundStake(value)
 
   if (!Number.isFinite(number)) {
     return MIN_STAKE
   }
 
-  return roundStake(
-    Math.min(
-      Math.max(number, MIN_STAKE),
-      MAX_STAKE
-    )
-  )
+  return roundStake(Math.min(Math.max(number, MIN_STAKE), MAX_STAKE))
 }
 
 function getPreviousStakePreset(currentStake) {
-  const current =
-    roundStake(currentStake)
+  const current = roundStake(currentStake)
 
-  const previousPreset =
-    [...STAKE_PRESETS]
-      .reverse()
-      .find((preset) => preset < current)
+  const previousPreset = [...STAKE_PRESETS]
+    .reverse()
+    .find((preset) => preset < current)
 
   return previousPreset || MIN_STAKE
 }
 
 function getNextStakePreset(currentStake) {
-  const current =
-    roundStake(currentStake)
+  const current = roundStake(currentStake)
 
-  const nextPreset =
-    STAKE_PRESETS.find((preset) => preset > current)
+  const nextPreset = STAKE_PRESETS.find((preset) => preset > current)
 
   return nextPreset || MAX_STAKE
 }
 
 function buildInitialPlayers(userName) {
-  const cleanedUserName =
-    userName?.trim()
+  const cleanedUserName = userName?.trim()
 
   if (!cleanedUserName) {
-    return [
-      "Lucas",
-      "Ben",
-    ]
+    return ["Lucas", "Ben"]
   }
 
-  const defaultOpponent =
-    normalizeName(cleanedUserName) === "ben"
-      ? "Lucas"
-      : "Ben"
+  const defaultOpponent = normalizeName(cleanedUserName) === "ben"
+    ? "Lucas"
+    : "Ben"
 
-  return [
-    cleanedUserName,
-    defaultOpponent,
-  ]
+  return [cleanedUserName, defaultOpponent]
 }
 
 function getGameModeMeta(gameMode) {
@@ -160,10 +117,7 @@ function getGameModeMeta(gameMode) {
   }
 }
 
-function ModePill({
-  children,
-  isDark = false,
-}) {
+function ModePill({ children, isDark = false }) {
   return (
     <span
       className={`inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl ${
@@ -180,108 +134,64 @@ function ModePill({
 export default function RoundSetupScreen() {
   const navigate = useNavigate()
 
-  const {
-    user,
-  } = useAuth()
+  const { user } = useAuth()
 
   const {
     startMatch,
     activeMatchId,
     hasActiveMatch,
-
     courses,
     selectedCourseId,
     setSelectedCourseId,
     currentCourse,
   } = useGame()
 
-  const [
-    players,
-    setPlayers,
-  ] = useState(() =>
-    buildInitialPlayers(user?.name)
+  const safeCourses = Array.isArray(courses) ? courses : []
+
+  const [players, setPlayers] = useState(() => buildInitialPlayers(user?.name))
+  const [newPlayer, setNewPlayer] = useState("")
+  const [stake, setStake] = useState(2)
+  const [selectedGameMode, setSelectedGameMode] = useState(GAME_MODES.CLASSIC)
+  const [showWolffnModal, setShowWolffnModal] = useState(false)
+
+  const uniquePlayers = useMemo(() => {
+    const playerMap = new Map()
+
+    players.forEach((player) => {
+      const trimmedName = String(player || "").trim()
+
+      if (!trimmedName) {
+        return
+      }
+
+      const key = normalizeName(trimmedName)
+
+      if (!playerMap.has(key)) {
+        playerMap.set(key, trimmedName)
+      }
+    })
+
+    return Array.from(playerMap.values())
+  }, [players])
+
+  const cleanedNewPlayer = newPlayer.trim()
+
+  const newPlayerAlreadyExists = uniquePlayers.some(
+    (player) => normalizeName(player) === normalizeName(cleanedNewPlayer)
   )
 
-  const [
-    newPlayer,
-    setNewPlayer,
-  ] = useState("")
+  const canAddPlayer = cleanedNewPlayer.length > 0 && !newPlayerAlreadyExists
 
-  const [
-    stake,
-    setStake,
-  ] = useState(2)
+  const isProfessionalMode = selectedGameMode === GAME_MODES.PROFESSIONAL
+  const isWolffnMode = selectedGameMode === GAME_MODES.WOLFFN
 
-  const [
-    selectedGameMode,
-    setSelectedGameMode,
-  ] = useState(GAME_MODES.CLASSIC)
+  const gameModeMeta = getGameModeMeta(selectedGameMode)
 
-  const [
-    showWolffnModal,
-    setShowWolffnModal,
-  ] = useState(false)
+  const wolffnPlayerCountValid = uniquePlayers.length === 4
 
-  const uniquePlayers =
-    useMemo(() => {
-      const playerMap = new Map()
-
-      players.forEach((player) => {
-        const trimmedName =
-          String(player || "").trim()
-
-        if (!trimmedName) {
-          return
-        }
-
-        const key =
-          normalizeName(trimmedName)
-
-        if (!playerMap.has(key)) {
-          playerMap.set(
-            key,
-            trimmedName
-          )
-        }
-      })
-
-      return Array.from(
-        playerMap.values()
-      )
-    }, [
-      players,
-    ])
-
-  const cleanedNewPlayer =
-    newPlayer.trim()
-
-  const newPlayerAlreadyExists =
-    uniquePlayers.some(
-      (player) =>
-        normalizeName(player) ===
-        normalizeName(cleanedNewPlayer)
-    )
-
-  const canAddPlayer =
-    cleanedNewPlayer.length > 0 &&
-    !newPlayerAlreadyExists
-
-  const isProfessionalMode =
-    selectedGameMode === GAME_MODES.PROFESSIONAL
-
-  const isWolffnMode =
-    selectedGameMode === GAME_MODES.WOLFFN
-
-  const gameModeMeta =
-    getGameModeMeta(selectedGameMode)
-
-  const wolffnPlayerCountValid =
-    uniquePlayers.length === 4
-
-  const canStart =
-    isWolffnMode
-      ? wolffnPlayerCountValid
-      : uniquePlayers.length >= 2
+  const canStart = isWolffnMode
+    ? wolffnPlayerCountValid
+    : uniquePlayers.length >= 2
 
   function addPlayer() {
     if (!cleanedNewPlayer) {
@@ -293,10 +203,7 @@ export default function RoundSetupScreen() {
       return
     }
 
-    setPlayers((currentPlayers) => [
-      ...currentPlayers,
-      cleanedNewPlayer,
-    ])
+    setPlayers((currentPlayers) => [...currentPlayers, cleanedNewPlayer])
 
     setNewPlayer("")
   }
@@ -304,27 +211,17 @@ export default function RoundSetupScreen() {
   function removePlayer(name) {
     setPlayers((currentPlayers) =>
       currentPlayers.filter(
-        (player) =>
-          normalizeName(player) !==
-          normalizeName(name)
+        (player) => normalizeName(player) !== normalizeName(name)
       )
     )
   }
 
   function decreaseStake() {
-    setStake((currentStake) =>
-      clampStake(
-        getPreviousStakePreset(currentStake)
-      )
-    )
+    setStake((currentStake) => clampStake(getPreviousStakePreset(currentStake)))
   }
 
   function increaseStake() {
-    setStake((currentStake) =>
-      clampStake(
-        getNextStakePreset(currentStake)
-      )
-    )
+    setStake((currentStake) => clampStake(getNextStakePreset(currentStake)))
   }
 
   function selectGameMode(nextGameMode) {
@@ -354,23 +251,21 @@ export default function RoundSetupScreen() {
     }
 
     if (hasActiveMatch) {
-      const confirmed =
-        window.confirm(
-          "Du bist noch auf der Runde. Neue Runde starten und aktuelle Runde überschreiben?"
-        )
+      const confirmed = window.confirm(
+        "Du bist noch auf der Runde. Neue Runde starten und aktuelle Runde überschreiben?"
+      )
 
       if (!confirmed) {
         return
       }
     }
 
-    const didStart =
-      startMatch(
-        uniquePlayers,
-        stake,
-        selectedCourseId,
-        selectedGameMode
-      )
+    const didStart = startMatch(
+      uniquePlayers,
+      stake,
+      selectedCourseId,
+      selectedGameMode
+    )
 
     if (didStart) {
       navigate("/live")
@@ -378,16 +273,8 @@ export default function RoundSetupScreen() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#e8ebe5] pb-[calc(13rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_8%,rgba(255,255,255,0.95),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_45%_80%,rgba(234,179,8,0.14),transparent_36%)]"
-      />
-
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-5 top-6 bottom-8 rounded-[56px] border border-white/70 bg-white/18 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_35px_90px_rgba(15,23,42,0.18)] backdrop-blur-3xl"
-      />
+    <div className="relative min-h-[100dvh] overflow-hidden bg-[#e8ebe5] pb-[calc(13rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
+      <AppBackground />
 
       <div className="relative mx-auto max-w-md px-6">
         <motion.div
@@ -444,7 +331,8 @@ export default function RoundSetupScreen() {
             </div>
 
             <div className="mt-2 text-sm font-semibold leading-relaxed text-slate-500">
-              Wenn du eine neue Runde startest, wird die aktuelle Runde überschrieben.
+              Wenn du eine neue Runde startest, wird die aktuelle Runde
+              überschrieben.
             </div>
           </motion.div>
         )}
@@ -489,9 +377,7 @@ export default function RoundSetupScreen() {
                 </div>
 
                 <div className="shrink-0 text-right">
-                  <ModePill isDark>
-                    {gameModeMeta.shortLabel}
-                  </ModePill>
+                  <ModePill isDark>{gameModeMeta.shortLabel}</ModePill>
                 </div>
               </div>
 
@@ -542,7 +428,7 @@ export default function RoundSetupScreen() {
                   </div>
 
                   <div className="mt-1 text-sm font-black text-slate-300">
-                    {activeMatchId}
+                    {activeMatchId || "-"}
                   </div>
                 </div>
 
@@ -552,7 +438,8 @@ export default function RoundSetupScreen() {
                   </div>
 
                   <div className="mt-1 text-sm font-black text-slate-300">
-                    {formatStake(getPreviousStakePreset(stake))} / {formatStake(getNextStakePreset(stake))}
+                    {formatStake(getPreviousStakePreset(stake))} /{" "}
+                    {formatStake(getNextStakePreset(stake))}
                   </div>
                 </div>
               </div>
@@ -587,9 +474,7 @@ export default function RoundSetupScreen() {
               </div>
             </div>
 
-            <ModePill>
-              {gameModeMeta.shortLabel}
-            </ModePill>
+            <ModePill>{gameModeMeta.shortLabel}</ModePill>
           </div>
 
           <div className="mt-3 text-sm font-semibold leading-relaxed text-slate-500">
@@ -696,7 +581,8 @@ export default function RoundSetupScreen() {
 
           {isWolffnMode && (
             <div className="mt-5 rounded-[24px] border border-slate-900/10 bg-slate-950 px-5 py-4 text-sm font-semibold leading-relaxed text-slate-300 shadow-sm">
-              🐺 Wolffn braucht exakt 4 Spieler. Der erste Spieler am Loch entscheidet: Partner, Ablehnung oder allein gegen drei.
+              🐺 Wolffn braucht exakt 4 Spieler. Der erste Spieler am Loch
+              entscheidet: Partner, Ablehnung oder allein gegen drei.
             </div>
           )}
         </motion.div>
@@ -740,15 +626,14 @@ export default function RoundSetupScreen() {
           </div>
 
           <div className="mt-6 space-y-3">
-            {courses.length === 0 && (
+            {safeCourses.length === 0 && (
               <div className="rounded-[26px] border border-white/70 bg-white/[0.42] p-5 text-center text-sm font-bold text-slate-500 backdrop-blur-xl">
                 Keine Courses verfügbar.
               </div>
             )}
 
-            {courses.map((course) => {
-              const isActive =
-                selectedCourseId === course.id
+            {safeCourses.map((course) => {
+              const isActive = selectedCourseId === course.id
 
               return (
                 <motion.button
@@ -757,9 +642,7 @@ export default function RoundSetupScreen() {
                   whileTap={{
                     scale: 0.985,
                   }}
-                  onClick={() =>
-                    setSelectedCourseId(course.id)
-                  }
+                  onClick={() => setSelectedCourseId(course.id)}
                   aria-pressed={isActive}
                   className={`w-full rounded-[28px] border px-5 py-5 text-left transition ${
                     isActive
@@ -774,9 +657,7 @@ export default function RoundSetupScreen() {
                       </div>
 
                       <div className="mt-2 text-xs font-black uppercase tracking-[0.18em] text-slate-400">
-                        {isActive
-                          ? "Selected"
-                          : "Available"}
+                        {isActive ? "Selected" : "Available"}
                       </div>
                     </div>
 
@@ -838,9 +719,7 @@ export default function RoundSetupScreen() {
             <input
               id="new-player"
               value={newPlayer}
-              onChange={(event) =>
-                setNewPlayer(event.target.value)
-              }
+              onChange={(event) => setNewPlayer(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   addPlayer()
@@ -888,8 +767,7 @@ export default function RoundSetupScreen() {
 
             {uniquePlayers.map((player) => {
               const isCurrentUser =
-                normalizeName(player) ===
-                normalizeName(user?.name)
+                normalizeName(player) === normalizeName(user?.name)
 
               return (
                 <div
@@ -913,9 +791,7 @@ export default function RoundSetupScreen() {
                       </div>
 
                       <div className="mt-1 text-sm font-semibold text-slate-500">
-                        {isCurrentUser
-                          ? "Du"
-                          : "Im Flight"}
+                        {isCurrentUser ? "Du" : "Im Flight"}
                       </div>
                     </div>
                   </div>
@@ -925,9 +801,7 @@ export default function RoundSetupScreen() {
                     whileTap={{
                       scale: 0.9,
                     }}
-                    onClick={() =>
-                      removePlayer(player)
-                    }
+                    onClick={() => removePlayer(player)}
                     aria-label={`${player} entfernen`}
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-red-100 bg-white/70 text-xl font-black text-red-500 shadow-sm transition hover:bg-red-50"
                   >
@@ -958,18 +832,18 @@ export default function RoundSetupScreen() {
             isWolffnMode
               ? "bg-slate-950"
               : isProfessionalMode
-              ? "bg-orange-500"
-              : "bg-emerald-500"
+                ? "bg-orange-500"
+                : "bg-emerald-500"
           }`}
         >
           <span>
             {hasActiveMatch
               ? "Neue Runde starten"
               : isWolffnMode
-              ? "🐺 Wolffn starten"
-              : isProfessionalMode
-              ? "Pro Runde starten"
-              : "Runde starten"}
+                ? "🐺 Wolffn starten"
+                : isProfessionalMode
+                  ? "Pro Runde starten"
+                  : "Runde starten"}
           </span>
 
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/20 text-2xl">

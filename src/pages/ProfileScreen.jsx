@@ -1,6 +1,4 @@
-import {
-  motion,
-} from "framer-motion"
+import { motion } from "framer-motion"
 
 import {
   Crown,
@@ -14,25 +12,18 @@ import {
   User,
 } from "lucide-react"
 
-import {
-  useNavigate,
-} from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 
-import {
-  useAuth,
-} from "../context/AuthContext"
+import AppBackground from "../components/AppBackground"
 
-import {
-  GAME_MODES,
-  useGame,
-} from "../context/GameContext"
+import { useAuth } from "../context/AuthContext"
+
+import { GAME_MODES, useGame } from "../context/GameContext"
 
 function toNumber(value, fallback = 0) {
   const number = Number(value)
 
-  return Number.isFinite(number)
-    ? number
-    : fallback
+  return Number.isFinite(number) ? number : fallback
 }
 
 function roundMoney(value) {
@@ -40,24 +31,19 @@ function roundMoney(value) {
 }
 
 function formatEuroAmount(value) {
-  const amount =
-    roundMoney(Math.abs(value))
+  const amount = roundMoney(Math.abs(value))
 
-  const hasCents =
-    Math.abs(amount % 1) > 0
+  const hasCents = Math.abs(amount % 1) > 0
 
   if (hasCents) {
-    return amount
-      .toFixed(2)
-      .replace(".", ",")
+    return amount.toFixed(2).replace(".", ",")
   }
 
   return amount.toFixed(0)
 }
 
 function formatMoney(value) {
-  const amount =
-    roundMoney(value)
+  const amount = roundMoney(value)
 
   if (amount > 0) {
     return `+${formatEuroAmount(amount)}€`
@@ -71,8 +57,7 @@ function formatMoney(value) {
 }
 
 function getMoneyColor(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
   if (amount > 0) {
     return "text-yellow-500"
@@ -86,8 +71,7 @@ function getMoneyColor(value) {
 }
 
 function getMoneyColorDark(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
   if (amount > 0) {
     return "text-yellow-300"
@@ -101,8 +85,7 @@ function getMoneyColorDark(value) {
 }
 
 function formatSkinSaldo(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
   if (amount > 0) {
     return `+${amount}`
@@ -116,8 +99,7 @@ function formatSkinSaldo(value) {
 }
 
 function getSkinColor(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
   if (amount > 0) {
     return "text-slate-950"
@@ -131,8 +113,7 @@ function getSkinColor(value) {
 }
 
 function formatToPar(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
   if (amount === 0) {
     return "E"
@@ -146,8 +127,7 @@ function formatToPar(value) {
 }
 
 function getToParColor(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
   if (amount < 0) {
     return "text-emerald-500"
@@ -167,33 +147,23 @@ function normalizeName(value) {
 }
 
 function getRoundPlayers(round) {
-  return Array.isArray(round?.players)
-    ? round.players
-    : []
+  return Array.isArray(round?.players) ? round.players : []
 }
 
 function getRoundPlayer(round, playerName) {
   return (
     getRoundPlayers(round).find(
-      (player) =>
-        normalizeName(player.name) ===
-        normalizeName(playerName)
+      (player) => normalizeName(player.name) === normalizeName(playerName)
     ) || null
   )
 }
 
 function getRoundCourseName(round) {
-  return (
-    round?.course?.name ||
-    "Erster Golfclub Westpfalz"
-  )
+  return round?.course?.name || "Erster Golfclub Westpfalz"
 }
 
 function getRoundCoursePar(round) {
-  return (
-    round?.course?.par ||
-    72
-  )
+  return round?.course?.par || 72
 }
 
 function getRoundCourseMeta(round) {
@@ -201,31 +171,21 @@ function getRoundCourseMeta(round) {
 }
 
 function getRoundDate(round) {
-  return (
-    round?.date ||
-    "Unbekannt"
-  )
+  return round?.date || "Unbekannt"
 }
 
 function getRoundId(round) {
-  return (
-    round?.id ||
-    "SKZ-0000"
-  )
+  return round?.id || "SKZ-0000"
 }
 
 function getInitials(name) {
-  const cleanedName =
-    String(name || "S").trim()
+  const cleanedName = String(name || "S").trim()
 
   if (!cleanedName) {
     return "S"
   }
 
-  const parts =
-    cleanedName
-      .split(" ")
-      .filter(Boolean)
+  const parts = cleanedName.split(" ").filter(Boolean)
 
   if (parts.length >= 2) {
     return `${parts[0].charAt(0)}${parts[1].charAt(0)}`.toUpperCase()
@@ -260,19 +220,16 @@ function roundIsWolffn(round) {
 
   const historyHasWolffn =
     Array.isArray(round?.history) &&
-    round.history.some((playedHole) =>
-      itemIsWolffn(playedHole)
-    )
+    round.history.some((playedHole) => itemIsWolffn(playedHole))
 
   if (historyHasWolffn) {
     return true
   }
 
-  return getRoundPlayers(round).some((player) =>
-    Array.isArray(player?.holes) &&
-    player.holes.some((playedHole) =>
-      itemIsWolffn(playedHole)
-    )
+  return getRoundPlayers(round).some(
+    (player) =>
+      Array.isArray(player?.holes) &&
+      player.holes.some((playedHole) => itemIsWolffn(playedHole))
   )
 }
 
@@ -300,47 +257,42 @@ function roundHasSpecialScoring(round) {
     round.history.some(
       (playedHole) =>
         !itemIsWolffn(playedHole) &&
-        (
-          playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
+        (playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
           playedHole?.gameModeLabel === "Skinz Professional" ||
           playedHole?.specialScoringEnabled ||
           playedHole?.specialScoringApplied ||
           toNumber(playedHole?.bonusSkins, 0) > 0 ||
-          playedHole?.eagleBonusApplied
-        )
+          playedHole?.eagleBonusApplied)
     )
 
   if (historyHasSpecialScoring) {
     return true
   }
 
-  return getRoundPlayers(round).some((player) =>
-    Array.isArray(player?.holes) &&
-    player.holes.some(
-      (playedHole) =>
-        !itemIsWolffn(playedHole) &&
-        (
-          playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
-          playedHole?.gameModeLabel === "Skinz Professional" ||
-          playedHole?.specialScoringEnabled ||
-          playedHole?.specialScoringApplied ||
-          toNumber(playedHole?.bonusSkins, 0) > 0 ||
-          playedHole?.eagleBonusApplied
-        )
-    )
+  return getRoundPlayers(round).some(
+    (player) =>
+      Array.isArray(player?.holes) &&
+      player.holes.some(
+        (playedHole) =>
+          !itemIsWolffn(playedHole) &&
+          (playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
+            playedHole?.gameModeLabel === "Skinz Professional" ||
+            playedHole?.specialScoringEnabled ||
+            playedHole?.specialScoringApplied ||
+            toNumber(playedHole?.bonusSkins, 0) > 0 ||
+            playedHole?.eagleBonusApplied)
+      )
   )
 }
 
 function getRoundSortValue(round) {
-  const createdAt =
-    toNumber(round?.createdAt, 0)
+  const createdAt = toNumber(round?.createdAt, 0)
 
   if (createdAt > 0) {
     return createdAt
   }
 
-  const parsedDate =
-    Date.parse(round?.date || "")
+  const parsedDate = Date.parse(round?.date || "")
 
   if (Number.isFinite(parsedDate)) {
     return parsedDate
@@ -350,8 +302,7 @@ function getRoundSortValue(round) {
 }
 
 function getHeroMoneyTextSize(value) {
-  const formattedValue =
-    formatMoney(value)
+  const formattedValue = formatMoney(value)
 
   if (formattedValue.length >= 8) {
     return "text-[1.35rem]"
@@ -365,8 +316,7 @@ function getHeroMoneyTextSize(value) {
 }
 
 function getPerformanceMoneyTextSize(value) {
-  const formattedValue =
-    formatMoney(value)
+  const formattedValue = formatMoney(value)
 
   if (formattedValue.length >= 8) {
     return "text-[2.15rem]"
@@ -380,74 +330,40 @@ function getPerformanceMoneyTextSize(value) {
 }
 
 export default function ProfileScreen() {
-  const navigate =
-    useNavigate()
+  const navigate = useNavigate()
 
-  const {
-    user,
-    logout,
-  } = useAuth()
+  const { user, logout } = useAuth()
 
-  const {
-    playerStats,
-    completedRounds,
-  } = useGame()
+  const { playerStats, completedRounds } = useGame()
 
-  const userName =
-    user?.name || "Player"
+  const userName = user?.name || "Player"
 
-  const safePlayerStats =
-    Array.isArray(playerStats)
-      ? playerStats
-      : []
-
-  const safeCompletedRounds =
-    Array.isArray(completedRounds)
-      ? completedRounds
-      : []
+  const safePlayerStats = Array.isArray(playerStats) ? playerStats : []
+  const safeCompletedRounds = Array.isArray(completedRounds)
+    ? completedRounds
+    : []
 
   const player =
     safePlayerStats.find(
       (currentPlayer) =>
-        normalizeName(currentPlayer.name) ===
-        normalizeName(userName)
+        normalizeName(currentPlayer.name) === normalizeName(userName)
     ) || null
 
-  const userRounds =
-    safeCompletedRounds.filter((round) =>
-      getRoundPlayers(round).some(
-        (roundPlayer) =>
-          normalizeName(roundPlayer.name) ===
-          normalizeName(userName)
-      )
+  const userRounds = safeCompletedRounds.filter((round) =>
+    getRoundPlayers(round).some(
+      (roundPlayer) => normalizeName(roundPlayer.name) === normalizeName(userName)
     )
+  )
 
-  const recentMatches =
-    [...userRounds]
-      .sort(
-        (a, b) =>
-          getRoundSortValue(b) -
-          getRoundSortValue(a)
-      )
-      .slice(0, 3)
+  const recentMatches = [...userRounds]
+    .sort((a, b) => getRoundSortValue(b) - getRoundSortValue(a))
+    .slice(0, 3)
 
-  const roundsPlayed =
-    toNumber(
-      player?.roundsPlayed,
-      userRounds.length
-    )
-
-  const totalWins =
-    toNumber(player?.wins, 0)
-
-  const totalBirdies =
-    toNumber(player?.birdies, 0)
-
-  const totalWinnings =
-    toNumber(player?.totalWinnings, 0)
-
-  const avgToPar =
-    toNumber(player?.avgToPar, 0)
+  const roundsPlayed = toNumber(player?.roundsPlayed, userRounds.length)
+  const totalWins = toNumber(player?.wins, 0)
+  const totalBirdies = toNumber(player?.birdies, 0)
+  const totalWinnings = toNumber(player?.totalWinnings, 0)
+  const avgToPar = toNumber(player?.avgToPar, 0)
 
   function handleLogout() {
     logout()
@@ -458,16 +374,8 @@ export default function ProfileScreen() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#e8ebe5] pb-[calc(9.5rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_8%,rgba(255,255,255,0.95),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_45%_80%,rgba(234,179,8,0.14),transparent_36%)]"
-      />
-
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-5 top-6 bottom-8 rounded-[56px] border border-white/70 bg-white/18 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_35px_90px_rgba(15,23,42,0.18)] backdrop-blur-3xl"
-      />
+    <div className="relative min-h-[100dvh] overflow-hidden bg-[#e8ebe5] pb-[calc(9.5rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
+      <AppBackground />
 
       <div className="relative mx-auto max-w-md px-5">
         <motion.div
@@ -575,7 +483,9 @@ export default function ProfileScreen() {
                   </div>
 
                   <div
-                    className={`mt-3 w-full text-center font-black leading-none tracking-tight ${getHeroMoneyTextSize(totalWinnings)} ${getMoneyColorDark(totalWinnings)}`}
+                    className={`mt-3 w-full text-center font-black leading-none tracking-tight ${getHeroMoneyTextSize(
+                      totalWinnings
+                    )} ${getMoneyColorDark(totalWinnings)}`}
                   >
                     {formatMoney(totalWinnings)}
                   </div>
@@ -622,9 +532,7 @@ export default function ProfileScreen() {
               <div className="flex items-center gap-2 text-slate-400">
                 <Target size={18} />
 
-                <div className="text-sm font-black">
-                  Birdies
-                </div>
+                <div className="text-sm font-black">Birdies</div>
               </div>
 
               <div className="mt-4 text-5xl font-black text-red-500">
@@ -636,9 +544,7 @@ export default function ProfileScreen() {
               <div className="flex items-center gap-2 text-slate-400">
                 <Crown size={18} />
 
-                <div className="text-sm font-black">
-                  Wins
-                </div>
+                <div className="text-sm font-black">Wins</div>
               </div>
 
               <div className="mt-4 text-5xl font-black text-yellow-500">
@@ -650,9 +556,7 @@ export default function ProfileScreen() {
               <div className="flex items-center gap-2 text-slate-400">
                 <Flag size={18} />
 
-                <div className="text-sm font-black">
-                  Avg To Par
-                </div>
+                <div className="text-sm font-black">Avg To Par</div>
               </div>
 
               <div
@@ -666,13 +570,13 @@ export default function ProfileScreen() {
               <div className="flex items-center justify-center gap-2 text-slate-400">
                 <DollarSign size={18} />
 
-                <div className="text-sm font-black">
-                  Earnings
-                </div>
+                <div className="text-sm font-black">Earnings</div>
               </div>
 
               <div
-                className={`mt-4 w-full text-center font-black leading-none tracking-tight ${getPerformanceMoneyTextSize(totalWinnings)} ${getMoneyColor(totalWinnings)}`}
+                className={`mt-4 w-full text-center font-black leading-none tracking-tight ${getPerformanceMoneyTextSize(
+                  totalWinnings
+                )} ${getMoneyColor(totalWinnings)}`}
               >
                 {formatMoney(totalWinnings)}
               </div>
@@ -730,30 +634,14 @@ export default function ProfileScreen() {
             )}
 
             {recentMatches.map((round) => {
-              const roundPlayer =
-                getRoundPlayer(
-                  round,
-                  userName
-                )
-
-              const roundId =
-                getRoundId(round)
-
-              const courseName =
-                getRoundCourseName(round)
-
-              const courseMeta =
-                getRoundCourseMeta(round)
-
-              const isWolffnRound =
-                roundIsWolffn(round)
-
-              const roundHasSpecialMode =
-                roundHasSpecialScoring(round)
-
+              const roundPlayer = getRoundPlayer(round, userName)
+              const roundId = getRoundId(round)
+              const courseName = getRoundCourseName(round)
+              const courseMeta = getRoundCourseMeta(round)
+              const isWolffnRound = roundIsWolffn(round)
+              const roundHasSpecialMode = roundHasSpecialScoring(round)
               const isWinner =
-                normalizeName(round.winner) ===
-                normalizeName(userName)
+                normalizeName(round.winner) === normalizeName(userName)
 
               return (
                 <motion.button
@@ -762,9 +650,7 @@ export default function ProfileScreen() {
                   whileTap={{
                     scale: 0.985,
                   }}
-                  onClick={() =>
-                    navigate(`/matches/${roundId}`)
-                  }
+                  onClick={() => navigate(`/matches/${roundId}`)}
                   className="w-full rounded-[30px] border border-white/70 bg-white/[0.82] p-5 text-left shadow-sm backdrop-blur-xl"
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -800,16 +686,16 @@ export default function ProfileScreen() {
 
                       <div className="mt-4 flex flex-wrap items-center gap-2">
                         <div
-                          className={`rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase tracking-widest ${getSkinColor(roundPlayer?.skins)}`}
+                          className={`rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase tracking-widest ${getSkinColor(
+                            roundPlayer?.skins
+                          )}`}
                         >
                           {formatSkinSaldo(roundPlayer?.skins)} Skinz
                         </div>
 
                         {isWolffnRound && (
                           <div className="flex items-center gap-1 rounded-full bg-slate-950 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white">
-                            <span aria-hidden="true">
-                              🐺
-                            </span>
+                            <span aria-hidden="true">🐺</span>
                             Wolffn
                           </div>
                         )}
@@ -825,7 +711,9 @@ export default function ProfileScreen() {
 
                     <div className="shrink-0 text-right">
                       <div
-                        className={`text-3xl font-black ${getMoneyColor(roundPlayer?.winnings)}`}
+                        className={`text-3xl font-black ${getMoneyColor(
+                          roundPlayer?.winnings
+                        )}`}
                       >
                         {formatMoney(roundPlayer?.winnings)}
                       </div>
@@ -863,9 +751,7 @@ export default function ProfileScreen() {
           className="mt-8 flex w-full items-center justify-between rounded-[30px] border border-white/70 bg-white/[0.70] px-5 py-4 text-red-500 shadow-sm backdrop-blur-xl"
         >
           <div>
-            <div className="text-xl font-black">
-              Logout
-            </div>
+            <div className="text-xl font-black">Logout</div>
 
             <div className="mt-1 text-sm font-bold text-red-300">
               Session beenden

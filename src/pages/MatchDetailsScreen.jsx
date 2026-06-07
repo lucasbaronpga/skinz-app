@@ -1,16 +1,8 @@
-import {
-  useState,
-} from "react"
+import { useState } from "react"
 
-import {
-  AnimatePresence,
-  motion,
-} from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion"
 
-import {
-  useNavigate,
-  useParams,
-} from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
 
 import {
   ArrowLeft,
@@ -21,17 +13,14 @@ import {
   Trophy,
 } from "lucide-react"
 
-import {
-  GAME_MODES,
-  useGame,
-} from "../context/GameContext"
+import AppBackground from "../components/AppBackground"
+
+import { GAME_MODES, useGame } from "../context/GameContext"
 
 function toNumber(value, fallback = 0) {
   const number = Number(value)
 
-  return Number.isFinite(number)
-    ? number
-    : fallback
+  return Number.isFinite(number) ? number : fallback
 }
 
 function roundMoney(value) {
@@ -39,24 +28,19 @@ function roundMoney(value) {
 }
 
 function formatEuroAmount(value) {
-  const amount =
-    roundMoney(Math.abs(value))
+  const amount = roundMoney(Math.abs(value))
 
-  const hasCents =
-    Math.abs(amount % 1) > 0
+  const hasCents = Math.abs(amount % 1) > 0
 
   if (hasCents) {
-    return amount
-      .toFixed(2)
-      .replace(".", ",")
+    return amount.toFixed(2).replace(".", ",")
   }
 
   return amount.toFixed(0)
 }
 
 function formatMoney(value) {
-  const amount =
-    roundMoney(value)
+  const amount = roundMoney(value)
 
   if (amount > 0) {
     return `+${formatEuroAmount(amount)}€`
@@ -70,15 +54,13 @@ function formatMoney(value) {
 }
 
 function formatPlainMoney(value) {
-  const amount =
-    roundMoney(value)
+  const amount = roundMoney(value)
 
   return `${formatEuroAmount(amount)}€`
 }
 
 function getMoneyColorDark(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
   if (amount > 0) {
     return "text-yellow-300"
@@ -92,8 +74,7 @@ function getMoneyColorDark(value) {
 }
 
 function formatToPar(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
   if (amount === 0) {
     return "E"
@@ -107,8 +88,7 @@ function formatToPar(value) {
 }
 
 function getToParColor(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
   if (amount < 0) {
     return "text-emerald-500"
@@ -122,8 +102,7 @@ function getToParColor(value) {
 }
 
 function getToParColorDark(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
   if (amount < 0) {
     return "text-emerald-300"
@@ -181,45 +160,31 @@ function getRankStyle(index) {
 }
 
 function getRoundPlayers(round) {
-  return Array.isArray(round?.players)
-    ? round.players
-    : []
+  return Array.isArray(round?.players) ? round.players : []
 }
 
 function getPlayerHoles(player) {
-  return Array.isArray(player?.holes)
-    ? player.holes
-    : []
+  return Array.isArray(player?.holes) ? player.holes : []
 }
 
 function getPlayerTotalScore(player) {
-  const holes =
-    getPlayerHoles(player)
+  const holes = getPlayerHoles(player)
 
   if (holes.length > 0) {
-    return holes.reduce(
-      (total, hole) =>
-        total + toNumber(hole.score, 0),
-      0
-    )
+    return holes.reduce((total, hole) => total + toNumber(hole.score, 0), 0)
   }
 
   return toNumber(player?.total, 0)
 }
 
 function getPlayerTotalPar(player, fallbackPar) {
-  const holes =
-    getPlayerHoles(player)
+  const holes = getPlayerHoles(player)
 
   if (holes.length === 0) {
     return fallbackPar
   }
 
-  return holes.reduce(
-    (total, hole) =>
-      total + toNumber(hole.par, 0),
-    0
-  )
+  return holes.reduce((total, hole) => total + toNumber(hole.par, 0), 0)
 }
 
 function getCoursePar(round) {
@@ -231,93 +196,58 @@ function getPlayerTotalToPar(player, fallbackPar) {
     return toNumber(player.totalToPar, 0)
   }
 
-  const score =
-    getPlayerTotalScore(player)
-
-  const par =
-    getPlayerTotalPar(player, fallbackPar)
+  const score = getPlayerTotalScore(player)
+  const par = getPlayerTotalPar(player, fallbackPar)
 
   return score - par
 }
 
 function getSortedPlayers(round) {
-  const coursePar =
-    getCoursePar(round)
+  const coursePar = getCoursePar(round)
 
   return [...getRoundPlayers(round)].sort((a, b) => {
-    const winningsA =
-      toNumber(a.winnings, 0)
+    const winningsA = toNumber(a.winnings, 0)
+    const winningsB = toNumber(b.winnings, 0)
 
-    const winningsB =
-      toNumber(b.winnings, 0)
+    const toParA = getPlayerTotalToPar(a, coursePar)
+    const toParB = getPlayerTotalToPar(b, coursePar)
 
-    const toParA =
-      getPlayerTotalToPar(a, coursePar)
+    const scoreA = getPlayerTotalScore(a)
+    const scoreB = getPlayerTotalScore(b)
 
-    const toParB =
-      getPlayerTotalToPar(b, coursePar)
-
-    const scoreA =
-      getPlayerTotalScore(a)
-
-    const scoreB =
-      getPlayerTotalScore(b)
-
-    return (
-      winningsB - winningsA ||
-      toParA - toParB ||
-      scoreA - scoreB
-    )
+    return winningsB - winningsA || toParA - toParB || scoreA - scoreB
   })
 }
 
 function getWinner(round) {
-  const players =
-    getRoundPlayers(round)
+  const players = getRoundPlayers(round)
 
   return (
-    players.find(
-      (player) =>
-        player.name === round?.winner
-    ) ||
+    players.find((player) => player.name === round?.winner) ||
     getSortedPlayers(round)[0] ||
     null
   )
 }
 
 function getCourseName(round) {
-  return (
-    round?.course?.name ||
-    "Erster Golfclub Westpfalz"
-  )
+  return round?.course?.name || "Erster Golfclub Westpfalz"
 }
 
 function getCourseLocation(round) {
-  return (
-    round?.course?.location ||
-    "Westpfalz"
-  )
+  return round?.course?.location || "Westpfalz"
 }
 
 function getRoundDate(round) {
-  return (
-    round?.date ||
-    "Unbekannt"
-  )
+  return round?.date || "Unbekannt"
 }
 
 function getRoundId(round) {
-  return (
-    round?.id ||
-    "SKZ-0000"
-  )
+  return round?.id || "SKZ-0000"
 }
 
 function countResult(player, result) {
-  return getPlayerHoles(player).filter(
-    (hole) =>
-      hole.result?.label === result
-  ).length
+  return getPlayerHoles(player).filter((hole) => hole.result?.label === result)
+    .length
 }
 
 function countPars(player) {
@@ -325,26 +255,15 @@ function countPars(player) {
 }
 
 function getHoleToPar(hole) {
-  return (
-    toNumber(hole?.score, 0) -
-    toNumber(hole?.par, 0)
-  )
+  return toNumber(hole?.score, 0) - toNumber(hole?.par, 0)
 }
 
 function getNineTotal(holes) {
-  return holes.reduce(
-    (total, hole) =>
-      total + toNumber(hole.score, 0),
-    0
-  )
+  return holes.reduce((total, hole) => total + toNumber(hole.score, 0), 0)
 }
 
 function getNinePar(holes) {
-  return holes.reduce(
-    (total, hole) =>
-      total + toNumber(hole.par, 0),
-    0
-  )
+  return holes.reduce((total, hole) => total + toNumber(hole.par, 0), 0)
 }
 
 function getNineToPar(holes) {
@@ -365,8 +284,7 @@ function isWolffnItem(item) {
 
 function isWolffnRound(round) {
   return Boolean(
-    round?.gameMode === GAME_MODES.WOLFFN ||
-      round?.gameModeLabel === "Wolffn"
+    round?.gameMode === GAME_MODES.WOLFFN || round?.gameModeLabel === "Wolffn"
   )
 }
 
@@ -387,17 +305,13 @@ function getHoleBonusSkins(hole) {
 }
 
 function getHoleBonusLabel(hole) {
-  const bonusSkins =
-    getHoleBonusSkins(hole)
+  const bonusSkins = getHoleBonusSkins(hole)
 
   if (bonusSkins <= 0) {
     return null
   }
 
-  const resultLabel =
-    hole?.result?.label ||
-    hole?.bonusResult ||
-    ""
+  const resultLabel = hole?.result?.label || hole?.bonusResult || ""
 
   if (
     resultLabel === "Eagle" ||
@@ -411,8 +325,7 @@ function getHoleBonusLabel(hole) {
 }
 
 function getHoleBonusStyle(hole) {
-  const label =
-    getHoleBonusLabel(hole)
+  const label = getHoleBonusLabel(hole)
 
   if (!label) {
     return ""
@@ -442,17 +355,13 @@ function getHistoryBonusSkins(item) {
 }
 
 function getHistoryBonusLabel(item) {
-  const bonusSkins =
-    getHistoryBonusSkins(item)
+  const bonusSkins = getHistoryBonusSkins(item)
 
   if (bonusSkins <= 0) {
     return null
   }
 
-  const resultLabel =
-    item?.winningResult ||
-    item?.bonusResult ||
-    ""
+  const resultLabel = item?.winningResult || item?.bonusResult || ""
 
   if (
     resultLabel === "Eagle" ||
@@ -466,8 +375,7 @@ function getHistoryBonusLabel(item) {
 }
 
 function getHistoryBonusStyle(item) {
-  const label =
-    getHistoryBonusLabel(item)
+  const label = getHistoryBonusLabel(item)
 
   if (!label) {
     return ""
@@ -481,18 +389,13 @@ function getHistoryBonusStyle(item) {
 }
 
 function formatSkinsText(value) {
-  const amount =
-    toNumber(value, 0)
+  const amount = toNumber(value, 0)
 
-  return amount === 1
-    ? "1 Skin"
-    : `${amount} Skins`
+  return amount === 1 ? "1 Skin" : `${amount} Skins`
 }
 
 function joinTeamNames(team) {
-  return Array.isArray(team) && team.length > 0
-    ? team.join(" + ")
-    : "-"
+  return Array.isArray(team) && team.length > 0 ? team.join(" + ") : "-"
 }
 
 function getWolffnFormatLabel(item) {
@@ -504,24 +407,20 @@ function getWolffnFormatLabel(item) {
 }
 
 function getWonHoleNumbers(history, index) {
-  const item =
-    history[index]
+  const item = history[index]
 
   if (!item || item.hasTie) {
     return []
   }
 
-  const holes = [
-    item.hole,
-  ]
+  const holes = [item.hole]
 
   for (
     let previousIndex = index - 1;
     previousIndex >= 0;
     previousIndex -= 1
   ) {
-    const previousItem =
-      history[previousIndex]
+    const previousItem = history[previousIndex]
 
     if (!previousItem?.hasTie) {
       break
@@ -530,11 +429,7 @@ function getWonHoleNumbers(history, index) {
     holes.unshift(previousItem.hole)
   }
 
-  return holes.filter(
-    (hole) =>
-      hole !== undefined &&
-      hole !== null
-  )
+  return holes.filter((hole) => hole !== undefined && hole !== null)
 }
 
 function formatWonHolesLabel(holes) {
@@ -550,8 +445,7 @@ function normalizeResultLabel(value) {
     return "Par"
   }
 
-  const label =
-    String(value)
+  const label = String(value)
 
   if (label.includes("Albatross")) {
     return "Albatross"
@@ -598,27 +492,20 @@ function getHistoryResultLabel(item) {
 }
 
 function getHistoryOutcomeLabel(item) {
-  const resultLabel =
-    getHistoryResultLabel(item)
+  const resultLabel = getHistoryResultLabel(item)
 
-  return item?.hasTie
-    ? `Tied with ${resultLabel}`
-    : `Won with ${resultLabel}`
+  return item?.hasTie ? `Tied with ${resultLabel}` : `Won with ${resultLabel}`
 }
 
 function getHistoryOutcomeStyle(item) {
-  const resultLabel =
-    getHistoryResultLabel(item)
+  const resultLabel = getHistoryResultLabel(item)
 
   if (item?.hasTie) {
     if (resultLabel === "Birdie") {
       return "bg-red-50 text-red-600"
     }
 
-    if (
-      resultLabel === "Eagle" ||
-      resultLabel === "Albatross"
-    ) {
+    if (resultLabel === "Eagle" || resultLabel === "Albatross") {
       return "bg-orange-50 text-orange-600"
     }
 
@@ -648,12 +535,7 @@ function getHistoryOutcomeStyle(item) {
   return "bg-emerald-100 text-emerald-700"
 }
 
-function SummaryCard({
-  label,
-  score,
-  par,
-  toPar,
-}) {
+function SummaryCard({ label, score, par, toPar }) {
   return (
     <div className="rounded-[24px] border border-white/60 bg-white/[0.70] p-4 text-center shadow-sm backdrop-blur-xl">
       <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
@@ -675,10 +557,7 @@ function SummaryCard({
   )
 }
 
-function BonusBadge({
-  label,
-  className,
-}) {
+function BonusBadge({ label, className }) {
   if (!label) {
     return null
   }
@@ -693,9 +572,7 @@ function BonusBadge({
   )
 }
 
-function HoleGrid({
-  holes,
-}) {
+function HoleGrid({ holes }) {
   if (!holes.length) {
     return (
       <div className="rounded-[24px] border border-white/60 bg-white/[0.70] p-5 text-center text-sm font-bold text-slate-400 shadow-sm backdrop-blur-xl">
@@ -707,26 +584,13 @@ function HoleGrid({
   return (
     <div className="grid grid-cols-3 gap-3">
       {holes.map((hole) => {
-        const toPar =
-          getHoleToPar(hole)
-
-        const score =
-          toNumber(hole?.score, 0)
-
-        const par =
-          toNumber(hole?.par, 0)
-
-        const holeNumber =
-          hole?.hole || "-"
-
-        const resultLabel =
-          hole?.result?.label || "Par"
-
-        const bonusLabel =
-          getHoleBonusLabel(hole)
-
-        const bonusStyle =
-          getHoleBonusStyle(hole)
+        const toPar = getHoleToPar(hole)
+        const score = toNumber(hole?.score, 0)
+        const par = toNumber(hole?.par, 0)
+        const holeNumber = hole?.hole || "-"
+        const resultLabel = hole?.result?.label || "Par"
+        const bonusLabel = getHoleBonusLabel(hole)
+        const bonusStyle = getHoleBonusStyle(hole)
 
         return (
           <div
@@ -745,7 +609,9 @@ function HoleGrid({
 
             <div className="mt-4 flex justify-center">
               <div
-                className={`flex h-14 w-14 items-center justify-center rounded-full border-2 text-lg font-black shadow-sm ${getScoreStyle(resultLabel)}`}
+                className={`flex h-14 w-14 items-center justify-center rounded-full border-2 text-lg font-black shadow-sm ${getScoreStyle(
+                  resultLabel
+                )}`}
               >
                 {score}
               </div>
@@ -757,7 +623,9 @@ function HoleGrid({
               </div>
 
               <div
-                className={`text-xs font-black uppercase tracking-widest ${getToParColor(toPar)}`}
+                className={`text-xs font-black uppercase tracking-widest ${getToParColor(
+                  toPar
+                )}`}
               >
                 {formatToPar(toPar)}
               </div>
@@ -767,10 +635,7 @@ function HoleGrid({
               {resultLabel}
             </div>
 
-            <BonusBadge
-              label={bonusLabel}
-              className={bonusStyle}
-            />
+            <BonusBadge label={bonusLabel} className={bonusStyle} />
           </div>
         )
       })}
@@ -779,41 +644,28 @@ function HoleGrid({
 }
 
 export default function MatchDetailsScreen() {
-  const {
-    id,
-  } = useParams()
+  const { id } = useParams()
+  const navigate = useNavigate()
 
-  const navigate =
-    useNavigate()
+  const { completedRounds } = useGame()
 
-  const {
-    completedRounds,
-  } = useGame()
+  const [expandedPlayer, setExpandedPlayer] = useState(null)
 
-  const [
-    expandedPlayer,
-    setExpandedPlayer,
-  ] = useState(null)
+  const safeCompletedRounds = Array.isArray(completedRounds)
+    ? completedRounds
+    : []
 
-  const round =
-    completedRounds.find(
-      (completedRound) =>
-        String(completedRound.id) === String(id)
-    )
+  const round = safeCompletedRounds.find(
+    (completedRound) => String(completedRound.id) === String(id)
+  )
 
   if (!round) {
     return (
-      <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#e8ebe5] px-5">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_8%,rgba(255,255,255,0.95),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_45%_80%,rgba(234,179,8,0.14),transparent_36%)]"
-        />
+      <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#e8ebe5] px-5">
+        <AppBackground />
 
         <div className="relative w-full max-w-sm rounded-[40px] border border-white/70 bg-white/[0.78] p-10 text-center shadow-sm backdrop-blur-2xl">
-          <div
-            className="text-5xl"
-            aria-hidden="true"
-          >
+          <div className="text-5xl" aria-hidden="true">
             🔎
           </div>
 
@@ -827,9 +679,7 @@ export default function MatchDetailsScreen() {
 
           <button
             type="button"
-            onClick={() =>
-              navigate("/matches")
-            }
+            onClick={() => navigate("/matches")}
             className="mt-6 w-full rounded-[28px] bg-slate-950 px-6 py-5 font-black text-white shadow-lg"
           >
             Zurück zum Archiv
@@ -839,44 +689,17 @@ export default function MatchDetailsScreen() {
     )
   }
 
-  const sortedPlayers =
-    getSortedPlayers(round)
-
-  const winner =
-    getWinner(round)
-
-  const winnerName =
-    round.winner ||
-    winner?.name ||
-    "Unbekannt"
-
-  const courseName =
-    getCourseName(round)
-
-  const courseLocation =
-    getCourseLocation(round)
-
-  const coursePar =
-    getCoursePar(round)
-
-  const roundId =
-    getRoundId(round)
-
-  const roundDate =
-    getRoundDate(round)
-
-  const roundHistory =
-    Array.isArray(round.history)
-      ? round.history
-      : []
-
-  const displayEarnings =
-    round.winnings ??
-    winner?.winnings ??
-    0
-
-  const wolffnRound =
-    isWolffnRound(round)
+  const sortedPlayers = getSortedPlayers(round)
+  const winner = getWinner(round)
+  const winnerName = round.winner || winner?.name || "Unbekannt"
+  const courseName = getCourseName(round)
+  const courseLocation = getCourseLocation(round)
+  const coursePar = getCoursePar(round)
+  const roundId = getRoundId(round)
+  const roundDate = getRoundDate(round)
+  const roundHistory = Array.isArray(round.history) ? round.history : []
+  const displayEarnings = round.winnings ?? winner?.winnings ?? 0
+  const wolffnRound = isWolffnRound(round)
 
   const bonusModeWasEnabled =
     !wolffnRound &&
@@ -884,22 +707,12 @@ export default function MatchDetailsScreen() {
       round.specialScoringEnabled ||
         round.bonusSkinsEnabled ||
         round.eagleBonusEnabled ||
-        roundHistory.some((item) =>
-          getHistoryBonusSkins(item) > 0
-        )
+        roundHistory.some((item) => getHistoryBonusSkins(item) > 0)
     )
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#e8ebe5] pb-[calc(9.5rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_8%,rgba(255,255,255,0.95),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(16,185,129,0.18),transparent_32%),radial-gradient(circle_at_45%_80%,rgba(234,179,8,0.14),transparent_36%)]"
-      />
-
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-5 top-6 bottom-8 rounded-[56px] border border-white/70 bg-white/18 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_35px_90px_rgba(15,23,42,0.18)] backdrop-blur-3xl"
-      />
+    <div className="relative min-h-[100dvh] overflow-hidden bg-[#e8ebe5] pb-[calc(9.5rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
+      <AppBackground />
 
       <div className="relative mx-auto max-w-md px-5">
         <div className="flex items-center justify-between pt-8">
@@ -908,9 +721,7 @@ export default function MatchDetailsScreen() {
             whileTap={{
               scale: 0.92,
             }}
-            onClick={() =>
-              navigate("/matches")
-            }
+            onClick={() => navigate("/matches")}
             aria-label="Zurück zum Rundenarchiv"
             className="flex h-14 w-14 items-center justify-center rounded-full border border-white/70 bg-white/[0.70] text-slate-950 shadow-sm backdrop-blur-xl"
           >
@@ -982,16 +793,12 @@ export default function MatchDetailsScreen() {
                 <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/[0.12] px-4 py-2 text-[11px] font-black uppercase tracking-widest text-white">
                   <MapPin size={13} />
 
-                  <span className="max-w-[230px] truncate">
-                    {courseName}
-                  </span>
+                  <span className="max-w-[230px] truncate">{courseName}</span>
                 </div>
 
                 {wolffnRound && (
                   <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[11px] font-black uppercase tracking-widest text-slate-950">
-                    <span aria-hidden="true">
-                      🐺
-                    </span>
+                    <span aria-hidden="true">🐺</span>
                     Wolffn
                   </div>
                 )}
@@ -1011,7 +818,9 @@ export default function MatchDetailsScreen() {
                   </div>
 
                   <div
-                    className={`mt-2 text-4xl font-black tracking-tight ${getMoneyColorDark(displayEarnings)}`}
+                    className={`mt-2 text-4xl font-black tracking-tight ${getMoneyColorDark(
+                      displayEarnings
+                    )}`}
                   >
                     {formatMoney(displayEarnings)}
                   </div>
@@ -1023,7 +832,9 @@ export default function MatchDetailsScreen() {
                   </div>
 
                   <div
-                    className={`mt-2 text-4xl font-black tracking-tight ${getToParColorDark(winner?.totalToPar)}`}
+                    className={`mt-2 text-4xl font-black tracking-tight ${getToParColorDark(
+                      winner?.totalToPar
+                    )}`}
                   >
                     {formatToPar(winner?.totalToPar)}
                   </div>
@@ -1093,54 +904,31 @@ export default function MatchDetailsScreen() {
                 </div>
               </div>
 
-              <div
-                className="text-4xl"
-                aria-hidden="true"
-              >
+              <div className="text-4xl" aria-hidden="true">
                 {wolffnRound ? "🐺" : "💰"}
               </div>
             </div>
 
             <div className="mt-6 space-y-3">
               {roundHistory.map((item, index) => {
-                const wolffnHole =
-                  isWolffnItem(item)
-
-                const bonusLabel =
-                  getHistoryBonusLabel(item)
-
-                const bonusStyle =
-                  getHistoryBonusStyle(item)
-
-                const bonusSkins =
-                  getHistoryBonusSkins(item)
-
-                const currentHoleValue =
-                  toNumber(item.currentHoleValue, 0)
-
+                const wolffnHole = isWolffnItem(item)
+                const bonusLabel = getHistoryBonusLabel(item)
+                const bonusStyle = getHistoryBonusStyle(item)
+                const bonusSkins = getHistoryBonusSkins(item)
+                const currentHoleValue = toNumber(item.currentHoleValue, 0)
                 const scoreMultiplierLabel =
-                  item.scoreMultiplierLabel ||
-                  item.bonusResult ||
-                  null
-
-                const wolffnMultiplier =
-                  toNumber(item.wolffnMultiplier, 1)
-
-                const wonHoles =
-                  getWonHoleNumbers(roundHistory, index)
-
-                const wonHolesLabel =
-                  formatWonHolesLabel(wonHoles)
-
-                const outcomeLabel =
-                  getHistoryOutcomeLabel(item)
-
-                const outcomeStyle =
-                  getHistoryOutcomeStyle(item)
+                  item.scoreMultiplierLabel || item.bonusResult || null
+                const wolffnMultiplier = toNumber(item.wolffnMultiplier, 1)
+                const wonHoles = getWonHoleNumbers(roundHistory, index)
+                const wonHolesLabel = formatWonHolesLabel(wonHoles)
+                const outcomeLabel = getHistoryOutcomeLabel(item)
+                const outcomeStyle = getHistoryOutcomeStyle(item)
 
                 return (
                   <div
-                    key={`${roundId}-history-${item.hole}-${item.winner || index}`}
+                    key={`${roundId}-history-${item.hole}-${
+                      item.winner || index
+                    }`}
                     className="rounded-[26px] border border-white/70 bg-white/[0.74] px-5 py-4 shadow-sm backdrop-blur-xl"
                   >
                     <div className="flex items-start justify-between gap-4">
@@ -1164,9 +952,7 @@ export default function MatchDetailsScreen() {
 
                           {wolffnHole && (
                             <div className="flex items-center gap-1 rounded-full bg-slate-950 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white">
-                              <span aria-hidden="true">
-                                🐺
-                              </span>
+                              <span aria-hidden="true">🐺</span>
                               {getWolffnFormatLabel(item)}
                             </div>
                           )}
@@ -1195,9 +981,7 @@ export default function MatchDetailsScreen() {
 
                             <div className="mt-2 text-sm font-black leading-relaxed">
                               {joinTeamNames(item.wolffnTeamA)}
-                              <span className="mx-2 text-white/40">
-                                vs
-                              </span>
+                              <span className="mx-2 text-white/40">vs</span>
                               {joinTeamNames(item.wolffnTeamB)}
                             </div>
                           </div>
@@ -1238,13 +1022,12 @@ export default function MatchDetailsScreen() {
 
                       <div className="shrink-0 text-right">
                         <div className="text-lg font-black text-slate-950">
-                          {item.hasTie
-                            ? "Carryover"
-                            : item.winner}
+                          {item.hasTie ? "Carryover" : item.winner}
                         </div>
 
                         <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                          {formatSkinsText(item.skins || 0)} · {formatPlainMoney(item.pot || 0)}
+                          {formatSkinsText(item.skins || 0)} ·{" "}
+                          {formatPlainMoney(item.pot || 0)}
                         </div>
                       </div>
                     </div>
@@ -1264,29 +1047,14 @@ export default function MatchDetailsScreen() {
 
           <div className="mt-6 space-y-4">
             {sortedPlayers.map((player, index) => {
-              const isExpanded =
-                expandedPlayer === player.name
-
-              const playerHoles =
-                getPlayerHoles(player)
-
-              const frontNine =
-                playerHoles.slice(0, 9)
-
-              const backNine =
-                playerHoles.slice(9, 18)
-
-              const totalScore =
-                getPlayerTotalScore(player)
-
-              const totalPar =
-                getPlayerTotalPar(player, coursePar)
-
-              const totalToPar =
-                getPlayerTotalToPar(player, coursePar)
-
-              const isWinner =
-                player.name === winnerName
+              const isExpanded = expandedPlayer === player.name
+              const playerHoles = getPlayerHoles(player)
+              const frontNine = playerHoles.slice(0, 9)
+              const backNine = playerHoles.slice(9, 18)
+              const totalScore = getPlayerTotalScore(player)
+              const totalPar = getPlayerTotalPar(player, coursePar)
+              const totalToPar = getPlayerTotalToPar(player, coursePar)
+              const isWinner = player.name === winnerName
 
               return (
                 <div key={`${roundId}-${player.name}`}>
@@ -1295,13 +1063,9 @@ export default function MatchDetailsScreen() {
                     whileTap={{
                       scale: 0.985,
                     }}
-                    onClick={() =>
-                      setExpandedPlayer(
-                        isExpanded
-                          ? null
-                          : player.name
-                      )
-                    }
+                    onClick={() => {
+                      setExpandedPlayer(isExpanded ? null : player.name)
+                    }}
                     aria-expanded={isExpanded}
                     className={`w-full rounded-[32px] border px-5 py-5 text-left shadow-sm transition-all duration-300 ${
                       isWinner
@@ -1312,7 +1076,9 @@ export default function MatchDetailsScreen() {
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex min-w-0 items-center gap-4">
                         <div
-                          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-black ${getRankStyle(index)}`}
+                          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-black ${getRankStyle(
+                            index
+                          )}`}
                         >
                           {index + 1}
                         </div>
@@ -1331,7 +1097,9 @@ export default function MatchDetailsScreen() {
                       <div className="flex shrink-0 items-center gap-3">
                         <div className="text-right">
                           <div
-                            className={`text-5xl font-black ${getToParColor(totalToPar)}`}
+                            className={`text-5xl font-black ${getToParColor(
+                              totalToPar
+                            )}`}
                           >
                             {formatToPar(totalToPar)}
                           </div>
@@ -1350,10 +1118,7 @@ export default function MatchDetailsScreen() {
                             ease: "easeOut",
                           }}
                         >
-                          <ChevronDown
-                            size={24}
-                            className="text-slate-400"
-                          />
+                          <ChevronDown size={24} className="text-slate-400" />
                         </motion.div>
                       </div>
                     </div>
@@ -1383,10 +1148,7 @@ export default function MatchDetailsScreen() {
                         <div className="mt-4 grid grid-cols-3 gap-3">
                           <div className="rounded-[24px] border border-white/60 bg-white/[0.70] p-4 text-center shadow-sm backdrop-blur-xl">
                             <div className="flex justify-center">
-                              <Flame
-                                size={24}
-                                className="text-red-500"
-                              />
+                              <Flame size={24} className="text-red-500" />
                             </div>
 
                             <div className="mt-3 text-3xl font-black text-slate-950">
@@ -1399,10 +1161,7 @@ export default function MatchDetailsScreen() {
                           </div>
 
                           <div className="rounded-[24px] border border-white/60 bg-white/[0.70] p-4 text-center shadow-sm backdrop-blur-xl">
-                            <div
-                              className="text-2xl"
-                              aria-hidden="true"
-                            >
+                            <div className="text-2xl" aria-hidden="true">
                               🦅
                             </div>
 
@@ -1416,10 +1175,7 @@ export default function MatchDetailsScreen() {
                           </div>
 
                           <div className="rounded-[24px] border border-white/60 bg-white/[0.70] p-4 text-center shadow-sm backdrop-blur-xl">
-                            <div
-                              className="text-2xl"
-                              aria-hidden="true"
-                            >
+                            <div className="text-2xl" aria-hidden="true">
                               ⛳️
                             </div>
 
@@ -1464,12 +1220,15 @@ export default function MatchDetailsScreen() {
                               </div>
 
                               <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                                Score {getNineTotal(frontNine)} · Par {getNinePar(frontNine)}
+                                Score {getNineTotal(frontNine)} · Par{" "}
+                                {getNinePar(frontNine)}
                               </div>
                             </div>
 
                             <div
-                              className={`text-sm font-black uppercase tracking-widest ${getToParColor(getNineToPar(frontNine))}`}
+                              className={`text-sm font-black uppercase tracking-widest ${getToParColor(
+                                getNineToPar(frontNine)
+                              )}`}
                             >
                               {formatToPar(getNineToPar(frontNine))}
                             </div>
@@ -1486,12 +1245,15 @@ export default function MatchDetailsScreen() {
                               </div>
 
                               <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                                Score {getNineTotal(backNine)} · Par {getNinePar(backNine)}
+                                Score {getNineTotal(backNine)} · Par{" "}
+                                {getNinePar(backNine)}
                               </div>
                             </div>
 
                             <div
-                              className={`text-sm font-black uppercase tracking-widest ${getToParColor(getNineToPar(backNine))}`}
+                              className={`text-sm font-black uppercase tracking-widest ${getToParColor(
+                                getNineToPar(backNine)
+                              )}`}
                             >
                               {formatToPar(getNineToPar(backNine))}
                             </div>

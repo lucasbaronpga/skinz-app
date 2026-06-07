@@ -1,10 +1,4 @@
-import {
-  NavLink,
-} from "react-router-dom"
-
-import {
-  motion,
-} from "framer-motion"
+import { motion } from "framer-motion"
 
 import {
   ClipboardList,
@@ -13,6 +7,8 @@ import {
   Trophy,
   User,
 } from "lucide-react"
+
+import { NavLink } from "react-router-dom"
 
 const navItems = [
   {
@@ -45,22 +41,15 @@ const navItems = [
 ]
 
 function cn(...classes) {
-  return classes
-    .filter(Boolean)
-    .join(" ")
+  return classes.filter(Boolean).join(" ")
 }
 
-function getItemClasses({
-  isActive,
-  isPrimary,
-}) {
+function getItemClasses({ isActive, isPrimary }) {
   if (isPrimary) {
     return cn(
       "h-16 w-16 rounded-full text-white",
       "shadow-[0_15px_35px_rgba(16,185,129,0.42)]",
-      isActive
-        ? "bg-emerald-600"
-        : "bg-emerald-500"
+      isActive ? "bg-emerald-600" : "bg-emerald-500"
     )
   }
 
@@ -96,11 +85,8 @@ export default function BottomNav() {
         className="pointer-events-auto grid w-full max-w-md grid-cols-5 items-center rounded-full border border-white/60 bg-white/85 px-4 py-4 shadow-[0_20px_60px_rgba(15,23,42,0.14)] backdrop-blur-2xl"
       >
         {navItems.map((item) => {
-          const Icon =
-            item.icon
-
-          const isPrimary =
-            Boolean(item.primary)
+          const Icon = item.icon
+          const isPrimary = Boolean(item.primary)
 
           return (
             <NavLink
@@ -162,9 +148,7 @@ export default function BottomNav() {
                     aria-hidden="true"
                   />
 
-                  <span className="sr-only">
-                    {item.label}
-                  </span>
+                  <span className="sr-only">{item.label}</span>
                 </motion.div>
               )}
             </NavLink>
