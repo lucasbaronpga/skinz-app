@@ -809,7 +809,9 @@ export function GameProvider({ children }) {
         if (hole >= HOLE_COUNT) {
           const finalPlayers = updatedPlayers.map((player) => ({
             ...player,
-            holes: Array.isArray(player.holes) ? player.holes.map((playedHole) => ({ ...playedHole })) : [],
+            holes: Array.isArray(player.holes)
+              ? player.holes.map((playedHole) => ({ ...playedHole }))
+              : [],
           }))
 
           const completedRound = createCompletedRound({
@@ -982,7 +984,9 @@ export function GameProvider({ children }) {
       if (hole >= HOLE_COUNT) {
         const finalPlayers = updatedPlayers.map((player) => ({
           ...player,
-          holes: Array.isArray(player.holes) ? player.holes.map((playedHole) => ({ ...playedHole })) : [],
+          holes: Array.isArray(player.holes)
+            ? player.holes.map((playedHole) => ({ ...playedHole }))
+            : [],
         }))
 
         const completedRound = createCompletedRound({
@@ -1041,6 +1045,20 @@ export function GameProvider({ children }) {
     setPlayers(createDefaultPlayers())
     setActiveMatchId(createMatchId(matchCounter + 1))
   }, [matchCounter])
+
+  const deleteCompletedRound = useCallback((roundId) => {
+    const normalizedRoundId = String(roundId || "").trim()
+
+    if (!normalizedRoundId) return false
+
+    setCompletedRounds((previousRounds) =>
+      previousRounds.filter(
+        (round) => String(round?.id || "").trim() !== normalizedRoundId
+      )
+    )
+
+    return true
+  }, [])
 
   const uniquePlayerNames = useMemo(() => {
     const playerMap = new Map()
@@ -1168,6 +1186,7 @@ export function GameProvider({ children }) {
       history,
       celebration,
       completedRounds,
+      deleteCompletedRound,
       playerStats,
       activeMatchId,
       hasActiveMatch,
@@ -1210,6 +1229,7 @@ export function GameProvider({ children }) {
       history,
       celebration,
       completedRounds,
+      deleteCompletedRound,
       playerStats,
       activeMatchId,
       hasActiveMatch,

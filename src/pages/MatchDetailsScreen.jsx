@@ -7,6 +7,7 @@ import {
   ChevronDown,
   MapPin,
   Sparkles,
+  Trash2,
   Trophy,
 } from "lucide-react"
 
@@ -750,9 +751,11 @@ function HoleGrid({ holes }) {
 export default function MatchDetailsScreen() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { completedRounds } = useGame()
+  const { completedRounds, deleteCompletedRound } = useGame()
 
   const [expandedPlayer, setExpandedPlayer] = useState(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const round = useMemo(() => {
     const safeCompletedRounds = Array.isArray(completedRounds)
@@ -763,6 +766,27 @@ export default function MatchDetailsScreen() {
       (completedRound) => String(completedRound.id) === String(id)
     )
   }, [completedRounds, id])
+
+  const handleDeleteMatch = () => {
+    if (!round || isDeleting) return
+
+    setIsDeleting(true)
+
+    const deleted = deleteCompletedRound(round.id)
+
+    if (deleted) {
+      navigate("/matches", { replace: true })
+      return
+    }
+
+    setIsDeleting(false)
+  }
+
+  const handleCancelDelete = () => {
+    if (isDeleting) return
+
+    setShowDeleteConfirm(false)
+  }
 
   if (!round) {
     return (
@@ -1031,8 +1055,7 @@ export default function MatchDetailsScreen() {
                               </div>
 
                               <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                                Score {getNineTotal(frontNine)} · Par{" "}
-                                {getNinePar(frontNine)}
+                                Score {getNineTotal(frontNine)} · Par {getNinePar(frontNine)}
                               </div>
                             </div>
 
@@ -1056,8 +1079,7 @@ export default function MatchDetailsScreen() {
                               </div>
 
                               <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                                Score {getNineTotal(backNine)} · Par{" "}
-                                {getNinePar(backNine)}
+                                Score {getNineTotal(backNine)} · Par {getNinePar(backNine)}
                               </div>
                             </div>
 
@@ -1144,8 +1166,7 @@ export default function MatchDetailsScreen() {
                 const bonusStyle = getHistoryBonusStyle(item)
                 const bonusSkins = getHistoryBonusSkins(item)
                 const currentHoleValue = toNumber(item.currentHoleValue, 0)
-                const scoreMultiplierLabel =
-                  item.scoreMultiplierLabel || item.bonusResult || null
+                const scoreMultiplierLabel = item.scoreMultiplierLabel || item.bonusResult || null
                 const wolffnMultiplier = toNumber(item.wolffnMultiplier, 1)
                 const wonHoles = getWonHoleNumbers(roundHistory, index)
                 const wonHolesLabel = formatWonHolesLabel(wonHoles)
@@ -1252,8 +1273,7 @@ export default function MatchDetailsScreen() {
                         </div>
 
                         <div className="mt-1 text-xs font-black uppercase leading-relaxed tracking-widest text-slate-400">
-                          {formatSkinsText(item.skins || 0)} ·{" "}
-                          {formatPlainMoney(item.pot || 0)}
+                          {formatSkinsText(item.skins || 0)} · {formatPlainMoney(item.pot || 0)}
                         </div>
                       </div>
                     </div>
@@ -1263,6 +1283,81 @@ export default function MatchDetailsScreen() {
             </div>
           </div>
         )}
+
+        <div className="mt-5 rounded-[38px] border border-red-200/70 bg-white/[0.62] p-5 shadow-sm backdrop-blur-2xl">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="text-xs font-black uppercase tracking-[0.25em] text-red-500">
+                Danger Zone
+              </div>
+
+              <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
+                Delete Match
+              </div>
+
+              <div className="mt-2 text-sm font-bold leading-relaxed text-slate-500">
+                Entfernt diese Scorecard dauerhaft aus Archiv, Leaderboard und Spielerstatistiken.
+              </div>
+            </div>
+
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-500">
+              <Trash2 size={22} />
+            </div>
+          </div>
+
+          <AnimatePresence mode="wait">
+            {!showDeleteConfirm ? (
+              <motion.button
+                key="delete-trigger"
+                type="button"
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowDeleteConfirm(true)}
+                className="mt-5 w-full rounded-[28px] border border-red-200 bg-red-50 px-5 py-4 text-sm font-black uppercase tracking-widest text-red-600 shadow-sm transition-colors hover:bg-red-100"
+              >
+                Delete Match
+              </motion.button>
+            ) : (
+              <motion.div
+                key="delete-confirm"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="mt-5 rounded-[28px] border border-red-200 bg-red-50 p-4"
+              >
+                <div className="text-base font-black text-red-700">
+                  Match wirklich löschen?
+                </div>
+
+                <div className="mt-2 text-sm font-bold leading-relaxed text-red-500">
+                  Diese Aktion kann nicht rückgängig gemacht werden. Die Runde wird lokal aus deinen gespeicherten Skinz-Daten entfernt.
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleCancelDelete}
+                    disabled={isDeleting}
+                    className="rounded-[24px] border border-white/70 bg-white px-4 py-4 text-sm font-black uppercase tracking-widest text-slate-700 shadow-sm disabled:opacity-50"
+                  >
+                    Cancel
+                  </motion.button>
+
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleDeleteMatch}
+                    disabled={isDeleting}
+                    className="rounded-[24px] bg-red-600 px-4 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-red-600/20 disabled:opacity-50"
+                  >
+                    {isDeleting ? "Deleting..." : "Delete"}
+                  </motion.button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   )

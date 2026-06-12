@@ -1,6 +1,15 @@
-import { motion } from "framer-motion"
+import { useState } from "react"
+
+import { AnimatePresence, motion } from "framer-motion"
 import { useNavigate } from "react-router-dom"
-import { ChevronRight, Crown, MapPin, Trophy, Users } from "lucide-react"
+import {
+  ChevronRight,
+  Crown,
+  MapPin,
+  Trash2,
+  Trophy,
+  Users,
+} from "lucide-react"
 
 import AppBackground from "../components/AppBackground"
 import { GAME_MODES, useGame } from "../context/GameContext"
@@ -125,7 +134,7 @@ function formatToPar(value) {
     return `+${amount}`
   }
 
-  return amount
+  return String(amount)
 }
 
 function getToParColor(value) {
@@ -183,11 +192,16 @@ function getRoundPlayers(round) {
 }
 
 function getSortedPlayers(round) {
-  return [...getRoundPlayers(round)].sort(
-    (a, b) =>
-      toNumber(b.winnings, 0) - toNumber(a.winnings, 0) ||
-      toNumber(a.totalToPar, 0) - toNumber(b.totalToPar, 0)
-  )
+  return [...getRoundPlayers(round)].sort((a, b) => {
+    const winningsA = toNumber(a.winnings, 0)
+    const winningsB = toNumber(b.winnings, 0)
+    const toParA = toNumber(a.totalToPar, 0)
+    const toParB = toNumber(b.totalToPar, 0)
+    const nameA = String(a?.name || "")
+    const nameB = String(b?.name || "")
+
+    return winningsB - winningsA || toParA - toParB || nameA.localeCompare(nameB)
+  })
 }
 
 function getWinner(round) {
@@ -270,11 +284,7 @@ function roundIsWolffn(round) {
 }
 
 function roundHasProfessionalScoring(round) {
-  if (!round) {
-    return false
-  }
-
-  if (roundIsWolffn(round)) {
+  if (!round || roundIsWolffn(round)) {
     return false
   }
 
@@ -370,9 +380,17 @@ function getRoundGameModeMeta(round) {
   }
 }
 
+function stopEvent(event) {
+  event.preventDefault()
+  event.stopPropagation()
+}
+
 export default function MatchArchiveScreen() {
   const navigate = useNavigate()
-  const { completedRounds } = useGame()
+  const { completedRounds, deleteCompletedRound } = useGame()
+
+  const [confirmDeleteRoundId, setConfirmDeleteRoundId] = useState(null)
+  const [deletingRoundId, setDeletingRoundId] = useState(null)
 
   const safeCompletedRounds = Array.isArray(completedRounds)
     ? completedRounds
@@ -382,24 +400,59 @@ export default function MatchArchiveScreen() {
     (a, b) => getRoundSortValue(b) - getRoundSortValue(a)
   )
 
+  const openRound = (roundId) => {
+    if (!roundId || confirmDeleteRoundId) return
+
+    navigate(`/matches/${roundId}`)
+  }
+
+  const handleRoundKeyDown = (event, roundId) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault()
+      openRound(roundId)
+    }
+  }
+
+  const handleDeleteRequest = (event, roundId) => {
+    stopEvent(event)
+    setConfirmDeleteRoundId(roundId)
+  }
+
+  const handleDeleteCancel = (event) => {
+    stopEvent(event)
+
+    if (deletingRoundId) return
+
+    setConfirmDeleteRoundId(null)
+  }
+
+  const handleDeleteConfirm = (event, roundId) => {
+    stopEvent(event)
+
+    if (!roundId || deletingRoundId) return
+
+    setDeletingRoundId(roundId)
+
+    const deleted = deleteCompletedRound(roundId)
+
+    if (deleted) {
+      setConfirmDeleteRoundId(null)
+      setDeletingRoundId(null)
+      return
+    }
+
+    setDeletingRoundId(null)
+  }
+
   return (
     <div className="relative min-h-[100dvh] overflow-hidden bg-[#e8ebe5] pb-[calc(9.5rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
       <AppBackground />
 
       <div className="relative mx-auto max-w-md px-5">
         <motion.div
-          initial={{
-            opacity: 0,
-            y: 20,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            duration: 0.35,
-            ease: "easeOut",
-          }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
           className="pt-8"
         >
           <div className="text-[12px] font-black uppercase tracking-[0.28em] text-emerald-700/80">
@@ -417,19 +470,9 @@ export default function MatchArchiveScreen() {
 
         {sortedRounds.length === 0 && (
           <motion.div
-            initial={{
-              opacity: 0,
-              y: 20,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              delay: 0.06,
-              duration: 0.35,
-              ease: "easeOut",
-            }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.06, duration: 0.35, ease: "easeOut" }}
             className="mt-16 rounded-[42px] border border-white/70 bg-white/[0.48] p-10 text-center shadow-[0_18px_55px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
           >
             <div className="text-7xl" aria-hidden="true">
@@ -441,8 +484,7 @@ export default function MatchArchiveScreen() {
             </div>
 
             <div className="mt-3 text-sm font-bold leading-relaxed text-slate-500">
-              Spiele eine komplette Runde, um deine erste Scorecard zu
-              speichern.
+              Spiele eine komplette Runde, um deine erste Scorecard zu speichern.
             </div>
 
             <button
@@ -462,34 +504,25 @@ export default function MatchArchiveScreen() {
             const roundPlayers = getRoundPlayers(round)
             const roundId = getRoundId(round)
             const courseName = getCourseName(round)
-            const displayWinnerName =
-              round?.winner || winner?.name || "Unbekannt"
+            const displayWinnerName = round?.winner || winner?.name || "Unbekannt"
             const displayEarnings = round?.winnings ?? winner?.winnings ?? 0
             const gameModeMeta = getRoundGameModeMeta(round)
+            const isConfirmingDelete = confirmDeleteRoundId === roundId
+            const isDeleting = deletingRoundId === roundId
 
             return (
-              <motion.button
+              <motion.div
                 key={`${roundId}-${getRoundSortValue(round) || index}`}
-                type="button"
-                whileTap={{
-                  scale: 0.985,
-                }}
-                initial={{
-                  opacity: 0,
-                  y: 24,
-                }}
-                animate={{
-                  opacity: 1,
-                  y: 0,
-                }}
-                transition={{
-                  duration: 0.35,
-                  delay: index * 0.04,
-                  ease: "easeOut",
-                }}
-                onClick={() => navigate(`/matches/${roundId}`)}
+                role="button"
+                tabIndex={0}
+                whileTap={{ scale: 0.985 }}
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, delay: index * 0.04, ease: "easeOut" }}
+                onClick={() => openRound(roundId)}
+                onKeyDown={(event) => handleRoundKeyDown(event, roundId)}
                 aria-label={`Scorecard ${roundId} öffnen`}
-                className="w-full overflow-hidden rounded-[42px] border border-white/70 bg-white/[0.48] text-left shadow-[0_18px_55px_rgba(15,23,42,0.10)] backdrop-blur-2xl transition-all duration-300 hover:shadow-[0_24px_70px_rgba(15,23,42,0.14)]"
+                className="w-full cursor-pointer overflow-hidden rounded-[42px] border border-white/70 bg-white/[0.48] text-left shadow-[0_18px_55px_rgba(15,23,42,0.10)] backdrop-blur-2xl transition-all duration-300 hover:shadow-[0_24px_70px_rgba(15,23,42,0.14)] focus:outline-none focus:ring-2 focus:ring-slate-950/15"
               >
                 <div className="relative overflow-hidden bg-[#071819] p-7 text-white">
                   <div
@@ -612,8 +645,7 @@ export default function MatchArchiveScreen() {
                   <div className="mt-6 space-y-3">
                     {sortedPlayers.map((player, playerIndex) => {
                       const isWinner =
-                        normalizeName(player?.name) ===
-                        normalizeName(displayWinnerName)
+                        normalizeName(player?.name) === normalizeName(displayWinnerName)
 
                       return (
                         <div
@@ -687,18 +719,75 @@ export default function MatchArchiveScreen() {
                     })}
                   </div>
 
-                  <div className="mt-6 flex items-center justify-between border-t border-white/70 pt-5">
-                    <div className="text-sm font-black uppercase tracking-widest text-slate-400">
-                      Scorecard
+                  <div className="mt-6 border-t border-white/70 pt-5">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="text-sm font-black uppercase tracking-widest text-slate-400">
+                        Scorecard
+                      </div>
+
+                      <div className="flex items-center gap-2 text-sm font-black text-slate-950">
+                        View
+                        <ChevronRight size={18} />
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2 text-sm font-black text-slate-950">
-                      View
-                      <ChevronRight size={18} />
-                    </div>
+                    <AnimatePresence mode="wait">
+                      {!isConfirmingDelete ? (
+                        <motion.button
+                          key="delete-trigger"
+                          type="button"
+                          whileTap={{ scale: 0.98 }}
+                          onClick={(event) => handleDeleteRequest(event, roundId)}
+                          className="mt-5 flex w-full items-center justify-center gap-2 rounded-[24px] border border-red-200 bg-red-50 px-4 py-4 text-sm font-black uppercase tracking-widest text-red-600 shadow-sm transition-colors hover:bg-red-100"
+                        >
+                          <Trash2 size={16} />
+                          Delete Match
+                        </motion.button>
+                      ) : (
+                        <motion.div
+                          key="delete-confirm"
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -8 }}
+                          transition={{ duration: 0.2, ease: "easeOut" }}
+                          onClick={stopEvent}
+                          className="mt-5 rounded-[26px] border border-red-200 bg-red-50 p-4"
+                        >
+                          <div className="text-base font-black text-red-700">
+                            Match wirklich löschen?
+                          </div>
+
+                          <div className="mt-2 text-sm font-bold leading-relaxed text-red-500">
+                            Diese Aktion entfernt die Scorecard dauerhaft aus Archiv, Leaderboard und Spielerstatistiken.
+                          </div>
+
+                          <div className="mt-4 grid grid-cols-2 gap-3">
+                            <motion.button
+                              type="button"
+                              whileTap={{ scale: 0.98 }}
+                              onClick={handleDeleteCancel}
+                              disabled={Boolean(deletingRoundId)}
+                              className="rounded-[22px] border border-white/70 bg-white px-4 py-4 text-sm font-black uppercase tracking-widest text-slate-700 shadow-sm disabled:opacity-50"
+                            >
+                              Cancel
+                            </motion.button>
+
+                            <motion.button
+                              type="button"
+                              whileTap={{ scale: 0.98 }}
+                              onClick={(event) => handleDeleteConfirm(event, roundId)}
+                              disabled={Boolean(deletingRoundId)}
+                              className="rounded-[22px] bg-red-600 px-4 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-red-600/20 disabled:opacity-50"
+                            >
+                              {isDeleting ? "Deleting..." : "Delete"}
+                            </motion.button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
-              </motion.button>
+              </motion.div>
             )
           })}
         </div>

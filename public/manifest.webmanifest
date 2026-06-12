@@ -6,14 +6,11 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "fullscreen", "browser"],
   "orientation": "portrait",
   "background_color": "#e8ebe5",
   "theme_color": "#071819",
-  "categories": [
-    "sports",
-    "productivity",
-    "utilities"
-  ],
+  "categories": ["sports", "productivity", "utilities"],
   "lang": "de",
   "dir": "ltr",
   "icons": [
