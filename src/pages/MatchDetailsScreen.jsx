@@ -222,7 +222,9 @@ function getSortedPlayers(round) {
 
 function getWinner(round) {
   const players = getRoundPlayers(round)
-  const winnerName = String(round?.winner || "").trim().toLowerCase()
+  const winnerName = String(round?.winner || "")
+    .trim()
+    .toLowerCase()
 
   return (
     players.find(
@@ -652,7 +654,9 @@ function GameModePill({ meta, className = "" }) {
       className={`inline-flex max-w-full items-center gap-2 rounded-full px-3 py-2 text-[10px] font-black uppercase tracking-widest shadow-sm ${meta.pillClassName} ${className}`}
     >
       {meta.icon && <span aria-hidden="true">{meta.icon}</span>}
-      <span className="min-w-0 whitespace-normal leading-tight">{meta.label}</span>
+      <span className="min-w-0 whitespace-normal leading-tight">
+        {meta.label}
+      </span>
     </div>
   )
 }
@@ -750,17 +754,15 @@ export default function MatchDetailsScreen() {
 
   const [expandedPlayer, setExpandedPlayer] = useState(null)
 
-  const safeCompletedRounds = Array.isArray(completedRounds)
-    ? completedRounds
-    : []
+  const round = useMemo(() => {
+    const safeCompletedRounds = Array.isArray(completedRounds)
+      ? completedRounds
+      : []
 
-  const round = useMemo(
-    () =>
-      safeCompletedRounds.find(
-        (completedRound) => String(completedRound.id) === String(id)
-      ),
-    [id, safeCompletedRounds]
-  )
+    return safeCompletedRounds.find(
+      (completedRound) => String(completedRound.id) === String(id)
+    )
+  }, [completedRounds, id])
 
   if (!round) {
     return (
@@ -1029,7 +1031,7 @@ export default function MatchDetailsScreen() {
                               </div>
 
                               <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                                Score {getNineTotal(frontNine)} · Par {" "}
+                                Score {getNineTotal(frontNine)} · Par{" "}
                                 {getNinePar(frontNine)}
                               </div>
                             </div>
@@ -1054,7 +1056,7 @@ export default function MatchDetailsScreen() {
                               </div>
 
                               <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                                Score {getNineTotal(backNine)} · Par {" "}
+                                Score {getNineTotal(backNine)} · Par{" "}
                                 {getNinePar(backNine)}
                               </div>
                             </div>
@@ -1250,7 +1252,7 @@ export default function MatchDetailsScreen() {
                         </div>
 
                         <div className="mt-1 text-xs font-black uppercase leading-relaxed tracking-widest text-slate-400">
-                          {formatSkinsText(item.skins || 0)} · {" "}
+                          {formatSkinsText(item.skins || 0)} ·{" "}
                           {formatPlainMoney(item.pot || 0)}
                         </div>
                       </div>
