@@ -40,7 +40,6 @@ const courses = [
 
 function toNumber(value, fallback = 0) {
   const number = Number(value)
-
   return Number.isFinite(number) ? number : fallback
 }
 
@@ -54,35 +53,19 @@ function normalizeName(value) {
 
 function normalizeStake(value) {
   const stake = roundMoney(value)
-
   return stake > 0 ? stake : DEFAULT_STAKE
 }
 
 export function getGameModeLabel(gameMode) {
-  if (gameMode === GAME_MODES.WOLFFN) {
-    return "Wolffn"
-  }
-
-  if (gameMode === GAME_MODES.PROFESSIONAL) {
-    return "Skinz Professional"
-  }
-
+  if (gameMode === GAME_MODES.WOLFFN) return "Wolffn"
+  if (gameMode === GAME_MODES.PROFESSIONAL) return "Skinz Professional"
   return "Classic Skinz"
 }
 
 function normalizeGameMode(value, specialScoringEnabled = false) {
-  if (value === GAME_MODES.WOLFFN) {
-    return GAME_MODES.WOLFFN
-  }
-
-  if (value === GAME_MODES.PROFESSIONAL) {
-    return GAME_MODES.PROFESSIONAL
-  }
-
-  if (value === GAME_MODES.CLASSIC) {
-    return GAME_MODES.CLASSIC
-  }
-
+  if (value === GAME_MODES.WOLFFN) return GAME_MODES.WOLFFN
+  if (value === GAME_MODES.PROFESSIONAL) return GAME_MODES.PROFESSIONAL
+  if (value === GAME_MODES.CLASSIC) return GAME_MODES.CLASSIC
   return specialScoringEnabled ? GAME_MODES.PROFESSIONAL : GAME_MODES.CLASSIC
 }
 
@@ -111,9 +94,7 @@ function createCourseSnapshot(course) {
 }
 
 function normalizeCourseSnapshot(course) {
-  if (!course) {
-    return createCourseSnapshot(getCourseById(DEFAULT_COURSE_ID))
-  }
+  if (!course) return createCourseSnapshot(getCourseById(DEFAULT_COURSE_ID))
 
   const courseId = String(course.id || "").toLowerCase()
   const courseName = String(course.name || "").toLowerCase()
@@ -183,9 +164,7 @@ function normalizeHistory(history) {
 }
 
 function normalizeCompletedRounds(rounds) {
-  if (!Array.isArray(rounds)) {
-    return []
-  }
+  if (!Array.isArray(rounds)) return []
 
   return rounds.map((round) => {
     const specialScoringEnabled = Boolean(
@@ -218,48 +197,23 @@ function normalizeCompletedRounds(rounds) {
 function getGolfResult(score, par) {
   const difference = toNumber(score, DEFAULT_SCORE) - toNumber(par, DEFAULT_SCORE)
 
-  if (difference === -3) {
-    return { label: "Albatross", color: "bg-yellow-400 text-black" }
-  }
-
-  if (difference <= -2) {
-    return { label: "Eagle", color: "bg-orange-500 text-white" }
-  }
-
-  if (difference === -1) {
-    return { label: "Birdie", color: "bg-red-500 text-white" }
-  }
-
-  if (difference === 0) {
-    return { label: "Par", color: "bg-white text-slate-900 border border-slate-200" }
-  }
-
-  if (difference === 1) {
-    return { label: "Bogey", color: "bg-blue-500 text-white" }
-  }
-
-  if (difference === 2) {
-    return { label: "Double Bogey", color: "bg-blue-900 text-white" }
-  }
+  if (difference === -3) return { label: "Albatross", color: "bg-yellow-400 text-black" }
+  if (difference <= -2) return { label: "Eagle", color: "bg-orange-500 text-white" }
+  if (difference === -1) return { label: "Birdie", color: "bg-red-500 text-white" }
+  if (difference === 0) return { label: "Par", color: "bg-white text-slate-900 border border-slate-200" }
+  if (difference === 1) return { label: "Bogey", color: "bg-blue-500 text-white" }
+  if (difference === 2) return { label: "Double Bogey", color: "bg-blue-900 text-white" }
 
   return { label: "Triple+", color: "bg-purple-600 text-white" }
 }
 
 function getBaseSkinsForScore(score, par, isSpecialScoringEnabled = false) {
-  if (!isSpecialScoringEnabled) {
-    return 1
-  }
+  if (!isSpecialScoringEnabled) return 1
 
   const difference = toNumber(score, DEFAULT_SCORE) - toNumber(par, DEFAULT_SCORE)
 
-  if (difference <= -2) {
-    return 3
-  }
-
-  if (difference === -1) {
-    return 2
-  }
-
+  if (difference <= -2) return 3
+  if (difference === -1) return 2
   return 1
 }
 
@@ -268,20 +222,12 @@ function getBonusSkinsForScore(score, par, isSpecialScoringEnabled = false) {
 }
 
 function getSpecialScoringLabel(score, par, isSpecialScoringEnabled = false) {
-  if (!isSpecialScoringEnabled) {
-    return null
-  }
+  if (!isSpecialScoringEnabled) return null
 
   const difference = toNumber(score, DEFAULT_SCORE) - toNumber(par, DEFAULT_SCORE)
 
-  if (difference <= -2) {
-    return "Eagle 3 Skins"
-  }
-
-  if (difference === -1) {
-    return "Birdie 2 Skins"
-  }
-
+  if (difference <= -2) return "Eagle 3 Skins"
+  if (difference === -1) return "Birdie 2 Skins"
   return null
 }
 
@@ -294,9 +240,7 @@ function getTeamBestScore(team, players) {
     ? team.map((playerName) => getPlayerByName(players, playerName)).filter(Boolean)
     : []
 
-  if (teamPlayers.length === 0) {
-    return null
-  }
+  if (teamPlayers.length === 0) return null
 
   return Math.min(...teamPlayers.map((player) => toNumber(player.score, DEFAULT_SCORE)))
 }
@@ -304,21 +248,18 @@ function getTeamBestScore(team, players) {
 function getWolffnScoreMultiplier(score, par) {
   const difference = toNumber(score, DEFAULT_SCORE) - toNumber(par, DEFAULT_SCORE)
 
-  if (difference <= -2) {
-    return { multiplier: 4, label: "Eagle x4", resultLabel: "Eagle" }
-  }
-
-  if (difference === -1) {
-    return { multiplier: 2, label: "Birdie x2", resultLabel: "Birdie" }
-  }
-
+  if (difference <= -2) return { multiplier: 4, label: "Eagle x4", resultLabel: "Eagle" }
+  if (difference === -1) return { multiplier: 2, label: "Birdie x2", resultLabel: "Birdie" }
   return { multiplier: 1, label: null, resultLabel: getGolfResult(score, par).label }
 }
 
-function getWolffnSpecialScoringLabel({ wolffnMultiplier, scoreMultiplier, resultLabel, currentHoleValue }) {
-  if (currentHoleValue <= 1) {
-    return null
-  }
+function getWolffnSpecialScoringLabel({
+  wolffnMultiplier,
+  scoreMultiplier,
+  resultLabel,
+  currentHoleValue,
+}) {
+  if (currentHoleValue <= 1) return null
 
   if (resultLabel === "Eagle" || resultLabel === "Albatross") {
     return `Eagle ${currentHoleValue} Skinz`
@@ -370,9 +311,7 @@ function calculateWolffnHole({ players, par, carryover, stake, wolffnSetup }) {
   const teamAScore = getTeamBestScore(wolffnSetup.teamA, players)
   const teamBScore = getTeamBestScore(wolffnSetup.teamB, players)
 
-  if (teamAScore === null || teamBScore === null) {
-    return null
-  }
+  if (teamAScore === null || teamBScore === null) return null
 
   const hasTie = teamAScore === teamBScore
   const winningScore = Math.min(teamAScore, teamBScore)
@@ -385,7 +324,6 @@ function calculateWolffnHole({ players, par, carryover, stake, wolffnSetup }) {
   const winningTeam = hasTie ? [] : teamAWon ? wolffnSetup.teamA : wolffnSetup.teamB
   const losingTeam = hasTie ? [] : teamAWon ? wolffnSetup.teamB : wolffnSetup.teamA
   const winnerLabel = hasTie ? "Carryover" : winningTeam.join(" + ")
-
   const teamPot = roundMoney((hasTie ? nextCarryover : totalSkins) * stake)
 
   return {
@@ -404,18 +342,42 @@ function calculateWolffnHole({ players, par, carryover, stake, wolffnSetup }) {
   }
 }
 
+function getWolffnPlayerSkinDelta({
+  playerName,
+  hasTie,
+  totalSkins,
+  winningTeam,
+  losingTeam,
+}) {
+  if (hasTie) return 0
+
+  const isOnWinningTeam = winningTeam.some(
+    (teamPlayerName) => normalizeName(teamPlayerName) === normalizeName(playerName)
+  )
+  const isOnLosingTeam = losingTeam.some(
+    (teamPlayerName) => normalizeName(teamPlayerName) === normalizeName(playerName)
+  )
+
+  if (isOnWinningTeam) {
+    return winningTeam.length === 1 ? totalSkins * losingTeam.length : totalSkins
+  }
+
+  if (isOnLosingTeam) {
+    return losingTeam.length === 1 ? -totalSkins * winningTeam.length : -totalSkins
+  }
+
+  return 0
+}
+
 function getSavedGame() {
   try {
     const savedGame = localStorage.getItem(STORAGE_KEY)
 
-    if (!savedGame) {
-      return null
-    }
+    if (!savedGame) return null
 
     return JSON.parse(savedGame)
   } catch {
     localStorage.removeItem(STORAGE_KEY)
-
     return null
   }
 }
@@ -529,14 +491,12 @@ export function GameProvider({ children }) {
   const setStake = useCallback((value) => {
     setStakeState((currentStake) => {
       const nextStake = typeof value === "function" ? value(currentStake) : value
-
       return normalizeStake(nextStake)
     })
   }, [])
 
   const setGameMode = useCallback((nextGameMode) => {
     const normalizedGameMode = normalizeGameMode(nextGameMode)
-
     setGameModeState(normalizedGameMode)
     setSpecialScoringEnabledState(isProfessionalGameMode(normalizedGameMode))
   }, [])
@@ -544,9 +504,7 @@ export function GameProvider({ children }) {
   const setSpecialScoringEnabled = useCallback((value) => {
     setSpecialScoringEnabledState((currentValue) => {
       const nextValue = typeof value === "function" ? Boolean(value(currentValue)) : Boolean(value)
-
       setGameModeState(nextValue ? GAME_MODES.PROFESSIONAL : GAME_MODES.CLASSIC)
-
       return nextValue
     })
   }, [])
@@ -615,15 +573,11 @@ export function GameProvider({ children }) {
 
   const updateScore = useCallback(
     (index, value) => {
-      if (matchFinished || !hasActiveMatch) {
-        return
-      }
+      if (matchFinished || !hasActiveMatch) return
 
       setPlayers((currentPlayers) =>
         currentPlayers.map((player, playerIndex) => {
-          if (playerIndex !== index) {
-            return player
-          }
+          if (playerIndex !== index) return player
 
           return {
             ...player,
@@ -652,16 +606,12 @@ export function GameProvider({ children }) {
       cleanedNames.forEach((name) => {
         const key = normalizeName(name)
 
-        if (!uniqueNameMap.has(key)) {
-          uniqueNameMap.set(key, name)
-        }
+        if (!uniqueNameMap.has(key)) uniqueNameMap.set(key, name)
       })
 
       const uniqueNames = Array.from(uniqueNameMap.values())
 
-      if (uniqueNames.length < 2) {
-        return false
-      }
+      if (uniqueNames.length < 2) return false
 
       const requestedGameMode =
         selectedGameMode !== undefined
@@ -677,9 +627,7 @@ export function GameProvider({ children }) {
 
       const nextGameMode = normalizeGameMode(requestedGameMode, requestedSpecialScoringEnabled)
 
-      if (isWolffnGameMode(nextGameMode) && uniqueNames.length !== 4) {
-        return false
-      }
+      if (isWolffnGameMode(nextGameMode) && uniqueNames.length !== 4) return false
 
       const matchCourse = getCourseById(courseId)
       const matchPars = matchCourse?.pars || courses[0].pars
@@ -710,9 +658,7 @@ export function GameProvider({ children }) {
 
   const finishHole = useCallback(
     (wolffnSetup = null) => {
-      if (matchFinished || !hasActiveMatch) {
-        return
-      }
+      if (matchFinished || !hasActiveMatch) return
 
       const courseSnapshot = createCourseSnapshot(currentCourse)
 
@@ -725,9 +671,7 @@ export function GameProvider({ children }) {
           wolffnSetup,
         })
 
-        if (!wolffnResult) {
-          return
-        }
+        if (!wolffnResult) return
 
         const winningResult = getGolfResult(wolffnResult.winningScore, currentPar)
         const totalSkins = wolffnResult.totalSkins
@@ -777,21 +721,13 @@ export function GameProvider({ children }) {
         const updatedPlayers = players.map((player) => {
           const playerScore = toNumber(player.score, currentPar)
           const toPar = playerScore - currentPar
-          const isOnWinningTeam = wolffnResult.winningTeam.some(
-            (playerName) => normalizeName(playerName) === normalizeName(player.name)
-          )
-          const isOnLosingTeam = wolffnResult.losingTeam.some(
-            (playerName) => normalizeName(playerName) === normalizeName(player.name)
-          )
-
-          const skinDelta = wolffnResult.hasTie
-            ? 0
-            : isOnWinningTeam
-              ? totalSkins
-              : isOnLosingTeam
-                ? -totalSkins
-                : 0
-
+          const skinDelta = getWolffnPlayerSkinDelta({
+            playerName: player.name,
+            hasTie: wolffnResult.hasTie,
+            totalSkins,
+            winningTeam: wolffnResult.winningTeam,
+            losingTeam: wolffnResult.losingTeam,
+          })
           const winningsDelta = roundMoney(skinDelta * stake)
 
           return {
@@ -891,7 +827,6 @@ export function GameProvider({ children }) {
           setMatchFinished(true)
           setHasActiveMatch(false)
           setActiveMatchId(createMatchId(matchCounter + 1))
-
           return
         }
 
@@ -1065,7 +1000,6 @@ export function GameProvider({ children }) {
         setMatchFinished(true)
         setHasActiveMatch(false)
         setActiveMatchId(createMatchId(matchCounter + 1))
-
         return
       }
 
@@ -1116,9 +1050,7 @@ export function GameProvider({ children }) {
         const name = String(player?.name || "").trim()
         const key = normalizeName(name)
 
-        if (name && !playerMap.has(key)) {
-          playerMap.set(key, name)
-        }
+        if (name && !playerMap.has(key)) playerMap.set(key, name)
       })
     })
 
@@ -1126,9 +1058,7 @@ export function GameProvider({ children }) {
       const name = String(player?.name || "").trim()
       const key = normalizeName(name)
 
-      if (name && !playerMap.has(key)) {
-        playerMap.set(key, name)
-      }
+      if (name && !playerMap.has(key)) playerMap.set(key, name)
     })
 
     return Array.from(playerMap.values())
@@ -1150,10 +1080,8 @@ export function GameProvider({ children }) {
         const roundPlayer = getRoundPlayers(round).find(
           (player) => normalizeName(player.name) === playerKey
         )
-
         const count =
           roundPlayer?.holes?.filter((playedHole) => playedHole.result?.label === "Birdie").length || 0
-
         return total + count
       }, 0)
 
@@ -1161,13 +1089,11 @@ export function GameProvider({ children }) {
         const roundPlayer = getRoundPlayers(round).find(
           (player) => normalizeName(player.name) === playerKey
         )
-
         const count =
           roundPlayer?.holes?.filter(
             (playedHole) =>
               playedHole.result?.label === "Eagle" || playedHole.result?.label === "Albatross"
           ).length || 0
-
         return total + count
       }, 0)
 
@@ -1176,7 +1102,6 @@ export function GameProvider({ children }) {
           const roundPlayer = getRoundPlayers(round).find(
             (player) => normalizeName(player.name) === playerKey
           )
-
           return total + toNumber(roundPlayer?.winnings, 0)
         }, 0)
       )
@@ -1185,7 +1110,6 @@ export function GameProvider({ children }) {
         const roundPlayer = getRoundPlayers(round).find(
           (player) => normalizeName(player.name) === playerKey
         )
-
         return total + toNumber(roundPlayer?.totalToPar, 0)
       }, 0)
 
@@ -1193,13 +1117,11 @@ export function GameProvider({ children }) {
         const roundPlayer = getRoundPlayers(round).find(
           (player) => normalizeName(player.name) === playerKey
         )
-
         return total + toNumber(roundPlayer?.total, 0)
       }, 0)
 
       const avgToPar =
         playerRounds.length > 0 ? Number((totalToPar / playerRounds.length).toFixed(1)) : 0
-
       const averageScore =
         playerRounds.length > 0 ? Number((totalStrokes / playerRounds.length).toFixed(1)) : 0
 
