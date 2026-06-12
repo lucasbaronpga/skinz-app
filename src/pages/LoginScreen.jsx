@@ -1,28 +1,29 @@
 import { useState } from "react"
 
 import { motion } from "framer-motion"
-
 import { ArrowRight, Flag } from "lucide-react"
-
 import { useLocation, useNavigate } from "react-router-dom"
 
 import AppBackground from "../components/AppBackground"
-
 import { useAuth } from "../context/AuthContext"
+
+function getRedirectPath(location) {
+  const pathname = location?.state?.from?.pathname
+
+  return typeof pathname === "string" && pathname.length > 0 ? pathname : "/"
+}
 
 export default function LoginScreen() {
   const [name, setName] = useState("")
   const [touched, setTouched] = useState(false)
 
   const { login } = useAuth()
-
   const navigate = useNavigate()
   const location = useLocation()
 
   const cleanedName = name.trim()
   const canLogin = cleanedName.length > 0
-
-  const redirectPath = location.state?.from?.pathname || "/"
+  const redirectPath = getRedirectPath(location)
 
   function handleLogin() {
     setTouched(true)
@@ -104,7 +105,7 @@ export default function LoginScreen() {
                 Welcome to
               </div>
 
-              <h1 className="mt-4 text-7xl font-black tracking-[-0.07em] text-white">
+              <h1 className="mt-4 break-words text-[clamp(4rem,18vw,4.5rem)] font-black leading-none tracking-[-0.07em] text-white">
                 Skinz
               </h1>
 
@@ -155,11 +156,9 @@ export default function LoginScreen() {
             enterKeyHint="go"
             aria-invalid={touched && !canLogin}
             aria-describedby={
-              touched && !canLogin
-                ? "player-name-error"
-                : undefined
+              touched && !canLogin ? "player-name-error" : undefined
             }
-            className="mt-4 h-16 w-full rounded-[26px] border border-white/70 bg-white/[0.72] px-5 text-2xl font-black text-slate-950 shadow-sm outline-none backdrop-blur-xl transition-all placeholder:text-slate-300 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+            className="mt-4 h-16 w-full min-w-0 rounded-[26px] border border-white/70 bg-white/[0.72] px-5 text-2xl font-black text-slate-950 shadow-sm outline-none backdrop-blur-xl transition-all placeholder:text-slate-300 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
           />
 
           {touched && !canLogin && (
@@ -189,11 +188,13 @@ export default function LoginScreen() {
               scale: canLogin ? 0.98 : 1,
             }}
             disabled={!canLogin}
-            className="mt-8 flex h-16 w-full items-center justify-between rounded-[30px] bg-slate-950 px-6 text-white shadow-[0_18px_45px_rgba(15,23,42,0.25)] transition-all disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-8 flex h-16 w-full items-center justify-between gap-4 rounded-[30px] bg-slate-950 px-6 text-white shadow-[0_18px_45px_rgba(15,23,42,0.25)] transition-all disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <span className="text-2xl font-black">Weiter</span>
+            <span className="min-w-0 break-words text-left text-2xl font-black">
+              Weiter
+            </span>
 
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-500">
               <ArrowRight size={22} strokeWidth={2.8} />
             </span>
           </motion.button>

@@ -1,16 +1,8 @@
 import { useEffect, useRef, useState } from "react"
 
 import { AnimatePresence, motion } from "framer-motion"
-
 import { useNavigate } from "react-router-dom"
-
-import {
-  Check,
-  ChevronRight,
-  Crown,
-  Sparkles,
-  X,
-} from "lucide-react"
+import { Check, ChevronRight, Crown, Sparkles, X } from "lucide-react"
 
 import AppBackground from "../components/AppBackground"
 import GameModeBadge from "../components/GameModeBadge"
@@ -202,18 +194,6 @@ function getToParBadgeStyle(value) {
 
 function getCourseName(course) {
   return course?.name || "Erster Golfclub Westpfalz"
-}
-
-function getCourseLocation(course) {
-  return course?.location || "Westpfalz"
-}
-
-function getCoursePar(course) {
-  return course?.par || 72
-}
-
-function getCourseMeta(course) {
-  return `${getCourseLocation(course)} · Par ${getCoursePar(course)}`
 }
 
 function getSpecialLabelForScore(score, par, specialScoringEnabled) {
@@ -1174,7 +1154,7 @@ export default function LiveScoringScreen() {
                                 : "text-amber-500"
                             }`}
                           >
-                            {getSkinsLabel(item.skins || 0)} ·{" "}
+                            {getSkinsLabel(item.skins || 0)} · {" "}
                             {formatPlainMoney(item.pot || 0)}
                           </div>
                         </div>
@@ -1320,7 +1300,7 @@ export default function LiveScoringScreen() {
                 </div>
 
                 <div className="mt-4 text-lg font-bold text-slate-400">
-                  holt {celebration.skins || 1}{" "}
+                  holt {celebration.skins || 1} {" "}
                   {(celebration.skins || 1) === 1 ? "Skin" : "Skinz"}
                 </div>
 
@@ -1360,40 +1340,20 @@ export default function LiveScoringScreen() {
               }}
               className="mx-auto w-full max-w-md overflow-hidden rounded-[44px] border border-white/70 bg-white/[0.82] p-8 text-center shadow-2xl backdrop-blur-2xl"
             >
-              <motion.div
-                animate={{
-                  rotate: [0, -4, 4, 0],
-                }}
-                transition={{
-                  duration: 2.5,
-                  repeat: Infinity,
-                }}
-                className="text-7xl"
-                aria-hidden="true"
-              >
-                🏆
-              </motion.div>
-
-              <div
-                className={`mt-6 text-[12px] font-black uppercase tracking-[0.28em] ${modeTheme.text}`}
-              >
-                Am 19. Loch
+              <div className={`text-[12px] font-black tracking-[0.22em] ${modeTheme.text}`}>
+                Match finished.
               </div>
 
-              <h2 className="mt-4 text-5xl font-black tracking-[-0.06em] text-slate-950">
+              <h2 className="mt-6 text-5xl font-black tracking-[-0.06em] text-slate-950">
                 {champion?.name || "Winner"}
               </h2>
 
-              <div className="mt-3 inline-flex max-w-full rounded-full border border-white/70 bg-white/[0.46] px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-500 shadow-sm backdrop-blur-xl">
+              <div className="mt-4 inline-flex max-w-full rounded-full border border-white/70 bg-white/[0.46] px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-500 shadow-sm backdrop-blur-xl">
                 <span className="truncate">{getCourseName(currentCourse)}</span>
               </div>
 
-              <div className="mt-2 text-sm font-bold text-slate-500">
-                {getCourseMeta(currentCourse)}
-              </div>
-
               <div
-                className={`mt-5 text-5xl font-black tracking-[-0.06em] ${getMoneyColor(
+                className={`mt-7 text-5xl font-black tracking-[-0.06em] ${getMoneyColor(
                   champion?.winnings
                 )}`}
               >

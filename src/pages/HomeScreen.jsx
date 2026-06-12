@@ -166,6 +166,62 @@ function getRoundPlayers(round) {
   return Array.isArray(round?.players) ? round.players : []
 }
 
+function getPlayerName(player) {
+  return player?.name || player?.playerName || player?.displayName || ""
+}
+
+function getAuthenticatedPlayerName(user) {
+  return (
+    user?.name ||
+    user?.playerName ||
+    user?.displayName ||
+    user?.profileName ||
+    user?.username ||
+    ""
+  )
+}
+
+function isSamePlayerName(left, right) {
+  return Boolean(normalizeName(left) && normalizeName(left) === normalizeName(right))
+}
+
+function roundMatchesAuthenticatedPlayer(round, authenticatedPlayerName) {
+  if (!round || !normalizeName(authenticatedPlayerName)) {
+    return false
+  }
+
+  const directRoundNames = [
+    round?.playerName,
+    round?.currentPlayerName,
+    round?.profileName,
+    round?.userName,
+  ]
+
+  const hasDirectMatch = directRoundNames.some((name) =>
+    isSamePlayerName(name, authenticatedPlayerName)
+  )
+
+  if (hasDirectMatch) {
+    return true
+  }
+
+  return getRoundPlayers(round).some((player) =>
+    isSamePlayerName(getPlayerName(player), authenticatedPlayerName)
+  )
+}
+
+function getAuthenticatedRoundPlayer(round, authenticatedPlayerName) {
+  if (!round || !normalizeName(authenticatedPlayerName)) {
+    return null
+  }
+
+  const matchedPlayer = getRoundPlayers(round).find((player) =>
+    isSamePlayerName(getPlayerName(player), authenticatedPlayerName)
+  )
+
+  return matchedPlayer || null
+}
+
 function itemIsWolffn(item) {
   return Boolean(
     item?.gameMode === GAME_MODES.WOLFFN ||
@@ -275,69 +331,9 @@ function getRoundModeLabel(round) {
   })
 }
 
-function getPlayerName(player) {
-  return player?.name || player?.playerName || player?.displayName || ""
-}
-
-function getPreferredPlayerName(round, playerStats) {
-  if (round?.playerName) {
-    return round.playerName
-  }
-
-  if (round?.currentPlayerName) {
-    return round.currentPlayerName
-  }
-
-  if (round?.profileName) {
-    return round.profileName
-  }
-
-  if (round?.userName) {
-    return round.userName
-  }
-
-  if (round?.winner) {
-    return round.winner
-  }
-
-  const firstStatsPlayer =
-    Array.isArray(playerStats) && playerStats.length > 0 ? playerStats[0] : null
-
-  if (firstStatsPlayer?.name) {
-    return firstStatsPlayer.name
-  }
-
-  const firstRoundPlayer = getRoundPlayers(round)[0]
-
-  return getPlayerName(firstRoundPlayer) || "Spieler"
-}
-
-function getRoundPlayer(round, playerStats) {
-  const preferredName = getPreferredPlayerName(round, playerStats)
-  const players = getRoundPlayers(round)
-
-  const matchedPlayer = players.find(
-    (player) => normalizeName(getPlayerName(player)) === normalizeName(preferredName)
-  )
-
-  if (matchedPlayer) {
-    return matchedPlayer
-  }
-
-  const winnerPlayer = players.find(
-    (player) => normalizeName(getPlayerName(player)) === normalizeName(round?.winner)
-  )
-
-  if (winnerPlayer) {
-    return winnerPlayer
-  }
-
-  return players[0] || null
-}
-
 function getLiveUserPlayer(players, userName) {
-  const matchedPlayer = players.find(
-    (player) => normalizeName(player?.name) === normalizeName(userName)
+  const matchedPlayer = players.find((player) =>
+    isSamePlayerName(player?.name, userName)
   )
 
   return matchedPlayer || players[0] || null
@@ -472,13 +468,15 @@ export default function HomeScreen() {
     specialScoringEnabled,
   } = useGame()
 
+  const authenticatedPlayerName = getAuthenticatedPlayerName(user)
+
   const safePlayers = Array.isArray(players) ? players : []
   const safePlayerStats = Array.isArray(playerStats) ? playerStats : []
   const safeCompletedRounds = Array.isArray(completedRounds)
     ? completedRounds
     : []
 
-  const liveUserPlayer = getLiveUserPlayer(safePlayers, user?.name)
+  const liveUserPlayer = getLiveUserPlayer(safePlayers, authenticatedPlayerName)
 
   const liveUserSkins = toNumber(liveUserPlayer?.skins, 0)
   const liveUserWinnings = toNumber(liveUserPlayer?.winnings, 0)
@@ -502,17 +500,21 @@ export default function HomeScreen() {
     liveLeader && !liveLeaderHasTie ? liveLeader.name : "All Square"
 
   const latestRound =
-    [...safeCompletedRounds].sort(
-      (a, b) => getRoundSortValue(b) - getRoundSortValue(a)
-    )[0] || null
+    [...safeCompletedRounds]
+      .filter((round) =>
+        roundMatchesAuthenticatedPlayer(round, authenticatedPlayerName)
+      )
+      .sort((a, b) => getRoundSortValue(b) - getRoundSortValue(a))[0] || null
 
   const latestRoundId = latestRound?.id || "SKZ-0000"
 
-  const latestRoundPlayer = getRoundPlayer(latestRound, safePlayerStats)
-  const latestRoundPlayerName = getPreferredPlayerName(
+  const latestRoundPlayer = getAuthenticatedRoundPlayer(
     latestRound,
-    safePlayerStats
+    authenticatedPlayerName
   )
+
+  const latestRoundPlayerName =
+    getPlayerName(latestRoundPlayer) || authenticatedPlayerName || "Spieler"
 
   const latestRoundStrokes = getPlayerTotalStrokes(
     latestRoundPlayer,
