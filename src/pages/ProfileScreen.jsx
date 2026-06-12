@@ -1,23 +1,17 @@
 import { motion } from "framer-motion"
-
 import {
   Crown,
   DollarSign,
   Flag,
   LogOut,
   MapPin,
-  Sparkles,
-  Target,
   Trophy,
   User,
 } from "lucide-react"
-
 import { useNavigate } from "react-router-dom"
 
 import AppBackground from "../components/AppBackground"
-
 import { useAuth } from "../context/AuthContext"
-
 import { GAME_MODES, useGame } from "../context/GameContext"
 
 function toNumber(value, fallback = 0) {
@@ -32,7 +26,6 @@ function roundMoney(value) {
 
 function formatEuroAmount(value) {
   const amount = roundMoney(Math.abs(value))
-
   const hasCents = Math.abs(amount % 1) > 0
 
   if (hasCents) {
@@ -60,7 +53,7 @@ function getMoneyColor(value) {
   const amount = toNumber(value, 0)
 
   if (amount > 0) {
-    return "text-yellow-500"
+    return "text-amber-500"
   }
 
   if (amount < 0) {
@@ -74,11 +67,11 @@ function getMoneyColorDark(value) {
   const amount = toNumber(value, 0)
 
   if (amount > 0) {
-    return "text-yellow-300"
+    return "text-amber-300"
   }
 
   if (amount < 0) {
-    return "text-red-300"
+    return "text-red-400"
   }
 
   return "text-white"
@@ -102,42 +95,14 @@ function getSkinColor(value) {
   const amount = toNumber(value, 0)
 
   if (amount > 0) {
-    return "text-slate-950"
+    return "text-amber-500"
   }
 
   if (amount < 0) {
     return "text-red-500"
   }
 
-  return "text-slate-400"
-}
-
-function formatToPar(value) {
-  const amount = toNumber(value, 0)
-
-  if (amount === 0) {
-    return "E"
-  }
-
-  if (amount > 0) {
-    return `+${amount}`
-  }
-
-  return amount
-}
-
-function getToParColor(value) {
-  const amount = toNumber(value, 0)
-
-  if (amount < 0) {
-    return "text-emerald-500"
-  }
-
-  if (amount > 0) {
-    return "text-red-500"
-  }
-
-  return "text-slate-950"
+  return "text-slate-500"
 }
 
 function normalizeName(value) {
@@ -162,14 +127,6 @@ function getRoundCourseName(round) {
   return round?.course?.name || "Erster Golfclub Westpfalz"
 }
 
-function getRoundCoursePar(round) {
-  return round?.course?.par || 72
-}
-
-function getRoundCourseMeta(round) {
-  return `Par ${getRoundCoursePar(round)}`
-}
-
 function getRoundDate(round) {
   return round?.date || "Unbekannt"
 }
@@ -192,6 +149,49 @@ function getInitials(name) {
   }
 
   return cleanedName.charAt(0).toUpperCase()
+}
+
+function getPlayerHoles(player) {
+  return Array.isArray(player?.holes) ? player.holes : []
+}
+
+function getPlayerTotalScore(player) {
+  const holes = getPlayerHoles(player)
+
+  if (holes.length > 0) {
+    return holes.reduce((total, hole) => total + toNumber(hole?.score, 0), 0)
+  }
+
+  return toNumber(player?.total, 0)
+}
+
+function roundAverageScore(value) {
+  const number = toNumber(value, 0)
+  const base = Math.floor(number)
+  const decimal = number - base
+
+  if (decimal < 0.5) {
+    return base
+  }
+
+  return base + 1
+}
+
+function getAverageScore(rounds, playerName) {
+  const playerRounds = rounds
+    .map((round) => getRoundPlayer(round, playerName))
+    .filter(Boolean)
+
+  if (playerRounds.length === 0) {
+    return 0
+  }
+
+  const totalScore = playerRounds.reduce(
+    (total, player) => total + getPlayerTotalScore(player),
+    0
+  )
+
+  return roundAverageScore(totalScore / playerRounds.length)
 }
 
 function itemIsWolffn(item) {
@@ -233,7 +233,7 @@ function roundIsWolffn(round) {
   )
 }
 
-function roundHasSpecialScoring(round) {
+function roundHasProfessionalScoring(round) {
   if (!round) {
     return false
   }
@@ -252,7 +252,7 @@ function roundHasSpecialScoring(round) {
     return true
   }
 
-  const historyHasSpecialScoring =
+  const historyHasProfessionalScoring =
     Array.isArray(round?.history) &&
     round.history.some(
       (playedHole) =>
@@ -265,7 +265,7 @@ function roundHasSpecialScoring(round) {
           playedHole?.eagleBonusApplied)
     )
 
-  if (historyHasSpecialScoring) {
+  if (historyHasProfessionalScoring) {
     return true
   }
 
@@ -283,6 +283,52 @@ function roundHasSpecialScoring(round) {
             playedHole?.eagleBonusApplied)
       )
   )
+}
+
+function getRoundGameMode(round) {
+  if (roundIsWolffn(round)) {
+    return GAME_MODES.WOLFFN
+  }
+
+  if (roundHasProfessionalScoring(round)) {
+    return GAME_MODES.PROFESSIONAL
+  }
+
+  if (round?.gameMode === GAME_MODES.PROFESSIONAL) {
+    return GAME_MODES.PROFESSIONAL
+  }
+
+  if (round?.gameMode === GAME_MODES.WOLFFN) {
+    return GAME_MODES.WOLFFN
+  }
+
+  return GAME_MODES.CLASSIC
+}
+
+function getRoundGameModeMeta(round) {
+  const gameMode = getRoundGameMode(round)
+
+  if (gameMode === GAME_MODES.WOLFFN) {
+    return {
+      label: "Wolffn",
+      icon: "🐺",
+      className: "bg-slate-950 text-white",
+    }
+  }
+
+  if (gameMode === GAME_MODES.PROFESSIONAL) {
+    return {
+      label: "Pro",
+      icon: null,
+      className: "bg-orange-500 text-white",
+    }
+  }
+
+  return {
+    label: "Classic",
+    icon: null,
+    className: "bg-emerald-500 text-white",
+  }
 }
 
 function getRoundSortValue(round) {
@@ -304,36 +350,42 @@ function getRoundSortValue(round) {
 function getHeroMoneyTextSize(value) {
   const formattedValue = formatMoney(value)
 
+  if (formattedValue.length >= 10) {
+    return "text-[0.82rem]"
+  }
+
   if (formattedValue.length >= 8) {
-    return "text-[1.35rem]"
+    return "text-[0.95rem]"
   }
 
   if (formattedValue.length >= 6) {
-    return "text-[1.55rem]"
+    return "text-[1.08rem]"
   }
 
-  return "text-[1.85rem]"
+  return "text-[1.42rem]"
 }
 
 function getPerformanceMoneyTextSize(value) {
   const formattedValue = formatMoney(value)
 
+  if (formattedValue.length >= 10) {
+    return "text-[1.35rem]"
+  }
+
   if (formattedValue.length >= 8) {
-    return "text-[2.15rem]"
+    return "text-[1.55rem]"
   }
 
   if (formattedValue.length >= 6) {
-    return "text-[2.45rem]"
+    return "text-[1.85rem]"
   }
 
-  return "text-[3rem]"
+  return "text-[2.35rem]"
 }
 
 export default function ProfileScreen() {
   const navigate = useNavigate()
-
   const { user, logout } = useAuth()
-
   const { playerStats, completedRounds } = useGame()
 
   const userName = user?.name || "Player"
@@ -361,9 +413,8 @@ export default function ProfileScreen() {
 
   const roundsPlayed = toNumber(player?.roundsPlayed, userRounds.length)
   const totalWins = toNumber(player?.wins, 0)
-  const totalBirdies = toNumber(player?.birdies, 0)
   const totalWinnings = toNumber(player?.totalWinnings, 0)
-  const avgToPar = toNumber(player?.avgToPar, 0)
+  const averageScore = getAverageScore(userRounds, userName)
 
   function handleLogout() {
     logout()
@@ -431,7 +482,7 @@ export default function ProfileScreen() {
 
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute -bottom-28 -left-20 h-56 w-56 rounded-full bg-yellow-300/10 blur-3xl"
+              className="pointer-events-none absolute -bottom-28 -left-20 h-56 w-56 rounded-full bg-amber-300/10 blur-3xl"
             />
 
             <div className="relative">
@@ -446,7 +497,7 @@ export default function ProfileScreen() {
               </div>
 
               <div className="mt-6 min-w-0">
-                <div className="truncate text-5xl font-black tracking-tight">
+                <div className="break-words text-5xl font-black leading-[0.92] tracking-tight">
                   {userName}
                 </div>
 
@@ -457,17 +508,17 @@ export default function ProfileScreen() {
               </div>
 
               <div className="mt-8 grid grid-cols-3 gap-3">
-                <div className="rounded-[26px] bg-white/[0.10] p-4 text-center backdrop-blur-xl">
+                <div className="min-w-0 rounded-[26px] bg-white/[0.10] px-2 py-4 text-center backdrop-blur-xl">
                   <div className="text-xs font-black uppercase tracking-widest text-white/40">
                     Wins
                   </div>
 
-                  <div className="mt-2 text-3xl font-black text-white">
+                  <div className="mt-2 text-3xl font-black text-amber-300">
                     {totalWins}
                   </div>
                 </div>
 
-                <div className="rounded-[26px] bg-white/[0.10] p-4 text-center backdrop-blur-xl">
+                <div className="min-w-0 rounded-[26px] bg-white/[0.10] px-2 py-4 text-center backdrop-blur-xl">
                   <div className="text-xs font-black uppercase tracking-widest text-white/40">
                     Rounds
                   </div>
@@ -477,13 +528,13 @@ export default function ProfileScreen() {
                   </div>
                 </div>
 
-                <div className="rounded-[26px] bg-white/[0.10] p-4 text-center backdrop-blur-xl">
-                  <div className="text-xs font-black uppercase tracking-widest text-white/40">
+                <div className="min-w-0 overflow-hidden rounded-[26px] bg-white/[0.10] px-2 py-4 text-center backdrop-blur-xl">
+                  <div className="text-[10px] font-black uppercase tracking-[0.18em] text-white/40">
                     Earnings
                   </div>
 
                   <div
-                    className={`mt-3 w-full text-center font-black leading-none tracking-tight ${getHeroMoneyTextSize(
+                    className={`mt-3 max-w-full overflow-hidden whitespace-nowrap text-center font-black leading-none tracking-tight tabular-nums ${getHeroMoneyTextSize(
                       totalWinnings
                     )} ${getMoneyColorDark(totalWinnings)}`}
                   >
@@ -530,13 +581,13 @@ export default function ProfileScreen() {
           <div className="mt-5 grid grid-cols-2 gap-4">
             <div className="rounded-[28px] border border-white/70 bg-white/[0.80] p-5 shadow-sm backdrop-blur-xl">
               <div className="flex items-center gap-2 text-slate-400">
-                <Target size={18} />
+                <Flag size={18} />
 
-                <div className="text-sm font-black">Birdies</div>
+                <div className="text-sm font-black">Rounds</div>
               </div>
 
-              <div className="mt-4 text-5xl font-black text-red-500">
-                {totalBirdies}
+              <div className="mt-4 text-5xl font-black text-slate-950">
+                {roundsPlayed}
               </div>
             </div>
 
@@ -547,7 +598,7 @@ export default function ProfileScreen() {
                 <div className="text-sm font-black">Wins</div>
               </div>
 
-              <div className="mt-4 text-5xl font-black text-yellow-500">
+              <div className="mt-4 text-5xl font-black text-amber-500">
                 {totalWins}
               </div>
             </div>
@@ -556,17 +607,15 @@ export default function ProfileScreen() {
               <div className="flex items-center gap-2 text-slate-400">
                 <Flag size={18} />
 
-                <div className="text-sm font-black">Avg To Par</div>
+                <div className="text-sm font-black">Avg Score</div>
               </div>
 
-              <div
-                className={`mt-4 text-5xl font-black ${getToParColor(avgToPar)}`}
-              >
-                {formatToPar(avgToPar)}
+              <div className="mt-4 text-5xl font-black text-slate-950">
+                {averageScore}
               </div>
             </div>
 
-            <div className="rounded-[28px] border border-white/70 bg-white/[0.80] p-5 text-center shadow-sm backdrop-blur-xl">
+            <div className="min-w-0 overflow-hidden rounded-[28px] border border-white/70 bg-white/[0.80] p-4 text-center shadow-sm backdrop-blur-xl">
               <div className="flex items-center justify-center gap-2 text-slate-400">
                 <DollarSign size={18} />
 
@@ -574,7 +623,7 @@ export default function ProfileScreen() {
               </div>
 
               <div
-                className={`mt-4 w-full text-center font-black leading-none tracking-tight ${getPerformanceMoneyTextSize(
+                className={`mt-5 max-w-full overflow-hidden whitespace-nowrap text-center font-black leading-none tracking-tight tabular-nums ${getPerformanceMoneyTextSize(
                   totalWinnings
                 )} ${getMoneyColor(totalWinnings)}`}
               >
@@ -637,11 +686,9 @@ export default function ProfileScreen() {
               const roundPlayer = getRoundPlayer(round, userName)
               const roundId = getRoundId(round)
               const courseName = getRoundCourseName(round)
-              const courseMeta = getRoundCourseMeta(round)
-              const isWolffnRound = roundIsWolffn(round)
-              const roundHasSpecialMode = roundHasSpecialScoring(round)
               const isWinner =
                 normalizeName(round.winner) === normalizeName(userName)
+              const gameModeMeta = getRoundGameModeMeta(round)
 
               return (
                 <motion.button
@@ -651,7 +698,7 @@ export default function ProfileScreen() {
                     scale: 0.985,
                   }}
                   onClick={() => navigate(`/matches/${roundId}`)}
-                  className="w-full rounded-[30px] border border-white/70 bg-white/[0.82] p-5 text-left shadow-sm backdrop-blur-xl"
+                  className="relative w-full overflow-hidden rounded-[30px] border border-white/70 bg-white/[0.78] p-5 text-left shadow-[0_12px_32px_rgba(15,23,42,0.08)]"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
@@ -664,24 +711,30 @@ export default function ProfileScreen() {
                           {roundId}
                         </div>
 
+                        <div
+                          className={`flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${gameModeMeta.className}`}
+                        >
+                          {gameModeMeta.icon && (
+                            <span aria-hidden="true">{gameModeMeta.icon}</span>
+                          )}
+
+                          {gameModeMeta.label}
+                        </div>
+
                         {isWinner && (
-                          <div className="flex items-center gap-1 rounded-full bg-yellow-400 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-black">
+                          <div className="flex items-center gap-1 rounded-full bg-amber-400 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-black">
                             <Crown size={10} />
                             Winner
                           </div>
                         )}
                       </div>
 
-                      <div className="mt-3 flex items-center gap-2 text-slate-400">
-                        <MapPin size={14} />
+                      <div className="mt-3 flex items-start gap-2 text-slate-400">
+                        <MapPin size={14} className="mt-1 shrink-0" />
 
-                        <div className="truncate text-sm font-black text-slate-500">
+                        <div className="min-w-0 text-sm font-black leading-snug text-slate-500">
                           {courseName}
                         </div>
-                      </div>
-
-                      <div className="mt-1 text-xs font-bold text-slate-400">
-                        {courseMeta}
                       </div>
 
                       <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -692,20 +745,6 @@ export default function ProfileScreen() {
                         >
                           {formatSkinSaldo(roundPlayer?.skins)} Skinz
                         </div>
-
-                        {isWolffnRound && (
-                          <div className="flex items-center gap-1 rounded-full bg-slate-950 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white">
-                            <span aria-hidden="true">🐺</span>
-                            Wolffn
-                          </div>
-                        )}
-
-                        {!isWolffnRound && roundHasSpecialMode && (
-                          <div className="flex items-center gap-1 rounded-full bg-orange-500 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white">
-                            <Sparkles size={10} />
-                            Skinz Pro
-                          </div>
-                        )}
                       </div>
                     </div>
 

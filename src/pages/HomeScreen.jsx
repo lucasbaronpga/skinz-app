@@ -4,7 +4,6 @@ import { motion } from "framer-motion"
 import AppBackground from "../components/AppBackground"
 
 import { useAuth } from "../context/AuthContext"
-
 import { GAME_MODES, useGame } from "../context/GameContext"
 
 function toNumber(value, fallback = 0) {
@@ -25,7 +24,6 @@ function normalizeName(value) {
 
 function formatEuroAmount(value) {
   const amount = roundMoney(Math.abs(value))
-
   const hasCents = Math.abs(amount % 1) > 0
 
   if (hasCents) {
@@ -66,7 +64,7 @@ function formatToPar(value) {
     return `+${amount}`
   }
 
-  return amount
+  return String(amount)
 }
 
 function formatSkins(value) {
@@ -85,7 +83,6 @@ function formatSkins(value) {
 
 function formatLiveSkinBalance(value) {
   const amount = Math.abs(toNumber(value, 0))
-
   const label = amount === 1 ? "Skin" : "Skinz"
 
   return `${amount} ${label}`
@@ -209,11 +206,7 @@ function roundIsWolffn(round) {
 }
 
 function roundHasSpecialScoring(round) {
-  if (!round) {
-    return false
-  }
-
-  if (roundIsWolffn(round)) {
+  if (!round || roundIsWolffn(round)) {
     return false
   }
 
@@ -274,7 +267,6 @@ function getModeLabel({ isWolffn, isProfessional }) {
 
 function getRoundModeLabel(round) {
   const isWolffn = roundIsWolffn(round)
-
   const isProfessional = !isWolffn && roundHasSpecialScoring(round)
 
   return getModeLabel({
@@ -309,9 +301,7 @@ function getPreferredPlayerName(round, playerStats) {
   }
 
   const firstStatsPlayer =
-    Array.isArray(playerStats) && playerStats.length > 0
-      ? playerStats[0]
-      : null
+    Array.isArray(playerStats) && playerStats.length > 0 ? playerStats[0] : null
 
   if (firstStatsPlayer?.name) {
     return firstStatsPlayer.name
@@ -324,11 +314,10 @@ function getPreferredPlayerName(round, playerStats) {
 
 function getRoundPlayer(round, playerStats) {
   const preferredName = getPreferredPlayerName(round, playerStats)
-
   const players = getRoundPlayers(round)
 
   const matchedPlayer = players.find(
-    (player) => getPlayerName(player) === preferredName
+    (player) => normalizeName(getPlayerName(player)) === normalizeName(preferredName)
   )
 
   if (matchedPlayer) {
@@ -336,7 +325,7 @@ function getRoundPlayer(round, playerStats) {
   }
 
   const winnerPlayer = players.find(
-    (player) => getPlayerName(player) === round?.winner
+    (player) => normalizeName(getPlayerName(player)) === normalizeName(round?.winner)
   )
 
   if (winnerPlayer) {
@@ -444,6 +433,20 @@ function getPlayerWinnings(player, round) {
   return toNumber(value, 0)
 }
 
+function getRoundSortValue(round) {
+  const value = [round?.createdAt, round?.finishedAt, round?.date].find(
+    (item) => Number.isFinite(Number(item))
+  )
+
+  if (value !== undefined) {
+    return toNumber(value, 0)
+  }
+
+  const parsedDate = Date.parse(round?.date || "")
+
+  return Number.isFinite(parsedDate) ? parsedDate : 0
+}
+
 function DarkBadge({ children }) {
   return (
     <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-200 backdrop-blur-xl">
@@ -454,7 +457,6 @@ function DarkBadge({ children }) {
 
 export default function HomeScreen() {
   const navigate = useNavigate()
-
   const { user } = useAuth()
 
   const {
@@ -482,7 +484,9 @@ export default function HomeScreen() {
   const liveUserWinnings = toNumber(liveUserPlayer?.winnings, 0)
 
   const liveSortedPlayers = [...safePlayers].sort(
-    (a, b) => toNumber(b.winnings, 0) - toNumber(a.winnings, 0)
+    (a, b) =>
+      toNumber(b.winnings, 0) - toNumber(a.winnings, 0) ||
+      String(a?.name || "").localeCompare(String(b?.name || ""))
   )
 
   const liveLeader = liveSortedPlayers[0] || null
@@ -499,7 +503,7 @@ export default function HomeScreen() {
 
   const latestRound =
     [...safeCompletedRounds].sort(
-      (a, b) => toNumber(b.createdAt, 0) - toNumber(a.createdAt, 0)
+      (a, b) => getRoundSortValue(b) - getRoundSortValue(a)
     )[0] || null
 
   const latestRoundId = latestRound?.id || "SKZ-0000"
@@ -530,7 +534,9 @@ export default function HomeScreen() {
   const topPlayers = [...safePlayerStats]
     .filter((player) => toNumber(player?.roundsPlayed, 0) > 0)
     .sort(
-      (a, b) => toNumber(b.totalWinnings, 0) - toNumber(a.totalWinnings, 0)
+      (a, b) =>
+        toNumber(b.totalWinnings, 0) - toNumber(a.totalWinnings, 0) ||
+        String(a?.name || "").localeCompare(String(b?.name || ""))
     )
     .slice(0, 3)
 
@@ -546,21 +552,12 @@ export default function HomeScreen() {
       <div className="relative px-5 pt-8 sm:pt-10">
         <div className="mx-auto w-full max-w-md">
           <motion.div
-            initial={{
-              opacity: 0,
-              y: 18,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              duration: 0.35,
-              ease: "easeOut",
-            }}
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
             className="pt-5"
           >
-            <h1 className="text-[4.15rem] font-black leading-none tracking-[-0.075em] text-slate-950">
+            <h1 className="text-[clamp(3.6rem,18vw,4.15rem)] font-black leading-none tracking-[-0.075em] text-slate-950">
               Skinz
             </h1>
           </motion.div>
@@ -568,22 +565,10 @@ export default function HomeScreen() {
           {hasActiveMatch ? (
             <motion.button
               type="button"
-              whileTap={{
-                scale: 0.985,
-              }}
-              initial={{
-                opacity: 0,
-                y: 22,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              transition={{
-                delay: 0.05,
-                duration: 0.35,
-                ease: "easeOut",
-              }}
+              whileTap={{ scale: 0.985 }}
+              initial={{ opacity: 0, y: 22 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05, duration: 0.35, ease: "easeOut" }}
               onClick={() => navigate("/live")}
               className="mt-8 w-full overflow-hidden rounded-[34px] border border-white/20 bg-[#071819] text-left text-white shadow-[0_24px_62px_rgba(7,24,25,0.40)]"
             >
@@ -600,12 +585,12 @@ export default function HomeScreen() {
 
                 <div className="relative">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-200/85">
                         {currentModeLabel}
                       </div>
 
-                      <div className="mt-6 text-[3.2rem] font-black uppercase leading-none tracking-[-0.045em]">
+                      <div className="mt-6 break-words text-[clamp(2.75rem,14vw,3.2rem)] font-black uppercase leading-none tracking-[-0.045em]">
                         Loch {hole}
                       </div>
                     </div>
@@ -618,7 +603,7 @@ export default function HomeScreen() {
                   <div className="mt-6 grid grid-cols-2 items-end gap-3">
                     <div className="min-w-0">
                       <div
-                        className={`truncate text-[2.8rem] font-black leading-none tracking-[-0.07em] tabular-nums ${getSkinsColorDark(
+                        className={`min-w-0 break-words text-[clamp(2.15rem,11vw,2.8rem)] font-black leading-none tracking-[-0.07em] tabular-nums ${getSkinsColorDark(
                           liveUserSkins
                         )}`}
                       >
@@ -632,7 +617,7 @@ export default function HomeScreen() {
 
                     <div className="min-w-0 text-right">
                       <div
-                        className={`whitespace-nowrap text-[3.05rem] font-black leading-none tracking-[-0.07em] tabular-nums ${getMoneyColorDark(
+                        className={`min-w-0 break-words text-[clamp(2.15rem,11vw,3.05rem)] font-black leading-none tracking-[-0.07em] tabular-nums ${getMoneyColorDark(
                           liveUserWinnings
                         )}`}
                       >
@@ -647,28 +632,28 @@ export default function HomeScreen() {
 
                   <div className="mt-7 border-t border-white/10 pt-5">
                     <div className="flex items-end justify-between gap-5">
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
                           Leading
                         </div>
 
-                        <div className="mt-2 truncate text-2xl font-black tracking-[-0.035em]">
+                        <div className="mt-2 break-words text-2xl font-black tracking-[-0.035em]">
                           {liveLeaderName}
                         </div>
                       </div>
 
-                      <div className="shrink-0 text-right">
+                      <div className="min-w-0 shrink-0 text-right">
                         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
                           Match
                         </div>
 
-                        <div className="mt-2 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+                        <div className="mt-2 max-w-[9.5rem] break-words text-[11px] font-black uppercase leading-tight tracking-[0.2em] text-slate-400">
                           {activeMatchId || "-"}
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-4 truncate text-sm font-bold text-slate-400">
+                    <div className="mt-4 break-words text-sm font-bold leading-relaxed text-slate-400">
                       {getCurrentCourseName(currentCourse)}
                     </div>
                   </div>
@@ -677,19 +662,9 @@ export default function HomeScreen() {
             </motion.button>
           ) : (
             <motion.div
-              initial={{
-                opacity: 0,
-                y: 22,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              transition={{
-                delay: 0.05,
-                duration: 0.35,
-                ease: "easeOut",
-              }}
+              initial={{ opacity: 0, y: 22 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05, duration: 0.35, ease: "easeOut" }}
               className="mt-8 overflow-hidden rounded-[34px] border border-white/20 bg-[#071819] text-white shadow-[0_24px_62px_rgba(7,24,25,0.40)]"
             >
               <div className="relative p-6">
@@ -703,7 +678,7 @@ export default function HomeScreen() {
                     Next Match
                   </div>
 
-                  <div className="mt-6 text-[3.05rem] font-black uppercase leading-none tracking-[-0.045em]">
+                  <div className="mt-6 break-words text-[clamp(2.65rem,13vw,3.05rem)] font-black uppercase leading-none tracking-[-0.045em]">
                     Neue Runde
                   </div>
 
@@ -714,10 +689,10 @@ export default function HomeScreen() {
 
                   <Link
                     to="/round"
-                    className="mt-7 flex w-full items-center justify-between rounded-[26px] border border-white/90 bg-white px-5 py-4 text-slate-950 shadow-[0_16px_48px_rgba(0,0,0,0.20),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-2xl transition active:scale-[0.985]"
+                    className="mt-7 flex w-full items-center justify-between gap-4 rounded-[26px] border border-white/90 bg-white px-5 py-4 text-slate-950 shadow-[0_16px_48px_rgba(0,0,0,0.20),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-2xl transition active:scale-[0.985]"
                   >
-                    <div>
-                      <div className="text-[1.35rem] font-black tracking-[-0.04em] text-slate-950">
+                    <div className="min-w-0">
+                      <div className="break-words text-[1.35rem] font-black tracking-[-0.04em] text-slate-950">
                         Runde starten
                       </div>
 
@@ -726,7 +701,7 @@ export default function HomeScreen() {
                       </div>
                     </div>
 
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-950 text-xl font-black text-white shadow-sm">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xl font-black text-white shadow-sm">
                       →
                     </div>
                   </Link>
@@ -737,27 +712,17 @@ export default function HomeScreen() {
 
           {hasActiveMatch && (
             <motion.div
-              initial={{
-                opacity: 0,
-                y: 18,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              transition={{
-                delay: 0.08,
-                duration: 0.35,
-                ease: "easeOut",
-              }}
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08, duration: 0.35, ease: "easeOut" }}
               className="mt-5"
             >
               <Link
                 to="/round"
-                className="flex items-center justify-between rounded-[30px] border border-white/70 bg-white/[0.46] px-5 py-4 shadow-[0_16px_42px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
+                className="flex items-center justify-between gap-4 rounded-[30px] border border-white/70 bg-white/[0.46] px-5 py-4 shadow-[0_16px_42px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
               >
-                <div>
-                  <div className="text-[1.35rem] font-black tracking-[-0.035em]">
+                <div className="min-w-0">
+                  <div className="break-words text-[1.35rem] font-black tracking-[-0.035em]">
                     Neue Runde
                   </div>
 
@@ -766,26 +731,16 @@ export default function HomeScreen() {
                   </div>
                 </div>
 
-                <div className="text-2xl font-black">→</div>
+                <div className="shrink-0 text-2xl font-black">→</div>
               </Link>
             </motion.div>
           )}
 
           {latestRound && (
             <motion.div
-              initial={{
-                opacity: 0,
-                y: 22,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              transition={{
-                delay: 0.14,
-                duration: 0.35,
-                ease: "easeOut",
-              }}
+              initial={{ opacity: 0, y: 22 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.14, duration: 0.35, ease: "easeOut" }}
               className="mt-5 grid grid-cols-2 gap-3"
             >
               <button
@@ -797,12 +752,12 @@ export default function HomeScreen() {
                   Last Round
                 </div>
 
-                <div className="mt-5 truncate text-[1.9rem] font-black leading-none tracking-[-0.055em] text-slate-950">
+                <div className="mt-5 break-words text-[clamp(1.55rem,7vw,1.9rem)] font-black leading-none tracking-[-0.055em] text-slate-950">
                   {latestRoundPlayerName}
                 </div>
 
                 <div className="mt-4 flex items-end justify-between gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <div className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">
                       Schläge
                     </div>
@@ -828,11 +783,11 @@ export default function HomeScreen() {
                 </div>
 
                 <div className="mt-5 min-w-0">
-                  <div className="truncate text-sm font-black text-slate-950">
+                  <div className="break-words text-sm font-black text-slate-950">
                     {getRoundModeLabel(latestRound)}
                   </div>
 
-                  <div className="mt-1 truncate text-xs font-semibold text-slate-500">
+                  <div className="mt-1 break-words text-xs font-semibold leading-tight text-slate-500">
                     {latestRoundId}
                   </div>
                 </div>
@@ -847,9 +802,9 @@ export default function HomeScreen() {
                   Result
                 </div>
 
-                <div className="flex flex-1 flex-col justify-center">
+                <div className="flex min-w-0 flex-1 flex-col justify-center">
                   <div
-                    className={`text-center text-[2.75rem] font-black leading-none tracking-[-0.065em] tabular-nums ${getSkinsColor(
+                    className={`break-words text-center text-[clamp(2.25rem,12vw,2.75rem)] font-black leading-none tracking-[-0.065em] tabular-nums ${getSkinsColor(
                       latestRoundSkins
                     )}`}
                   >
@@ -861,7 +816,7 @@ export default function HomeScreen() {
                   </div>
 
                   <div
-                    className={`mt-5 whitespace-nowrap text-center text-[2.05rem] font-black leading-none tracking-[-0.055em] tabular-nums ${getMoneyColor(
+                    className={`mt-5 break-words text-center text-[clamp(1.65rem,8.6vw,2.05rem)] font-black leading-none tracking-[-0.055em] tabular-nums ${getMoneyColor(
                       latestRoundWinnings
                     )}`}
                   >
@@ -877,23 +832,13 @@ export default function HomeScreen() {
           )}
 
           <motion.div
-            initial={{
-              opacity: 0,
-              y: 22,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              delay: 0.18,
-              duration: 0.35,
-              ease: "easeOut",
-            }}
+            initial={{ opacity: 0, y: 22 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.18, duration: 0.35, ease: "easeOut" }}
             className="mt-5 rounded-[30px] border border-white/70 bg-white/[0.48] p-5 shadow-[0_16px_48px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
           >
             <div className="flex items-start justify-between gap-4">
-              <div>
+              <div className="min-w-0">
                 <div className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-600">
                   Season Leaderboard
                 </div>
@@ -902,7 +847,7 @@ export default function HomeScreen() {
               <button
                 type="button"
                 onClick={() => navigate("/leaderboard")}
-                className="rounded-full border border-white/70 bg-white/[0.46] px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600 backdrop-blur-xl"
+                className="shrink-0 rounded-full border border-white/70 bg-white/[0.46] px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600 backdrop-blur-xl"
               >
                 Alle
               </button>
@@ -920,14 +865,14 @@ export default function HomeScreen() {
                   type="button"
                   key={player.name}
                   onClick={() => navigate("/leaderboard")}
-                  className="flex w-full items-baseline justify-between gap-5 text-left"
+                  className="flex w-full items-start justify-between gap-5 text-left"
                 >
-                  <div className="min-w-0 truncate text-[1.55rem] font-black leading-none tracking-[-0.045em]">
+                  <div className="min-w-0 flex-1 break-words text-[1.55rem] font-black leading-none tracking-[-0.045em]">
                     {player.name}
                   </div>
 
                   <div
-                    className={`shrink-0 whitespace-nowrap text-[1.45rem] font-black leading-none tracking-[-0.045em] tabular-nums ${getMoneyColor(
+                    className={`max-w-[9rem] shrink-0 break-words text-right text-[clamp(1.15rem,6vw,1.45rem)] font-black leading-none tracking-[-0.045em] tabular-nums ${getMoneyColor(
                       player.totalWinnings
                     )}`}
                   >
@@ -940,19 +885,9 @@ export default function HomeScreen() {
 
           {!hasActiveMatch && !latestRound && topPlayers.length === 0 && (
             <motion.div
-              initial={{
-                opacity: 0,
-                y: 18,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              transition={{
-                delay: 0.14,
-                duration: 0.35,
-                ease: "easeOut",
-              }}
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.14, duration: 0.35, ease: "easeOut" }}
               className="mt-5 rounded-[30px] border border-white/70 bg-white/[0.46] p-5 shadow-[0_16px_44px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
             >
               <div className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">

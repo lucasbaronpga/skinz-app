@@ -1,20 +1,16 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 
 import { AnimatePresence, motion } from "framer-motion"
-
 import { useNavigate, useParams } from "react-router-dom"
-
 import {
   ArrowLeft,
   ChevronDown,
-  Flame,
   MapPin,
   Sparkles,
   Trophy,
 } from "lucide-react"
 
 import AppBackground from "../components/AppBackground"
-
 import { GAME_MODES, useGame } from "../context/GameContext"
 
 function toNumber(value, fallback = 0) {
@@ -29,7 +25,6 @@ function roundMoney(value) {
 
 function formatEuroAmount(value) {
   const amount = roundMoney(Math.abs(value))
-
   const hasCents = Math.abs(amount % 1) > 0
 
   if (hasCents) {
@@ -54,20 +49,18 @@ function formatMoney(value) {
 }
 
 function formatPlainMoney(value) {
-  const amount = roundMoney(value)
-
-  return `${formatEuroAmount(amount)}€`
+  return `${formatEuroAmount(value)}€`
 }
 
 function getMoneyColorDark(value) {
   const amount = toNumber(value, 0)
 
   if (amount > 0) {
-    return "text-yellow-300"
+    return "text-amber-300"
   }
 
   if (amount < 0) {
-    return "text-red-300"
+    return "text-red-400"
   }
 
   return "text-white"
@@ -84,7 +77,7 @@ function formatToPar(value) {
     return `+${amount}`
   }
 
-  return amount
+  return String(amount)
 }
 
 function getToParColor(value) {
@@ -105,11 +98,11 @@ function getToParColorDark(value) {
   const amount = toNumber(value, 0)
 
   if (amount < 0) {
-    return "text-emerald-300"
+    return "text-emerald-400"
   }
 
   if (amount > 0) {
-    return "text-red-300"
+    return "text-red-400"
   }
 
   return "text-white"
@@ -117,35 +110,35 @@ function getToParColorDark(value) {
 
 function getScoreStyle(label) {
   if (label === "Albatross") {
-    return "bg-yellow-300 border-yellow-300 text-black"
+    return "border-yellow-300 bg-yellow-300 text-black"
   }
 
   if (label === "Eagle") {
-    return "bg-orange-500 border-orange-500 text-white"
+    return "border-orange-500 bg-orange-500 text-white"
   }
 
   if (label === "Birdie") {
-    return "bg-red-500 border-red-500 text-white"
+    return "border-red-500 bg-red-500 text-white"
   }
 
   if (label === "Bogey") {
-    return "bg-blue-500 border-blue-500 text-white"
+    return "border-blue-500 bg-blue-500 text-white"
   }
 
   if (label === "Double Bogey") {
-    return "bg-blue-900 border-blue-900 text-white"
+    return "border-blue-900 bg-blue-900 text-white"
   }
 
   if (label === "Triple+") {
-    return "bg-purple-600 border-purple-600 text-white"
+    return "border-purple-600 bg-purple-600 text-white"
   }
 
-  return "bg-white border-slate-200 text-slate-950"
+  return "border-slate-200 bg-white text-slate-950"
 }
 
 function getRankStyle(index) {
   if (index === 0) {
-    return "bg-yellow-300 text-black shadow-lg shadow-yellow-500/20"
+    return "bg-amber-400 text-black shadow-lg shadow-amber-500/20"
   }
 
   if (index === 1) {
@@ -188,7 +181,7 @@ function getPlayerTotalPar(player, fallbackPar) {
 }
 
 function getCoursePar(round) {
-  return round?.course?.par || 72
+  return toNumber(round?.course?.par, 72)
 }
 
 function getPlayerTotalToPar(player, fallbackPar) {
@@ -215,15 +208,26 @@ function getSortedPlayers(round) {
     const scoreA = getPlayerTotalScore(a)
     const scoreB = getPlayerTotalScore(b)
 
-    return winningsB - winningsA || toParA - toParB || scoreA - scoreB
+    const nameA = String(a?.name || "")
+    const nameB = String(b?.name || "")
+
+    return (
+      winningsB - winningsA ||
+      toParA - toParB ||
+      scoreA - scoreB ||
+      nameA.localeCompare(nameB)
+    )
   })
 }
 
 function getWinner(round) {
   const players = getRoundPlayers(round)
+  const winnerName = String(round?.winner || "").trim().toLowerCase()
 
   return (
-    players.find((player) => player.name === round?.winner) ||
+    players.find(
+      (player) => String(player?.name || "").trim().toLowerCase() === winnerName
+    ) ||
     getSortedPlayers(round)[0] ||
     null
   )
@@ -233,25 +237,12 @@ function getCourseName(round) {
   return round?.course?.name || "Erster Golfclub Westpfalz"
 }
 
-function getCourseLocation(round) {
-  return round?.course?.location || "Westpfalz"
-}
-
 function getRoundDate(round) {
   return round?.date || "Unbekannt"
 }
 
 function getRoundId(round) {
   return round?.id || "SKZ-0000"
-}
-
-function countResult(player, result) {
-  return getPlayerHoles(player).filter((hole) => hole.result?.label === result)
-    .length
-}
-
-function countPars(player) {
-  return countResult(player, "Par")
 }
 
 function getHoleToPar(hole) {
@@ -282,10 +273,134 @@ function isWolffnItem(item) {
   )
 }
 
-function isWolffnRound(round) {
-  return Boolean(
-    round?.gameMode === GAME_MODES.WOLFFN || round?.gameModeLabel === "Wolffn"
+function roundHasWolffnData(round) {
+  if (!round) {
+    return false
+  }
+
+  if (
+    round?.gameMode === GAME_MODES.WOLFFN ||
+    round?.gameModeLabel === "Wolffn"
+  ) {
+    return true
+  }
+
+  const historyHasWolffn =
+    Array.isArray(round?.history) &&
+    round.history.some((playedHole) => isWolffnItem(playedHole))
+
+  if (historyHasWolffn) {
+    return true
+  }
+
+  return getRoundPlayers(round).some(
+    (player) =>
+      Array.isArray(player?.holes) &&
+      player.holes.some((playedHole) => isWolffnItem(playedHole))
   )
+}
+
+function roundHasProfessionalScoring(round) {
+  if (!round || roundHasWolffnData(round)) {
+    return false
+  }
+
+  if (
+    round?.gameMode === GAME_MODES.PROFESSIONAL ||
+    round?.gameModeLabel === "Skinz Professional" ||
+    round?.specialScoringEnabled ||
+    round?.bonusSkinsEnabled ||
+    round?.eagleBonusEnabled
+  ) {
+    return true
+  }
+
+  const historyHasProfessionalScoring =
+    Array.isArray(round?.history) &&
+    round.history.some(
+      (playedHole) =>
+        !isWolffnItem(playedHole) &&
+        (playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
+          playedHole?.gameModeLabel === "Skinz Professional" ||
+          playedHole?.specialScoringEnabled ||
+          playedHole?.specialScoringApplied ||
+          toNumber(playedHole?.bonusSkins, 0) > 0 ||
+          playedHole?.eagleBonusApplied)
+    )
+
+  if (historyHasProfessionalScoring) {
+    return true
+  }
+
+  return getRoundPlayers(round).some(
+    (player) =>
+      Array.isArray(player?.holes) &&
+      player.holes.some(
+        (playedHole) =>
+          !isWolffnItem(playedHole) &&
+          (playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
+            playedHole?.gameModeLabel === "Skinz Professional" ||
+            playedHole?.specialScoringEnabled ||
+            playedHole?.specialScoringApplied ||
+            toNumber(playedHole?.bonusSkins, 0) > 0 ||
+            playedHole?.eagleBonusApplied)
+      )
+  )
+}
+
+function getRoundGameMode(round) {
+  if (roundHasWolffnData(round)) {
+    return GAME_MODES.WOLFFN
+  }
+
+  if (roundHasProfessionalScoring(round)) {
+    return GAME_MODES.PROFESSIONAL
+  }
+
+  if (round?.gameMode === GAME_MODES.PROFESSIONAL) {
+    return GAME_MODES.PROFESSIONAL
+  }
+
+  if (round?.gameMode === GAME_MODES.WOLFFN) {
+    return GAME_MODES.WOLFFN
+  }
+
+  return GAME_MODES.CLASSIC
+}
+
+function getRoundGameModeMeta(round) {
+  const gameMode = getRoundGameMode(round)
+
+  if (gameMode === GAME_MODES.WOLFFN) {
+    return {
+      label: "Wolffn",
+      icon: "🐺",
+      heroClassName: "bg-white text-slate-950",
+      pillClassName: "bg-slate-950 text-white",
+      glowClassName: "from-white/18 via-white/6 to-transparent",
+      emoji: "🐺",
+    }
+  }
+
+  if (gameMode === GAME_MODES.PROFESSIONAL) {
+    return {
+      label: "Pro",
+      icon: null,
+      heroClassName: "bg-orange-500 text-white",
+      pillClassName: "bg-orange-500 text-white",
+      glowClassName: "from-orange-400/32 via-orange-500/10 to-transparent",
+      emoji: "💰",
+    }
+  }
+
+  return {
+    label: "Classic",
+    icon: null,
+    heroClassName: "bg-emerald-500 text-white",
+    pillClassName: "bg-emerald-500 text-white",
+    glowClassName: "from-emerald-400/28 via-emerald-500/8 to-transparent",
+    emoji: "💰",
+  }
 }
 
 function getHoleBonusSkins(hole) {
@@ -415,11 +530,7 @@ function getWonHoleNumbers(history, index) {
 
   const holes = [item.hole]
 
-  for (
-    let previousIndex = index - 1;
-    previousIndex >= 0;
-    previousIndex -= 1
-  ) {
+  for (let previousIndex = index - 1; previousIndex >= 0; previousIndex -= 1) {
     const previousItem = history[previousIndex]
 
     if (!previousItem?.hasTie) {
@@ -535,24 +646,13 @@ function getHistoryOutcomeStyle(item) {
   return "bg-emerald-100 text-emerald-700"
 }
 
-function SummaryCard({ label, score, par, toPar }) {
+function GameModePill({ meta, className = "" }) {
   return (
-    <div className="rounded-[24px] border border-white/60 bg-white/[0.70] p-4 text-center shadow-sm backdrop-blur-xl">
-      <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
-        {label}
-      </div>
-
-      <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-        {score}
-      </div>
-
-      <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
-        Par {par}
-      </div>
-
-      <div className={`mt-2 text-lg font-black ${getToParColor(toPar)}`}>
-        {formatToPar(toPar)}
-      </div>
+    <div
+      className={`inline-flex max-w-full items-center gap-2 rounded-full px-3 py-2 text-[10px] font-black uppercase tracking-widest shadow-sm ${meta.pillClassName} ${className}`}
+    >
+      {meta.icon && <span aria-hidden="true">{meta.icon}</span>}
+      <span className="min-w-0 whitespace-normal leading-tight">{meta.label}</span>
     </div>
   )
 }
@@ -588,7 +688,7 @@ function HoleGrid({ holes }) {
         const score = toNumber(hole?.score, 0)
         const par = toNumber(hole?.par, 0)
         const holeNumber = hole?.hole || "-"
-        const resultLabel = hole?.result?.label || "Par"
+        const resultLabel = normalizeResultLabel(hole?.result?.label || "Par")
         const bonusLabel = getHoleBonusLabel(hole)
         const bonusStyle = getHoleBonusStyle(hole)
 
@@ -597,7 +697,7 @@ function HoleGrid({ holes }) {
             key={`${holeNumber}-${score}-${par}`}
             className="rounded-[24px] border border-white/60 bg-white/[0.70] p-4 shadow-sm backdrop-blur-xl"
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                 Hole
               </div>
@@ -631,7 +731,7 @@ function HoleGrid({ holes }) {
               </div>
             </div>
 
-            <div className="mt-2 truncate text-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+            <div className="mt-2 text-center text-[10px] font-black uppercase leading-tight tracking-widest text-slate-400">
               {resultLabel}
             </div>
 
@@ -646,7 +746,6 @@ function HoleGrid({ holes }) {
 export default function MatchDetailsScreen() {
   const { id } = useParams()
   const navigate = useNavigate()
-
   const { completedRounds } = useGame()
 
   const [expandedPlayer, setExpandedPlayer] = useState(null)
@@ -655,8 +754,12 @@ export default function MatchDetailsScreen() {
     ? completedRounds
     : []
 
-  const round = safeCompletedRounds.find(
-    (completedRound) => String(completedRound.id) === String(id)
+  const round = useMemo(
+    () =>
+      safeCompletedRounds.find(
+        (completedRound) => String(completedRound.id) === String(id)
+      ),
+    [id, safeCompletedRounds]
   )
 
   if (!round) {
@@ -693,81 +796,59 @@ export default function MatchDetailsScreen() {
   const winner = getWinner(round)
   const winnerName = round.winner || winner?.name || "Unbekannt"
   const courseName = getCourseName(round)
-  const courseLocation = getCourseLocation(round)
   const coursePar = getCoursePar(round)
   const roundId = getRoundId(round)
   const roundDate = getRoundDate(round)
   const roundHistory = Array.isArray(round.history) ? round.history : []
   const displayEarnings = round.winnings ?? winner?.winnings ?? 0
-  const wolffnRound = isWolffnRound(round)
-
-  const bonusModeWasEnabled =
-    !wolffnRound &&
-    Boolean(
-      round.specialScoringEnabled ||
-        round.bonusSkinsEnabled ||
-        round.eagleBonusEnabled ||
-        roundHistory.some((item) => getHistoryBonusSkins(item) > 0)
-    )
+  const winnerToPar = getPlayerTotalToPar(winner, coursePar)
+  const gameModeMeta = getRoundGameModeMeta(round)
 
   return (
     <div className="relative min-h-[100dvh] overflow-hidden bg-[#e8ebe5] pb-[calc(9.5rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
       <AppBackground />
 
       <div className="relative mx-auto max-w-md px-5">
-        <div className="flex items-center justify-between pt-8">
+        <div className="flex items-center justify-between gap-4 pt-8">
           <motion.button
             type="button"
-            whileTap={{
-              scale: 0.92,
-            }}
+            whileTap={{ scale: 0.92 }}
             onClick={() => navigate("/matches")}
             aria-label="Zurück zum Rundenarchiv"
-            className="flex h-14 w-14 items-center justify-center rounded-full border border-white/70 bg-white/[0.70] text-slate-950 shadow-sm backdrop-blur-xl"
+            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-white/70 bg-white/[0.70] text-slate-950 shadow-sm backdrop-blur-xl"
           >
             <ArrowLeft size={22} />
           </motion.button>
 
-          <div className="text-right">
+          <div className="min-w-0 text-right">
             <div className="text-xs font-black uppercase tracking-[0.3em] text-emerald-700/80">
               Scorecard
             </div>
 
-            <div className="mt-2 text-2xl font-black tracking-tight text-slate-950">
+            <div className="mt-2 break-words text-2xl font-black tracking-tight text-slate-950">
               {roundDate}
             </div>
           </div>
         </div>
 
         <motion.div
-          initial={{
-            opacity: 0,
-            y: 18,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            duration: 0.35,
-            ease: "easeOut",
-          }}
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
           className="mt-7 overflow-hidden rounded-[38px] border border-white/20 bg-[#071819] text-white shadow-[0_28px_70px_rgba(7,24,25,0.42)]"
         >
           <div className="relative p-6">
             <div
               aria-hidden="true"
-              className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-emerald-400/32 via-emerald-500/8 to-transparent"
+              className={`absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t ${gameModeMeta.glowClassName}`}
             />
-
             <div
               aria-hidden="true"
-              className="absolute -right-16 -top-16 h-52 w-52 rounded-full bg-yellow-300/20 blur-3xl"
+              className="absolute -right-16 -top-16 h-52 w-52 rounded-full bg-white/10 blur-3xl"
             />
-
             <div
               aria-hidden="true"
-              className="absolute -left-16 bottom-0 h-52 w-52 rounded-full bg-emerald-300/15 blur-3xl"
+              className="absolute -left-16 bottom-0 h-52 w-52 rounded-full bg-white/8 blur-3xl"
             />
 
             <div className="relative">
@@ -775,50 +856,48 @@ export default function MatchDetailsScreen() {
                 Winner
               </div>
 
-              <div className="mt-3 flex items-center gap-3">
-                <div className="truncate text-5xl font-black tracking-tight">
+              <div className="mt-3 flex items-start gap-3">
+                <div className="min-w-0 break-words text-5xl font-black leading-[0.92] tracking-[-0.055em]">
                   {winnerName}
                 </div>
 
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-yellow-300 text-black shadow-lg shadow-yellow-400/20">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-400 text-black shadow-lg shadow-amber-400/20">
                   <Trophy size={23} />
                 </div>
               </div>
 
               <div className="mt-5 flex flex-wrap gap-2">
                 <div className="inline-flex rounded-full bg-white/[0.12] px-4 py-2 text-[11px] font-black uppercase tracking-widest text-white">
-                  Match {roundId}
+                  {roundId}
                 </div>
 
-                <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/[0.12] px-4 py-2 text-[11px] font-black uppercase tracking-widest text-white">
-                  <MapPin size={13} />
-
-                  <span className="max-w-[230px] truncate">{courseName}</span>
+                <div
+                  className={`inline-flex max-w-full items-center gap-2 rounded-full px-4 py-2 text-[11px] font-black uppercase tracking-widest shadow-sm ${gameModeMeta.heroClassName}`}
+                >
+                  {gameModeMeta.icon && (
+                    <span aria-hidden="true">{gameModeMeta.icon}</span>
+                  )}
+                  <span className="min-w-0 whitespace-normal leading-tight">
+                    {gameModeMeta.label}
+                  </span>
                 </div>
 
-                {wolffnRound && (
-                  <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[11px] font-black uppercase tracking-widest text-slate-950">
-                    <span aria-hidden="true">🐺</span>
-                    Wolffn
-                  </div>
-                )}
-
-                {bonusModeWasEnabled && (
-                  <div className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-white">
-                    <Sparkles size={13} />
-                    Skinz Professional
-                  </div>
-                )}
+                <div className="inline-flex max-w-full items-start gap-2 rounded-full bg-white/[0.12] px-4 py-2 text-[11px] font-black uppercase tracking-widest text-white">
+                  <MapPin size={13} className="mt-0.5 shrink-0" />
+                  <span className="min-w-0 whitespace-normal leading-tight">
+                    {courseName}
+                  </span>
+                </div>
               </div>
 
               <div className="mt-7 grid grid-cols-2 gap-3">
-                <div className="rounded-[28px] bg-black/[0.24] p-5">
+                <div className="min-w-0 rounded-[28px] bg-black/[0.24] p-4 sm:p-5">
                   <div className="text-[11px] font-black uppercase tracking-widest text-white/40">
                     Earnings
                   </div>
 
                   <div
-                    className={`mt-2 text-4xl font-black tracking-tight ${getMoneyColorDark(
+                    className={`mt-2 min-w-0 break-words text-[clamp(1.75rem,9vw,2.5rem)] font-black leading-none tracking-tight ${getMoneyColorDark(
                       displayEarnings
                     )}`}
                   >
@@ -826,17 +905,17 @@ export default function MatchDetailsScreen() {
                   </div>
                 </div>
 
-                <div className="rounded-[28px] bg-black/[0.24] p-5 text-right">
+                <div className="min-w-0 rounded-[28px] bg-black/[0.24] p-4 text-right sm:p-5">
                   <div className="text-[11px] font-black uppercase tracking-widest text-white/40">
                     To Par
                   </div>
 
                   <div
-                    className={`mt-2 text-4xl font-black tracking-tight ${getToParColorDark(
-                      winner?.totalToPar
+                    className={`mt-2 min-w-0 break-words text-[clamp(1.75rem,9vw,2.5rem)] font-black leading-none tracking-tight ${getToParColorDark(
+                      winnerToPar
                     )}`}
                   >
-                    {formatToPar(winner?.totalToPar)}
+                    {formatToPar(winnerToPar)}
                   </div>
                 </div>
               </div>
@@ -844,57 +923,204 @@ export default function MatchDetailsScreen() {
           </div>
         </motion.div>
 
-        <motion.div
-          initial={{
-            opacity: 0,
-            y: 18,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            delay: 0.04,
-            duration: 0.35,
-            ease: "easeOut",
-          }}
-          className="mt-5 rounded-[34px] border border-white/70 bg-white/[0.62] p-6 shadow-sm backdrop-blur-2xl"
-        >
-          <div className="flex items-center justify-between gap-4">
+        <div className="mt-5 rounded-[38px] border border-white/70 bg-white/[0.62] p-5 shadow-sm backdrop-blur-2xl">
+          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 text-slate-500">
-                <MapPin size={18} />
-
-                <div className="text-xs font-black uppercase tracking-[0.25em]">
-                  Course
-                </div>
+              <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-500">
+                Final Scores
               </div>
 
-              <div className="mt-3 truncate text-4xl font-black tracking-tight text-slate-950">
-                {courseName}
-              </div>
-
-              <div className="mt-2 text-sm font-bold text-slate-500">
-                {courseLocation}
+              <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
+                Results
               </div>
             </div>
 
-            <div className="shrink-0 text-right">
-              <div className="text-5xl font-black text-slate-950">
-                {coursePar}
-              </div>
-
-              <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-500">
-                Par
-              </div>
-            </div>
+            <GameModePill meta={gameModeMeta} />
           </div>
-        </motion.div>
+
+          <div className="mt-6 space-y-4">
+            {sortedPlayers.map((player, index) => {
+              const isExpanded = expandedPlayer === player.name
+              const playerHoles = getPlayerHoles(player)
+              const frontNine = playerHoles.slice(0, 9)
+              const backNine = playerHoles.slice(9, 18)
+              const totalScore = getPlayerTotalScore(player)
+              const totalPar = getPlayerTotalPar(player, coursePar)
+              const totalToPar = getPlayerTotalToPar(player, coursePar)
+              const isWinner =
+                String(player.name || "").trim().toLowerCase() ===
+                String(winnerName || "").trim().toLowerCase()
+
+              return (
+                <div key={`${roundId}-${player.name}`}>
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.985 }}
+                    onClick={() => {
+                      setExpandedPlayer(isExpanded ? null : player.name)
+                    }}
+                    aria-expanded={isExpanded}
+                    className={`w-full rounded-[32px] border px-4 py-5 text-left shadow-sm transition-all duration-300 sm:px-5 ${
+                      isWinner
+                        ? "border-amber-300/70 bg-amber-100/80"
+                        : "border-white/70 bg-white/[0.74]"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
+                        <div
+                          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-black ${getRankStyle(
+                            index
+                          )}`}
+                        >
+                          {index + 1}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="break-words text-2xl font-black leading-[0.95] tracking-tight text-slate-950 sm:text-3xl">
+                            {player.name}
+                          </div>
+
+                          <div className="mt-2 text-sm font-black uppercase tracking-widest text-slate-400">
+                            Score {totalScore}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-3">
+                        <div className="text-right">
+                          <div
+                            className={`text-5xl font-black leading-none ${getToParColor(
+                              totalToPar
+                            )}`}
+                          >
+                            {formatToPar(totalToPar)}
+                          </div>
+
+                          <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
+                            To Par
+                          </div>
+                        </div>
+
+                        <motion.div
+                          animate={{ rotate: isExpanded ? 180 : 0 }}
+                          transition={{ duration: 0.2, ease: "easeOut" }}
+                        >
+                          <ChevronDown size={24} className="text-slate-400" />
+                        </motion.div>
+                      </div>
+                    </div>
+                  </motion.button>
+
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.24, ease: "easeOut" }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-6">
+                          <div className="mb-3 flex items-end justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-2xl font-black tracking-tight text-slate-950">
+                                Front 9
+                              </div>
+
+                              <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
+                                Score {getNineTotal(frontNine)} · Par {" "}
+                                {getNinePar(frontNine)}
+                              </div>
+                            </div>
+
+                            <div
+                              className={`shrink-0 text-sm font-black uppercase tracking-widest ${getToParColor(
+                                getNineToPar(frontNine)
+                              )}`}
+                            >
+                              {formatToPar(getNineToPar(frontNine))}
+                            </div>
+                          </div>
+
+                          <HoleGrid holes={frontNine} />
+                        </div>
+
+                        <div className="mt-8">
+                          <div className="mb-3 flex items-end justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-2xl font-black tracking-tight text-slate-950">
+                                Back 9
+                              </div>
+
+                              <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
+                                Score {getNineTotal(backNine)} · Par {" "}
+                                {getNinePar(backNine)}
+                              </div>
+                            </div>
+
+                            <div
+                              className={`shrink-0 text-sm font-black uppercase tracking-widest ${getToParColor(
+                                getNineToPar(backNine)
+                              )}`}
+                            >
+                              {formatToPar(getNineToPar(backNine))}
+                            </div>
+                          </div>
+
+                          <HoleGrid holes={backNine} />
+                        </div>
+
+                        <div className="mt-6 rounded-[26px] border border-white/70 bg-white/[0.74] p-4 shadow-sm backdrop-blur-xl">
+                          <div className="grid grid-cols-3 gap-3 text-center">
+                            <div>
+                              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                Total
+                              </div>
+
+                              <div className="mt-1 text-2xl font-black text-slate-950">
+                                {totalScore}
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                Par
+                              </div>
+
+                              <div className="mt-1 text-2xl font-black text-slate-950">
+                                {totalPar}
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                To Par
+                              </div>
+
+                              <div
+                                className={`mt-1 text-2xl font-black ${getToParColor(
+                                  totalToPar
+                                )}`}
+                              >
+                                {formatToPar(totalToPar)}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )
+            })}
+          </div>
+        </div>
 
         {roundHistory.length > 0 && (
           <div className="mt-5 rounded-[38px] border border-white/70 bg-white/[0.62] p-5 shadow-sm backdrop-blur-2xl">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
                 <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-500">
                   Match Details
                 </div>
@@ -905,7 +1131,7 @@ export default function MatchDetailsScreen() {
               </div>
 
               <div className="text-4xl" aria-hidden="true">
-                {wolffnRound ? "🐺" : "💰"}
+                {gameModeMeta.emoji}
               </div>
             </div>
 
@@ -926,13 +1152,11 @@ export default function MatchDetailsScreen() {
 
                 return (
                   <div
-                    key={`${roundId}-history-${item.hole}-${
-                      item.winner || index
-                    }`}
-                    className="rounded-[26px] border border-white/70 bg-white/[0.74] px-5 py-4 shadow-sm backdrop-blur-xl"
+                    key={`${roundId}-history-${item.hole}-${item.winner || index}`}
+                    className="rounded-[26px] border border-white/70 bg-white/[0.74] px-4 py-4 shadow-sm backdrop-blur-xl sm:px-5"
                   >
                     <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div>
                           <div className="text-lg font-black text-slate-950">
                             Hole {item.hole}
@@ -979,7 +1203,7 @@ export default function MatchDetailsScreen() {
                               Teams
                             </div>
 
-                            <div className="mt-2 text-sm font-black leading-relaxed">
+                            <div className="mt-2 break-words text-sm font-black leading-relaxed">
                               {joinTeamNames(item.wolffnTeamA)}
                               <span className="mx-2 text-white/40">vs</span>
                               {joinTeamNames(item.wolffnTeamB)}
@@ -1020,13 +1244,13 @@ export default function MatchDetailsScreen() {
                         </div>
                       </div>
 
-                      <div className="shrink-0 text-right">
-                        <div className="text-lg font-black text-slate-950">
+                      <div className="min-w-[86px] shrink-0 text-right">
+                        <div className="break-words text-base font-black leading-tight text-slate-950 sm:text-lg">
                           {item.hasTie ? "Carryover" : item.winner}
                         </div>
 
-                        <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                          {formatSkinsText(item.skins || 0)} ·{" "}
+                        <div className="mt-1 text-xs font-black uppercase leading-relaxed tracking-widest text-slate-400">
+                          {formatSkinsText(item.skins || 0)} · {" "}
                           {formatPlainMoney(item.pot || 0)}
                         </div>
                       </div>
@@ -1037,238 +1261,6 @@ export default function MatchDetailsScreen() {
             </div>
           </div>
         )}
-
-        <div className="mt-5 rounded-[38px] border border-white/70 bg-white/[0.62] p-5 shadow-sm backdrop-blur-2xl">
-          <div>
-            <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-500">
-              Final Scores
-            </div>
-          </div>
-
-          <div className="mt-6 space-y-4">
-            {sortedPlayers.map((player, index) => {
-              const isExpanded = expandedPlayer === player.name
-              const playerHoles = getPlayerHoles(player)
-              const frontNine = playerHoles.slice(0, 9)
-              const backNine = playerHoles.slice(9, 18)
-              const totalScore = getPlayerTotalScore(player)
-              const totalPar = getPlayerTotalPar(player, coursePar)
-              const totalToPar = getPlayerTotalToPar(player, coursePar)
-              const isWinner = player.name === winnerName
-
-              return (
-                <div key={`${roundId}-${player.name}`}>
-                  <motion.button
-                    type="button"
-                    whileTap={{
-                      scale: 0.985,
-                    }}
-                    onClick={() => {
-                      setExpandedPlayer(isExpanded ? null : player.name)
-                    }}
-                    aria-expanded={isExpanded}
-                    className={`w-full rounded-[32px] border px-5 py-5 text-left shadow-sm transition-all duration-300 ${
-                      isWinner
-                        ? "border-yellow-300/70 bg-yellow-100/80"
-                        : "border-white/70 bg-white/[0.74]"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex min-w-0 items-center gap-4">
-                        <div
-                          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-black ${getRankStyle(
-                            index
-                          )}`}
-                        >
-                          {index + 1}
-                        </div>
-
-                        <div className="min-w-0">
-                          <div className="truncate text-3xl font-black tracking-tight text-slate-950">
-                            {player.name}
-                          </div>
-
-                          <div className="mt-2 text-sm font-black uppercase tracking-widest text-slate-400">
-                            Score {totalScore} · Par {totalPar}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex shrink-0 items-center gap-3">
-                        <div className="text-right">
-                          <div
-                            className={`text-5xl font-black ${getToParColor(
-                              totalToPar
-                            )}`}
-                          >
-                            {formatToPar(totalToPar)}
-                          </div>
-
-                          <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                            To Par
-                          </div>
-                        </div>
-
-                        <motion.div
-                          animate={{
-                            rotate: isExpanded ? 180 : 0,
-                          }}
-                          transition={{
-                            duration: 0.2,
-                            ease: "easeOut",
-                          }}
-                        >
-                          <ChevronDown size={24} className="text-slate-400" />
-                        </motion.div>
-                      </div>
-                    </div>
-                  </motion.button>
-
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div
-                        initial={{
-                          opacity: 0,
-                          height: 0,
-                        }}
-                        animate={{
-                          opacity: 1,
-                          height: "auto",
-                        }}
-                        exit={{
-                          opacity: 0,
-                          height: 0,
-                        }}
-                        transition={{
-                          duration: 0.24,
-                          ease: "easeOut",
-                        }}
-                        className="overflow-hidden"
-                      >
-                        <div className="mt-4 grid grid-cols-3 gap-3">
-                          <div className="rounded-[24px] border border-white/60 bg-white/[0.70] p-4 text-center shadow-sm backdrop-blur-xl">
-                            <div className="flex justify-center">
-                              <Flame size={24} className="text-red-500" />
-                            </div>
-
-                            <div className="mt-3 text-3xl font-black text-slate-950">
-                              {countResult(player, "Birdie")}
-                            </div>
-
-                            <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                              Birdies
-                            </div>
-                          </div>
-
-                          <div className="rounded-[24px] border border-white/60 bg-white/[0.70] p-4 text-center shadow-sm backdrop-blur-xl">
-                            <div className="text-2xl" aria-hidden="true">
-                              🦅
-                            </div>
-
-                            <div className="mt-3 text-3xl font-black text-slate-950">
-                              {countResult(player, "Eagle")}
-                            </div>
-
-                            <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                              Eagles
-                            </div>
-                          </div>
-
-                          <div className="rounded-[24px] border border-white/60 bg-white/[0.70] p-4 text-center shadow-sm backdrop-blur-xl">
-                            <div className="text-2xl" aria-hidden="true">
-                              ⛳️
-                            </div>
-
-                            <div className="mt-3 text-3xl font-black text-slate-950">
-                              {countPars(player)}
-                            </div>
-
-                            <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                              Pars
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mt-5 grid grid-cols-3 gap-3">
-                          <SummaryCard
-                            label="Front 9"
-                            score={getNineTotal(frontNine)}
-                            par={getNinePar(frontNine)}
-                            toPar={getNineToPar(frontNine)}
-                          />
-
-                          <SummaryCard
-                            label="Back 9"
-                            score={getNineTotal(backNine)}
-                            par={getNinePar(backNine)}
-                            toPar={getNineToPar(backNine)}
-                          />
-
-                          <SummaryCard
-                            label="Total"
-                            score={totalScore}
-                            par={totalPar}
-                            toPar={totalToPar}
-                          />
-                        </div>
-
-                        <div className="mt-6">
-                          <div className="mb-3 flex items-end justify-between">
-                            <div>
-                              <div className="text-2xl font-black tracking-tight text-slate-950">
-                                Front 9
-                              </div>
-
-                              <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                                Score {getNineTotal(frontNine)} · Par{" "}
-                                {getNinePar(frontNine)}
-                              </div>
-                            </div>
-
-                            <div
-                              className={`text-sm font-black uppercase tracking-widest ${getToParColor(
-                                getNineToPar(frontNine)
-                              )}`}
-                            >
-                              {formatToPar(getNineToPar(frontNine))}
-                            </div>
-                          </div>
-
-                          <HoleGrid holes={frontNine} />
-                        </div>
-
-                        <div className="mt-8">
-                          <div className="mb-3 flex items-end justify-between">
-                            <div>
-                              <div className="text-2xl font-black tracking-tight text-slate-950">
-                                Back 9
-                              </div>
-
-                              <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                                Score {getNineTotal(backNine)} · Par{" "}
-                                {getNinePar(backNine)}
-                              </div>
-                            </div>
-
-                            <div
-                              className={`text-sm font-black uppercase tracking-widest ${getToParColor(
-                                getNineToPar(backNine)
-                              )}`}
-                            >
-                              {formatToPar(getNineToPar(backNine))}
-                            </div>
-                          </div>
-
-                          <HoleGrid holes={backNine} />
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              )
-            })}
-          </div>
-        </div>
       </div>
     </div>
   )

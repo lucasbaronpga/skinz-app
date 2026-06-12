@@ -1,14 +1,12 @@
 import { useMemo, useState } from "react"
 
 import { useNavigate } from "react-router-dom"
-
 import { AnimatePresence, motion } from "framer-motion"
 
 import AppBackground from "../components/AppBackground"
 import GameModeBadge from "../components/GameModeBadge"
 
 import { useAuth } from "../context/AuthContext"
-
 import { GAME_MODES, useGame } from "../context/GameContext"
 
 import { getGameModeTheme } from "../utils/gameModeTheme"
@@ -17,10 +15,6 @@ const MIN_STAKE = 0.1
 const MAX_STAKE = 100
 
 const STAKE_PRESETS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50]
-
-function cn(...classes) {
-  return classes.filter(Boolean).join(" ")
-}
 
 function normalizeName(value) {
   return String(value || "")
@@ -40,7 +34,6 @@ function roundStake(value) {
 
 function formatStake(value) {
   const amount = roundStake(value)
-
   const hasCents = Math.abs(amount % 1) > 0
 
   if (hasCents) {
@@ -111,9 +104,24 @@ function getGameModeDescription(gameMode) {
   return "Jeder eindeutige Lochgewinn zählt 1 Skin."
 }
 
+function getStartButtonLabel({ hasActiveMatch, isProfessionalMode, isWolffnMode }) {
+  if (hasActiveMatch) {
+    return "Neue Runde starten"
+  }
+
+  if (isWolffnMode) {
+    return "🐺 Wolffn starten"
+  }
+
+  if (isProfessionalMode) {
+    return "Pro Runde starten"
+  }
+
+  return "Runde starten"
+}
+
 export default function RoundSetupScreen() {
   const navigate = useNavigate()
-
   const { user } = useAuth()
 
   const {
@@ -172,7 +180,6 @@ export default function RoundSetupScreen() {
   })
 
   const gameModeDescription = getGameModeDescription(selectedGameMode)
-
   const wolffnPlayerCountValid = uniquePlayers.length === 4
 
   const canStart = isWolffnMode
@@ -190,7 +197,6 @@ export default function RoundSetupScreen() {
     }
 
     setPlayers((currentPlayers) => [...currentPlayers, cleanedNewPlayer])
-
     setNewPlayer("")
   }
 
@@ -264,18 +270,9 @@ export default function RoundSetupScreen() {
 
       <div className="relative mx-auto max-w-md px-6">
         <motion.div
-          initial={{
-            opacity: 0,
-            y: 18,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            duration: 0.35,
-            ease: "easeOut",
-          }}
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
           className="pt-8"
         >
           <div
@@ -284,7 +281,7 @@ export default function RoundSetupScreen() {
             Match Setup
           </div>
 
-          <h1 className="mt-3 text-[3.85rem] font-black leading-none tracking-[-0.07em] text-slate-950">
+          <h1 className="mt-3 text-[clamp(3.2rem,16vw,3.85rem)] font-black leading-none tracking-[-0.07em] text-slate-950">
             Neue Runde
           </h1>
 
@@ -295,19 +292,9 @@ export default function RoundSetupScreen() {
 
         {hasActiveMatch && (
           <motion.div
-            initial={{
-              opacity: 0,
-              y: 18,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              delay: 0.03,
-              duration: 0.35,
-              ease: "easeOut",
-            }}
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.03, duration: 0.35, ease: "easeOut" }}
             className="mt-8 rounded-[32px] border border-amber-200/70 bg-white/[0.52] p-5 shadow-[0_18px_48px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
           >
             <div className="text-[11px] font-black uppercase tracking-[0.22em] text-amber-600">
@@ -326,22 +313,12 @@ export default function RoundSetupScreen() {
         )}
 
         <motion.div
-          initial={{
-            opacity: 0,
-            y: 22,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            delay: 0.06,
-            duration: 0.35,
-            ease: "easeOut",
-          }}
+          initial={{ opacity: 0, y: 22 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.06, duration: 0.35, ease: "easeOut" }}
           className="mt-8 overflow-hidden rounded-[38px] border border-white/20 bg-[#071819] text-white shadow-[0_28px_70px_rgba(7,24,25,0.42)]"
         >
-          <div className="relative p-8">
+          <div className="relative p-7 sm:p-8">
             <div
               aria-hidden="true"
               className={`absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t ${modeTheme.glow}`}
@@ -354,14 +331,14 @@ export default function RoundSetupScreen() {
 
             <div className="relative">
               <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div
                     className={`text-[12px] font-black uppercase tracking-[0.22em] ${modeTheme.textDark}`}
                   >
                     Course
                   </div>
 
-                  <div className="mt-4 max-w-[260px] text-[2.55rem] font-black leading-none tracking-[-0.055em]">
+                  <div className="mt-4 max-w-full break-words text-[clamp(2.15rem,11vw,2.55rem)] font-black leading-none tracking-[-0.055em]">
                     {getCourseName(currentCourse)}
                   </div>
                 </div>
@@ -372,13 +349,13 @@ export default function RoundSetupScreen() {
               </div>
 
               <div className="mt-10 flex items-end justify-between gap-5">
-                <div>
+                <div className="min-w-0 flex-1">
                   <div className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">
                     €/Skin
                   </div>
 
                   <div
-                    className={`mt-3 text-[4.6rem] font-black leading-none tracking-[-0.075em] tabular-nums ${modeTheme.textDark}`}
+                    className={`mt-3 min-w-0 break-words text-[clamp(3.3rem,17vw,4.6rem)] font-black leading-none tracking-[-0.075em] tabular-nums ${modeTheme.textDark}`}
                   >
                     {formatStake(stake)}
                   </div>
@@ -387,9 +364,7 @@ export default function RoundSetupScreen() {
                 <div className="flex shrink-0 items-center gap-2">
                   <motion.button
                     type="button"
-                    whileTap={{
-                      scale: 0.9,
-                    }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={decreaseStake}
                     disabled={roundStake(stake) <= MIN_STAKE}
                     aria-label="Einsatz verringern"
@@ -400,9 +375,7 @@ export default function RoundSetupScreen() {
 
                   <motion.button
                     type="button"
-                    whileTap={{
-                      scale: 0.9,
-                    }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={increaseStake}
                     disabled={roundStake(stake) >= MAX_STAKE}
                     aria-label="Einsatz erhöhen"
@@ -413,24 +386,24 @@ export default function RoundSetupScreen() {
                 </div>
               </div>
 
-              <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-5">
-                <div>
+              <div className="mt-8 flex items-start justify-between gap-4 border-t border-white/10 pt-5">
+                <div className="min-w-0 flex-1">
                   <div className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">
                     Match
                   </div>
 
-                  <div className="mt-1 text-sm font-black text-slate-300">
+                  <div className="mt-1 break-words text-sm font-black text-slate-300">
                     {activeMatchId || "-"}
                   </div>
                 </div>
 
-                <div className="text-right">
+                <div className="shrink-0 text-right">
                   <div className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">
                     Step
                   </div>
 
                   <div className="mt-1 text-sm font-black text-slate-300">
-                    {formatStake(getPreviousStakePreset(stake))} /{" "}
+                    {formatStake(getPreviousStakePreset(stake))} / {" "}
                     {formatStake(getNextStakePreset(stake))}
                   </div>
                 </div>
@@ -440,23 +413,13 @@ export default function RoundSetupScreen() {
         </motion.div>
 
         <motion.div
-          initial={{
-            opacity: 0,
-            y: 22,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            delay: 0.08,
-            duration: 0.35,
-            ease: "easeOut",
-          }}
+          initial={{ opacity: 0, y: 22 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08, duration: 0.35, ease: "easeOut" }}
           className="mt-7 rounded-[34px] border border-white/70 bg-white/[0.48] p-6 shadow-[0_18px_55px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
         >
           <div className="flex items-start justify-between gap-4">
-            <div>
+            <div className="min-w-0">
               <div className="text-[12px] font-black uppercase tracking-[0.24em] text-slate-600">
                 Game Mode
               </div>
@@ -580,23 +543,13 @@ export default function RoundSetupScreen() {
         </motion.div>
 
         <motion.div
-          initial={{
-            opacity: 0,
-            y: 22,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            delay: 0.1,
-            duration: 0.35,
-            ease: "easeOut",
-          }}
+          initial={{ opacity: 0, y: 22 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.35, ease: "easeOut" }}
           className="mt-7 rounded-[34px] border border-white/70 bg-white/[0.48] p-6 shadow-[0_18px_55px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
         >
           <div className="flex items-end justify-between gap-4">
-            <div>
+            <div className="min-w-0">
               <div className="text-[12px] font-black uppercase tracking-[0.24em] text-slate-600">
                 Course
               </div>
@@ -606,7 +559,7 @@ export default function RoundSetupScreen() {
               </div>
             </div>
 
-            <div className="text-right">
+            <div className="shrink-0 text-right">
               <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
                 Selected
               </div>
@@ -631,9 +584,7 @@ export default function RoundSetupScreen() {
                 <motion.button
                   key={course.id}
                   type="button"
-                  whileTap={{
-                    scale: 0.985,
-                  }}
+                  whileTap={{ scale: 0.985 }}
                   onClick={() => setSelectedCourseId(course.id)}
                   aria-pressed={isActive}
                   className={`w-full rounded-[28px] border px-5 py-5 text-left transition ${
@@ -643,8 +594,8 @@ export default function RoundSetupScreen() {
                   }`}
                 >
                   <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="text-2xl font-black leading-tight tracking-[-0.035em] text-slate-950">
+                    <div className="min-w-0 flex-1">
+                      <div className="break-words text-2xl font-black leading-tight tracking-[-0.035em] text-slate-950">
                         {getCourseName(course)}
                       </div>
 
@@ -674,23 +625,13 @@ export default function RoundSetupScreen() {
         </motion.div>
 
         <motion.div
-          initial={{
-            opacity: 0,
-            y: 22,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            delay: 0.12,
-            duration: 0.35,
-            ease: "easeOut",
-          }}
+          initial={{ opacity: 0, y: 22 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12, duration: 0.35, ease: "easeOut" }}
           className="mt-7 rounded-[34px] border border-white/70 bg-white/[0.48] p-6 shadow-[0_18px_55px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
         >
           <div className="flex items-end justify-between gap-4">
-            <div>
+            <div className="min-w-0">
               <div className="text-[12px] font-black uppercase tracking-[0.24em] text-slate-600">
                 Flight
               </div>
@@ -701,7 +642,7 @@ export default function RoundSetupScreen() {
             </div>
 
             <div
-              className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${
+              className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${
                 isWolffnMode && !wolffnPlayerCountValid
                   ? "border-red-200 bg-red-50 text-red-500"
                   : "border-white/70 bg-white/[0.46] text-slate-600"
@@ -730,9 +671,7 @@ export default function RoundSetupScreen() {
 
             <motion.button
               type="button"
-              whileTap={{
-                scale: canAddPlayer ? 0.92 : 1,
-              }}
+              whileTap={{ scale: canAddPlayer ? 0.92 : 1 }}
               onClick={addPlayer}
               disabled={!canAddPlayer}
               aria-label="Mitspieler hinzufügen"
@@ -768,9 +707,9 @@ export default function RoundSetupScreen() {
               return (
                 <div
                   key={player}
-                  className="flex items-center justify-between rounded-[28px] border border-white/70 bg-white/[0.42] p-4 shadow-sm backdrop-blur-xl"
+                  className="flex items-center justify-between gap-3 rounded-[28px] border border-white/70 bg-white/[0.42] p-4 shadow-sm backdrop-blur-xl"
                 >
-                  <div className="flex min-w-0 items-center gap-4">
+                  <div className="flex min-w-0 flex-1 items-center gap-4">
                     <div
                       className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg font-black uppercase shadow-sm ${
                         isCurrentUser
@@ -781,8 +720,8 @@ export default function RoundSetupScreen() {
                       {player.charAt(0)}
                     </div>
 
-                    <div className="min-w-0">
-                      <div className="truncate text-2xl font-black tracking-[-0.035em] text-slate-950">
+                    <div className="min-w-0 flex-1">
+                      <div className="break-words text-2xl font-black leading-tight tracking-[-0.035em] text-slate-950">
                         {player}
                       </div>
 
@@ -794,9 +733,7 @@ export default function RoundSetupScreen() {
 
                   <motion.button
                     type="button"
-                    whileTap={{
-                      scale: 0.9,
-                    }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={() => removePlayer(player)}
                     aria-label={`${player} entfernen`}
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-red-100 bg-white/70 text-xl font-black text-red-500 shadow-sm transition hover:bg-red-50"
@@ -819,24 +756,20 @@ export default function RoundSetupScreen() {
 
         <motion.button
           type="button"
-          whileTap={{
-            scale: canStart ? 0.98 : 1,
-          }}
+          whileTap={{ scale: canStart ? 0.98 : 1 }}
           disabled={!canStart}
           onClick={handleStartMatch}
-          className={`mt-8 flex w-full items-center justify-between rounded-[34px] px-6 py-6 text-xl font-black text-white shadow-[0_20px_55px_rgba(15,23,42,0.22)] transition disabled:cursor-not-allowed disabled:opacity-40 ${modeTheme.button} ${modeTheme.buttonHover}`}
+          className={`mt-8 flex w-full items-center justify-between gap-4 rounded-[34px] px-6 py-6 text-xl font-black text-white shadow-[0_20px_55px_rgba(15,23,42,0.22)] transition disabled:cursor-not-allowed disabled:opacity-40 ${modeTheme.button} ${modeTheme.buttonHover}`}
         >
-          <span>
-            {hasActiveMatch
-              ? "Neue Runde starten"
-              : isWolffnMode
-                ? "🐺 Wolffn starten"
-                : isProfessionalMode
-                  ? "Pro Runde starten"
-                  : "Runde starten"}
+          <span className="min-w-0 break-words text-left">
+            {getStartButtonLabel({
+              hasActiveMatch,
+              isProfessionalMode,
+              isWolffnMode,
+            })}
           </span>
 
-          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/20 text-2xl">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20 text-2xl">
             →
           </span>
         </motion.button>
@@ -845,38 +778,16 @@ export default function RoundSetupScreen() {
       <AnimatePresence>
         {showWolffnModal && (
           <motion.div
-            initial={{
-              opacity: 0,
-            }}
-            animate={{
-              opacity: 1,
-            }}
-            exit={{
-              opacity: 0,
-            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 px-5 backdrop-blur-xl"
           >
             <motion.div
-              initial={{
-                opacity: 0,
-                scale: 0.9,
-                y: 30,
-              }}
-              animate={{
-                opacity: 1,
-                scale: 1,
-                y: 0,
-              }}
-              exit={{
-                opacity: 0,
-                scale: 0.95,
-                y: 20,
-              }}
-              transition={{
-                type: "spring",
-                stiffness: 260,
-                damping: 22,
-              }}
+              initial={{ opacity: 0, scale: 0.9, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", stiffness: 260, damping: 22 }}
               className="w-full max-w-sm overflow-hidden rounded-[40px] border border-white/70 bg-white/[0.76] text-center shadow-2xl backdrop-blur-2xl"
             >
               <div className="p-8">

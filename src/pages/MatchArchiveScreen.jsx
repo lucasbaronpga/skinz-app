@@ -1,18 +1,8 @@
 import { motion } from "framer-motion"
-
 import { useNavigate } from "react-router-dom"
-
-import {
-  ChevronRight,
-  Crown,
-  MapPin,
-  Sparkles,
-  Trophy,
-  Users,
-} from "lucide-react"
+import { ChevronRight, Crown, MapPin, Trophy, Users } from "lucide-react"
 
 import AppBackground from "../components/AppBackground"
-
 import { GAME_MODES, useGame } from "../context/GameContext"
 
 function toNumber(value, fallback = 0) {
@@ -27,7 +17,6 @@ function roundMoney(value) {
 
 function formatEuroAmount(value) {
   const amount = roundMoney(Math.abs(value))
-
   const hasCents = Math.abs(amount % 1) > 0
 
   if (hasCents) {
@@ -79,8 +68,36 @@ function getMoneyColorDark(value) {
   return "text-white"
 }
 
+function getArchiveMoneyTextSize(value) {
+  const formattedValue = formatMoney(value)
+
+  if (formattedValue.length >= 10) {
+    return "text-[2.35rem]"
+  }
+
+  if (formattedValue.length >= 8) {
+    return "text-[2.75rem]"
+  }
+
+  if (formattedValue.length >= 6) {
+    return "text-[3.15rem]"
+  }
+
+  return "text-6xl"
+}
+
 function formatSkinSaldo(value) {
-  return Math.abs(toNumber(value, 0))
+  const amount = toNumber(value, 0)
+
+  if (amount > 0) {
+    return `+${amount}`
+  }
+
+  if (amount < 0) {
+    return `${amount}`
+  }
+
+  return "0"
 }
 
 function getSkinColor(value) {
@@ -155,6 +172,12 @@ function getRankStyle(index) {
   return "border border-white/70 bg-white/70 text-slate-900"
 }
 
+function normalizeName(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+}
+
 function getRoundPlayers(round) {
   return Array.isArray(round?.players) ? round.players : []
 }
@@ -171,7 +194,9 @@ function getWinner(round) {
   const players = getRoundPlayers(round)
 
   return (
-    players.find((player) => player?.name === round?.winner) ||
+    players.find(
+      (player) => normalizeName(player?.name) === normalizeName(round?.winner)
+    ) ||
     getSortedPlayers(round)[0] ||
     null
   )
@@ -181,20 +206,28 @@ function getCourseName(round) {
   return round?.course?.name || "Erster Golfclub Westpfalz"
 }
 
-function getCoursePar(round) {
-  return toNumber(round?.course?.par, 72)
-}
-
-function getCourseParMeta(round) {
-  return `Par ${getCoursePar(round)}`
-}
-
 function getRoundDate(round) {
   return round?.date || "Unbekannt"
 }
 
 function getRoundId(round) {
   return round?.id || "SKZ-0000"
+}
+
+function getRoundSortValue(round) {
+  const createdAt = toNumber(round?.createdAt, 0)
+
+  if (createdAt > 0) {
+    return createdAt
+  }
+
+  const parsedDate = Date.parse(round?.date || "")
+
+  if (Number.isFinite(parsedDate)) {
+    return parsedDate
+  }
+
+  return 0
 }
 
 function itemIsWolffn(item) {
@@ -288,9 +321,57 @@ function roundHasProfessionalScoring(round) {
   )
 }
 
+function getRoundGameMode(round) {
+  if (roundIsWolffn(round)) {
+    return GAME_MODES.WOLFFN
+  }
+
+  if (roundHasProfessionalScoring(round)) {
+    return GAME_MODES.PROFESSIONAL
+  }
+
+  if (round?.gameMode === GAME_MODES.PROFESSIONAL) {
+    return GAME_MODES.PROFESSIONAL
+  }
+
+  if (round?.gameMode === GAME_MODES.WOLFFN) {
+    return GAME_MODES.WOLFFN
+  }
+
+  return GAME_MODES.CLASSIC
+}
+
+function getRoundGameModeMeta(round) {
+  const gameMode = getRoundGameMode(round)
+
+  if (gameMode === GAME_MODES.WOLFFN) {
+    return {
+      label: "Wolffn",
+      icon: "🐺",
+      heroClassName: "bg-white text-slate-950",
+      glowClassName: "from-white/18 via-white/6 to-transparent",
+    }
+  }
+
+  if (gameMode === GAME_MODES.PROFESSIONAL) {
+    return {
+      label: "Pro",
+      icon: null,
+      heroClassName: "bg-orange-500 text-white",
+      glowClassName: "from-orange-400/32 via-orange-500/10 to-transparent",
+    }
+  }
+
+  return {
+    label: "Classic",
+    icon: null,
+    heroClassName: "bg-emerald-500 text-white",
+    glowClassName: "from-emerald-400/28 via-emerald-500/8 to-transparent",
+  }
+}
+
 export default function MatchArchiveScreen() {
   const navigate = useNavigate()
-
   const { completedRounds } = useGame()
 
   const safeCompletedRounds = Array.isArray(completedRounds)
@@ -298,7 +379,7 @@ export default function MatchArchiveScreen() {
     : []
 
   const sortedRounds = [...safeCompletedRounds].sort(
-    (a, b) => toNumber(b.createdAt, 0) - toNumber(a.createdAt, 0)
+    (a, b) => getRoundSortValue(b) - getRoundSortValue(a)
   )
 
   return (
@@ -381,20 +462,14 @@ export default function MatchArchiveScreen() {
             const roundPlayers = getRoundPlayers(round)
             const roundId = getRoundId(round)
             const courseName = getCourseName(round)
-            const courseParMeta = getCourseParMeta(round)
-
-            const displayWinnerName = round?.winner || winner?.name || "Unbekannt"
-
+            const displayWinnerName =
+              round?.winner || winner?.name || "Unbekannt"
             const displayEarnings = round?.winnings ?? winner?.winnings ?? 0
-
-            const isWolffnRound = roundIsWolffn(round)
-
-            const roundHasProfessionalMode =
-              roundHasProfessionalScoring(round)
+            const gameModeMeta = getRoundGameModeMeta(round)
 
             return (
               <motion.button
-                key={`${roundId}-${toNumber(round?.createdAt, index)}`}
+                key={`${roundId}-${getRoundSortValue(round) || index}`}
                 type="button"
                 whileTap={{
                   scale: 0.985,
@@ -419,7 +494,7 @@ export default function MatchArchiveScreen() {
                 <div className="relative overflow-hidden bg-[#071819] p-7 text-white">
                   <div
                     aria-hidden="true"
-                    className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-emerald-400/28 via-emerald-500/8 to-transparent"
+                    className={`absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t ${gameModeMeta.glowClassName}`}
                   />
 
                   <div
@@ -429,13 +504,13 @@ export default function MatchArchiveScreen() {
 
                   <div className="relative">
                     <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="text-xs font-black uppercase tracking-[0.3em] text-slate-500">
                           Winner
                         </div>
 
-                        <div className="mt-4 flex items-center gap-3">
-                          <div className="truncate text-5xl font-black tracking-[-0.055em]">
+                        <div className="mt-4 flex items-start gap-3">
+                          <div className="min-w-0 break-words text-5xl font-black leading-[0.92] tracking-[-0.055em]">
                             {displayWinnerName}
                           </div>
 
@@ -451,45 +526,41 @@ export default function MatchArchiveScreen() {
                         {roundId}
                       </div>
 
-                      <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
-                        <MapPin size={13} />
+                      <div
+                        className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-black uppercase tracking-widest shadow-sm ${gameModeMeta.heroClassName}`}
+                      >
+                        {gameModeMeta.icon && (
+                          <span aria-hidden="true">{gameModeMeta.icon}</span>
+                        )}
 
-                        <span className="max-w-[220px] truncate">
-                          {courseName}
-                        </span>
+                        {gameModeMeta.label}
                       </div>
+                    </div>
 
-                      {isWolffnRound && (
-                        <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-950">
-                          <span aria-hidden="true">🐺</span>
-                          Wolffn
-                        </div>
-                      )}
+                    <div className="mt-3 inline-flex w-full max-w-full items-start gap-2 rounded-[22px] bg-white/10 px-4 py-3 text-xs font-black uppercase tracking-widest text-white">
+                      <MapPin size={13} className="mt-0.5 shrink-0" />
 
-                      {!isWolffnRound && roundHasProfessionalMode && (
-                        <div className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
-                          <Sparkles size={13} />
-                          Skinz Professional
-                        </div>
-                      )}
+                      <span className="min-w-0 whitespace-normal break-words leading-snug">
+                        {courseName}
+                      </span>
                     </div>
 
                     <div className="mt-8 flex items-end justify-between gap-5">
-                      <div>
+                      <div className="min-w-0 overflow-hidden">
                         <div className="text-xs font-black uppercase tracking-widest text-slate-500">
                           Earnings
                         </div>
 
                         <div
-                          className={`mt-2 text-6xl font-black tracking-[-0.06em] ${getMoneyColorDark(
+                          className={`mt-2 max-w-full overflow-hidden whitespace-nowrap font-black leading-none tracking-[-0.06em] tabular-nums ${getArchiveMoneyTextSize(
                             displayEarnings
-                          )}`}
+                          )} ${getMoneyColorDark(displayEarnings)}`}
                         >
                           {formatMoney(displayEarnings)}
                         </div>
                       </div>
 
-                      <div className="text-right">
+                      <div className="shrink-0 text-right">
                         <div className="text-xs font-black uppercase tracking-widest text-slate-500">
                           To Par
                         </div>
@@ -538,29 +609,11 @@ export default function MatchArchiveScreen() {
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-[26px] border border-white/70 bg-white/[0.50] p-5 shadow-sm backdrop-blur-xl">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 text-slate-400">
-                        <MapPin size={16} />
-
-                        <div className="text-xs font-black uppercase tracking-[0.25em]">
-                          Golfplatz
-                        </div>
-                      </div>
-
-                      <div className="mt-2 truncate text-2xl font-black tracking-tight text-slate-950">
-                        {courseName}
-                      </div>
-
-                      <div className="mt-1 text-sm font-bold text-slate-400">
-                        {courseParMeta}
-                      </div>
-                    </div>
-                  </div>
-
                   <div className="mt-6 space-y-3">
                     {sortedPlayers.map((player, playerIndex) => {
-                      const isWinner = player?.name === displayWinnerName
+                      const isWinner =
+                        normalizeName(player?.name) ===
+                        normalizeName(displayWinnerName)
 
                       return (
                         <div
@@ -571,7 +624,7 @@ export default function MatchArchiveScreen() {
                               : "border-white/70 bg-white/[0.50]"
                           }`}
                         >
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-3">
                               <div
                                 className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-black ${getRankStyle(
@@ -581,9 +634,9 @@ export default function MatchArchiveScreen() {
                                 {playerIndex + 1}
                               </div>
 
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <div className="truncate text-xl font-black tracking-tight text-slate-950">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <div className="min-w-0 break-words text-xl font-black leading-tight tracking-tight text-slate-950">
                                     {player?.name || "Spieler"}
                                   </div>
 
@@ -616,7 +669,7 @@ export default function MatchArchiveScreen() {
                             </div>
                           </div>
 
-                          <div className="shrink-0 text-right">
+                          <div className="shrink-0 pl-3 text-right">
                             <div
                               className={`text-3xl font-black tracking-tight ${getToParColor(
                                 player?.totalToPar
