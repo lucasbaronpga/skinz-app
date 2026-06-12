@@ -33,7 +33,6 @@ function roundMoney(value) {
 
 function formatEuroAmount(value) {
   const amount = roundMoney(Math.abs(value))
-
   const hasCents = Math.abs(amount % 1) > 0
 
   if (hasCents) {
@@ -119,8 +118,32 @@ function getToParColor(value) {
   return "text-slate-950"
 }
 
-function getScoreStyle() {
-  return "bg-slate-950 text-white shadow-[0_14px_30px_rgba(15,23,42,0.30)]"
+function getScoreTileStyle(label) {
+  if (label === "Albatross") {
+    return "bg-amber-300 text-black shadow-[0_18px_42px_rgba(251,191,36,0.34)]"
+  }
+
+  if (label === "Eagle") {
+    return "bg-orange-500 text-white shadow-[0_18px_42px_rgba(249,115,22,0.34)]"
+  }
+
+  if (label === "Birdie") {
+    return "bg-red-500 text-white shadow-[0_18px_42px_rgba(239,68,68,0.34)]"
+  }
+
+  if (label === "Bogey") {
+    return "bg-blue-500 text-white shadow-[0_18px_42px_rgba(59,130,246,0.32)]"
+  }
+
+  if (label === "Double Bogey") {
+    return "bg-blue-900 text-white shadow-[0_18px_42px_rgba(30,58,138,0.34)]"
+  }
+
+  if (label === "Triple+") {
+    return "bg-purple-600 text-white shadow-[0_18px_42px_rgba(147,51,234,0.32)]"
+  }
+
+  return "bg-slate-950 text-white shadow-[0_18px_42px_rgba(15,23,42,0.32)]"
 }
 
 function getResultBadgeStyle(label) {
@@ -209,7 +232,6 @@ function getSpecialLabelForScore(score, par, specialScoringEnabled) {
 
 function getResultLabelFromScore(score, par) {
   const safePar = toNumber(par, 4)
-
   const scoreToPar = toNumber(score, safePar) - safePar
 
   if (scoreToPar <= -3) {
@@ -395,7 +417,6 @@ function getWolffnTeams({
 
   if (wolffnDecision === "accepted") {
     const teamA = [decisionPlayer, askedPlayer]
-
     const teamB = teeOrder.filter((playerName) => !teamA.includes(playerName))
 
     return {
@@ -452,7 +473,6 @@ export default function LiveScoringScreen() {
     hasActiveMatch,
 
     lowestScore,
-    hasTie,
 
     gameMode,
     isWolffnMode,
@@ -567,6 +587,46 @@ export default function LiveScoringScreen() {
       askedPlayer: playerName,
       decision: null,
     })
+  }
+
+  function handleScoreSwipe({
+    playerIndex,
+    playerScore,
+    offsetY,
+    velocityY,
+  }) {
+    if (matchFinished) {
+      return
+    }
+
+    const shouldIncrease = offsetY < -28 || velocityY < -420
+    const shouldDecrease = offsetY > 28 || velocityY > 420
+
+    if (shouldIncrease) {
+      updateScore(playerIndex, playerScore + 1)
+      return
+    }
+
+    if (shouldDecrease) {
+      updateScore(playerIndex, Math.max(1, playerScore - 1))
+    }
+  }
+
+  function handleScoreKeyDown(event, playerIndex, playerScore) {
+    if (matchFinished) {
+      return
+    }
+
+    if (event.key === "ArrowUp" || event.key === "ArrowRight") {
+      event.preventDefault()
+      updateScore(playerIndex, playerScore + 1)
+      return
+    }
+
+    if (event.key === "ArrowDown" || event.key === "ArrowLeft") {
+      event.preventDefault()
+      updateScore(playerIndex, Math.max(1, playerScore - 1))
+    }
   }
 
   function handleFinishHole() {
@@ -896,13 +956,9 @@ export default function LiveScoringScreen() {
           <div ref={scoreEntryRef} className="mt-5 space-y-4 scroll-mt-5">
             {safePlayers.map((player, index) => {
               const playerScore = toNumber(player.score, currentPar)
-
               const isWinning = playerScore === lowestScore
-
               const golfResult = getGolfResult(playerScore, currentPar)
-
               const currentToPar = playerScore - currentPar
-
               const playerSpecialLabel = getSpecialLabelForScore(
                 playerScore,
                 currentPar,
@@ -933,7 +989,7 @@ export default function LiveScoringScreen() {
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-[2rem] font-black leading-none tracking-[-0.07em] text-slate-950">
+                      <div className="truncate text-[2.15rem] font-black leading-none tracking-[-0.07em] text-slate-950">
                         {player.name}
                       </div>
 
@@ -954,14 +1010,6 @@ export default function LiveScoringScreen() {
                           {formatToPar(currentToPar)}
                         </div>
 
-                        {isWinning && !hasTie && (
-                          <div
-                            className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-sm ${modeTheme.button}`}
-                          >
-                            Leader
-                          </div>
-                        )}
-
                         {isWinning &&
                           specialScoringEnabled &&
                           playerSpecialLabel && (
@@ -973,57 +1021,41 @@ export default function LiveScoringScreen() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-[3rem_3.75rem_3rem] items-center gap-2">
-                      <motion.button
-                        type="button"
-                        whileTap={{
-                          scale: matchFinished ? 1 : 0.9,
-                        }}
-                        disabled={matchFinished || playerScore <= 1}
-                        onClick={() =>
-                          updateScore(index, Math.max(1, playerScore - 1))
-                        }
-                        aria-label={`Score von ${player.name} verringern`}
-                        className="flex h-12 w-12 items-center justify-center rounded-[20px] bg-slate-950 text-[1.75rem] font-black leading-none text-white shadow-[0_12px_26px_rgba(15,23,42,0.24)] transition disabled:opacity-35"
-                      >
-                        −
-                      </motion.button>
-
-                      <motion.div
-                        key={playerScore}
-                        initial={{
-                          scale: 0.92,
-                          opacity: 0,
-                          y: 3,
-                        }}
-                        animate={{
-                          scale: 1,
-                          opacity: 1,
-                          y: 0,
-                        }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 280,
-                          damping: 18,
-                        }}
-                        className={`flex h-[3.75rem] w-[3.75rem] items-center justify-center rounded-[22px] text-[2.65rem] font-black leading-none tracking-[-0.075em] ${getScoreStyle()}`}
-                      >
+                    <motion.div
+                      role="button"
+                      tabIndex={matchFinished ? -1 : 0}
+                      drag={matchFinished ? false : "y"}
+                      dragConstraints={{
+                        top: 0,
+                        bottom: 0,
+                      }}
+                      dragElastic={0.16}
+                      whileTap={{
+                        scale: matchFinished ? 1 : 0.96,
+                      }}
+                      onDragEnd={(event, info) => {
+                        handleScoreSwipe({
+                          playerIndex: index,
+                          playerScore,
+                          offsetY: info.offset.y,
+                          velocityY: info.velocity.y,
+                        })
+                      }}
+                      onKeyDown={(event) => {
+                        handleScoreKeyDown(event, index, playerScore)
+                      }}
+                      aria-label={`Score von ${player.name} per Wisch ändern. Nach oben erhöht, nach unten verringert.`}
+                      aria-disabled={matchFinished}
+                      className={`grid h-[6.55rem] w-[6.55rem] shrink-0 touch-none select-none place-items-center rounded-[32px] text-center outline-none transition focus-visible:ring-4 focus-visible:ring-slate-200 ${
+                        matchFinished
+                          ? "cursor-default"
+                          : "cursor-grab active:cursor-grabbing"
+                      } ${getScoreTileStyle(golfResult.label)}`}
+                    >
+                      <span className="flex h-full w-full items-center justify-center tabular-nums text-[4.8rem] font-black leading-none tracking-[-0.015em]">
                         {playerScore}
-                      </motion.div>
-
-                      <motion.button
-                        type="button"
-                        whileTap={{
-                          scale: matchFinished ? 1 : 0.9,
-                        }}
-                        disabled={matchFinished}
-                        onClick={() => updateScore(index, playerScore + 1)}
-                        aria-label={`Score von ${player.name} erhöhen`}
-                        className="flex h-12 w-12 items-center justify-center rounded-[20px] bg-slate-950 text-[1.75rem] font-black leading-none text-white shadow-[0_12px_26px_rgba(15,23,42,0.24)] transition disabled:opacity-35"
-                      >
-                        +
-                      </motion.button>
-                    </div>
+                      </span>
+                    </motion.div>
                   </div>
                 </motion.div>
               )
@@ -1077,9 +1109,7 @@ export default function LiveScoringScreen() {
                 .reverse()
                 .map((item, index) => {
                   const historySpecialLabel = getHistorySpecialLabel(item)
-
                   const historyResultSummary = getHistoryResultSummary(item)
-
                   const wonHolesLabel = formatHoleListLabel(
                     item.displayWonHoles
                   )
@@ -1357,9 +1387,7 @@ export default function LiveScoringScreen() {
 
               <div className="mt-8 grid grid-cols-3 gap-2">
                 <div className="rounded-[24px] border border-white/70 bg-white/[0.48] p-4 shadow-sm backdrop-blur-xl">
-                  <div className="text-sm font-bold text-slate-500">
-                    Skinz
-                  </div>
+                  <div className="text-sm font-bold text-slate-500">Skinz</div>
 
                   <div
                     className={`mt-2 whitespace-nowrap text-[2rem] font-black leading-none tracking-[-0.045em] ${getSkinColor(
