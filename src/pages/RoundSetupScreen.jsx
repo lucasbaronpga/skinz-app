@@ -5,15 +5,22 @@ import { useNavigate } from "react-router-dom"
 import { AnimatePresence, motion } from "framer-motion"
 
 import AppBackground from "../components/AppBackground"
+import GameModeBadge from "../components/GameModeBadge"
 
 import { useAuth } from "../context/AuthContext"
 
 import { GAME_MODES, useGame } from "../context/GameContext"
 
+import { getGameModeTheme } from "../utils/gameModeTheme"
+
 const MIN_STAKE = 0.1
 const MAX_STAKE = 100
 
 const STAKE_PRESETS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50]
+
+function cn(...classes) {
+  return classes.filter(Boolean).join(" ")
+}
 
 function normalizeName(value) {
   return String(value || "")
@@ -86,49 +93,22 @@ function buildInitialPlayers(userName) {
     return ["Lucas", "Ben"]
   }
 
-  const defaultOpponent = normalizeName(cleanedUserName) === "ben"
-    ? "Lucas"
-    : "Ben"
+  const defaultOpponent =
+    normalizeName(cleanedUserName) === "ben" ? "Lucas" : "Ben"
 
   return [cleanedUserName, defaultOpponent]
 }
 
-function getGameModeMeta(gameMode) {
+function getGameModeDescription(gameMode) {
   if (gameMode === GAME_MODES.PROFESSIONAL) {
-    return {
-      label: "Skinz Professional",
-      shortLabel: "Pro",
-      description: "Birdie zählt 2 Skinz, Eagle oder besser zählt 3 Skinz.",
-    }
+    return "Birdie zählt 2 Skinz, Eagle oder besser zählt 3 Skinz."
   }
 
   if (gameMode === GAME_MODES.WOLFFN) {
-    return {
-      label: "🐺 Wolffn",
-      shortLabel: "🐺 Wolffn",
-      description: "4 Spieler. Teams, Bestball und echter Champ-Modus.",
-    }
+    return "4 Spieler. Teams, Bestball und echter Champ-Modus."
   }
 
-  return {
-    label: "Classic Skinz",
-    shortLabel: "Classic",
-    description: "Jeder eindeutige Lochgewinn zählt 1 Skin.",
-  }
-}
-
-function ModePill({ children, isDark = false }) {
-  return (
-    <span
-      className={`inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl ${
-        isDark
-          ? "border border-white/15 bg-white/10 text-slate-200"
-          : "border border-white/70 bg-white/[0.46] text-slate-600"
-      }`}
-    >
-      {children}
-    </span>
-  )
+  return "Jeder eindeutige Lochgewinn zählt 1 Skin."
 }
 
 export default function RoundSetupScreen() {
@@ -185,7 +165,13 @@ export default function RoundSetupScreen() {
   const isProfessionalMode = selectedGameMode === GAME_MODES.PROFESSIONAL
   const isWolffnMode = selectedGameMode === GAME_MODES.WOLFFN
 
-  const gameModeMeta = getGameModeMeta(selectedGameMode)
+  const modeTheme = getGameModeTheme({
+    gameMode: selectedGameMode,
+    isWolffn: isWolffnMode,
+    isProfessional: isProfessionalMode,
+  })
+
+  const gameModeDescription = getGameModeDescription(selectedGameMode)
 
   const wolffnPlayerCountValid = uniquePlayers.length === 4
 
@@ -273,7 +259,7 @@ export default function RoundSetupScreen() {
   }
 
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden bg-[#e8ebe5] pb-[calc(13rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
+    <div className="relative min-h-[100dvh] overflow-x-hidden bg-[#e8ebe5] pb-[calc(13rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
       <AppBackground />
 
       <div className="relative mx-auto max-w-md px-6">
@@ -292,7 +278,9 @@ export default function RoundSetupScreen() {
           }}
           className="pt-8"
         >
-          <div className="text-[12px] font-black uppercase tracking-[0.28em] text-emerald-700/80">
+          <div
+            className={`text-[12px] font-black uppercase tracking-[0.28em] ${modeTheme.text}`}
+          >
             Match Setup
           </div>
 
@@ -356,7 +344,7 @@ export default function RoundSetupScreen() {
           <div className="relative p-8">
             <div
               aria-hidden="true"
-              className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-emerald-400/32 via-emerald-500/8 to-transparent"
+              className={`absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t ${modeTheme.glow}`}
             />
 
             <div
@@ -367,7 +355,9 @@ export default function RoundSetupScreen() {
             <div className="relative">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <div className="text-[12px] font-black uppercase tracking-[0.22em] text-emerald-200/85">
+                  <div
+                    className={`text-[12px] font-black uppercase tracking-[0.22em] ${modeTheme.textDark}`}
+                  >
                     Course
                   </div>
 
@@ -377,7 +367,7 @@ export default function RoundSetupScreen() {
                 </div>
 
                 <div className="shrink-0 text-right">
-                  <ModePill isDark>{gameModeMeta.shortLabel}</ModePill>
+                  <GameModeBadge gameMode={selectedGameMode} isDark />
                 </div>
               </div>
 
@@ -387,7 +377,9 @@ export default function RoundSetupScreen() {
                     €/Skin
                   </div>
 
-                  <div className="mt-3 text-[4.6rem] font-black leading-none tracking-[-0.075em] text-amber-300">
+                  <div
+                    className={`mt-3 text-[4.6rem] font-black leading-none tracking-[-0.075em] tabular-nums ${modeTheme.textDark}`}
+                  >
                     {formatStake(stake)}
                   </div>
                 </div>
@@ -474,11 +466,11 @@ export default function RoundSetupScreen() {
               </div>
             </div>
 
-            <ModePill>{gameModeMeta.shortLabel}</ModePill>
+            <GameModeBadge gameMode={selectedGameMode} />
           </div>
 
           <div className="mt-3 text-sm font-semibold leading-relaxed text-slate-500">
-            {gameModeMeta.description}
+            {gameModeDescription}
           </div>
 
           <div className="mt-6 space-y-3">
@@ -646,7 +638,7 @@ export default function RoundSetupScreen() {
                   aria-pressed={isActive}
                   className={`w-full rounded-[28px] border px-5 py-5 text-left transition ${
                     isActive
-                      ? "border-emerald-300/70 bg-emerald-50/85"
+                      ? `${modeTheme.activeBorder} ${modeTheme.activeSoftBg}`
                       : "border-white/70 bg-white/[0.42] backdrop-blur-xl"
                   }`}
                 >
@@ -656,7 +648,11 @@ export default function RoundSetupScreen() {
                         {getCourseName(course)}
                       </div>
 
-                      <div className="mt-2 text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+                      <div
+                        className={`mt-2 text-xs font-black uppercase tracking-[0.18em] ${
+                          isActive ? modeTheme.softText : "text-slate-400"
+                        }`}
+                      >
                         {isActive ? "Selected" : "Available"}
                       </div>
                     </div>
@@ -729,7 +725,7 @@ export default function RoundSetupScreen() {
               autoComplete="given-name"
               enterKeyHint="done"
               aria-label="Mitspieler hinzufügen"
-              className="h-16 min-w-0 flex-1 rounded-[26px] border border-white/70 bg-white/[0.62] px-5 text-lg font-black text-slate-950 shadow-sm outline-none backdrop-blur-xl placeholder:text-slate-300 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+              className={`h-16 min-w-0 flex-1 rounded-[26px] border border-white/70 bg-white/[0.62] px-5 text-lg font-black text-slate-950 shadow-sm outline-none backdrop-blur-xl placeholder:text-slate-300 focus:ring-4 ${modeTheme.ring}`}
             />
 
             <motion.button
@@ -740,7 +736,7 @@ export default function RoundSetupScreen() {
               onClick={addPlayer}
               disabled={!canAddPlayer}
               aria-label="Mitspieler hinzufügen"
-              className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[26px] bg-slate-950 text-3xl font-black text-white shadow-[0_14px_35px_rgba(15,23,42,0.25)] transition disabled:cursor-not-allowed disabled:opacity-35"
+              className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-[26px] text-3xl font-black text-white shadow-[0_14px_35px_rgba(15,23,42,0.25)] transition disabled:cursor-not-allowed disabled:opacity-35 ${modeTheme.button} ${modeTheme.buttonHover}`}
             >
               +
             </motion.button>
@@ -778,7 +774,7 @@ export default function RoundSetupScreen() {
                     <div
                       className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg font-black uppercase shadow-sm ${
                         isCurrentUser
-                          ? "bg-emerald-500 text-white"
+                          ? modeTheme.avatar
                           : "bg-slate-950 text-white"
                       }`}
                     >
@@ -828,13 +824,7 @@ export default function RoundSetupScreen() {
           }}
           disabled={!canStart}
           onClick={handleStartMatch}
-          className={`mt-8 flex w-full items-center justify-between rounded-[34px] px-6 py-6 text-xl font-black text-white shadow-[0_20px_55px_rgba(15,23,42,0.22)] transition disabled:cursor-not-allowed disabled:opacity-40 ${
-            isWolffnMode
-              ? "bg-slate-950"
-              : isProfessionalMode
-                ? "bg-orange-500"
-                : "bg-emerald-500"
-          }`}
+          className={`mt-8 flex w-full items-center justify-between rounded-[34px] px-6 py-6 text-xl font-black text-white shadow-[0_20px_55px_rgba(15,23,42,0.22)] transition disabled:cursor-not-allowed disabled:opacity-40 ${modeTheme.button} ${modeTheme.buttonHover}`}
         >
           <span>
             {hasActiveMatch

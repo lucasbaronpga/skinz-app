@@ -13,8 +13,11 @@ import {
 } from "lucide-react"
 
 import AppBackground from "../components/AppBackground"
+import GameModeBadge from "../components/GameModeBadge"
 
 import { useGame } from "../context/GameContext"
+
+import { getGameModeTheme } from "../utils/gameModeTheme"
 
 const HOLE_COUNT = 18
 
@@ -421,15 +424,9 @@ function joinTeamNames(team) {
   return Array.isArray(team) ? team.join(" + ") : "-"
 }
 
-function ModePill({ children, isDark = false }) {
+function StatusPill({ children }) {
   return (
-    <span
-      className={`inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl ${
-        isDark
-          ? "border border-white/15 bg-white/10 text-slate-200"
-          : "border border-white/70 bg-white/[0.46] text-slate-600"
-      }`}
-    >
+    <span className="inline-flex rounded-full border border-white/70 bg-white/[0.46] px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 backdrop-blur-xl">
       {children}
     </span>
   )
@@ -481,6 +478,14 @@ export default function LiveScoringScreen() {
     decision: null,
   })
 
+  const isProfessionalMode = !isWolffnMode && specialScoringEnabled
+
+  const modeTheme = getGameModeTheme({
+    gameMode,
+    isWolffn: isWolffnMode,
+    isProfessional: isProfessionalMode,
+  })
+
   const sortedPlayers = [...safePlayers].sort(
     (a, b) =>
       toNumber(b.winnings, 0) - toNumber(a.winnings, 0) ||
@@ -492,12 +497,6 @@ export default function LiveScoringScreen() {
   const historyDisplayItems = buildHistoryDisplayItems(safeHistory)
 
   const safeHole = Math.min(Math.max(toNumber(hole, 1), 1), HOLE_COUNT)
-
-  const currentModeLabel = isWolffnMode
-    ? "🐺 Wolffn"
-    : specialScoringEnabled
-      ? "Pro"
-      : "Classic"
 
   const wolffnSetupIsCurrent =
     wolffnSetup.hole === safeHole && wolffnSetup.gameMode === gameMode
@@ -596,11 +595,13 @@ export default function LiveScoringScreen() {
         <div className="relative w-full max-w-sm overflow-hidden rounded-[40px] border border-white/20 bg-[#071819] p-8 text-center text-white shadow-[0_28px_70px_rgba(7,24,25,0.42)]">
           <div
             aria-hidden="true"
-            className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-emerald-400/32 via-emerald-500/8 to-transparent"
+            className={`absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t ${modeTheme.glow}`}
           />
 
           <div className="relative">
-            <div className="text-[12px] font-black uppercase tracking-[0.24em] text-emerald-200/85">
+            <div
+              className={`text-[12px] font-black uppercase tracking-[0.24em] ${modeTheme.textDark}`}
+            >
               Live Scoring
             </div>
 
@@ -658,9 +659,13 @@ export default function LiveScoringScreen() {
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <ModePill>{matchFinished ? "Beendet" : "Live"}</ModePill>
+                  <StatusPill>{matchFinished ? "Beendet" : "Live"}</StatusPill>
 
-                  <ModePill>{currentModeLabel}</ModePill>
+                  <GameModeBadge
+                    gameMode={gameMode}
+                    isWolffn={isWolffnMode}
+                    isProfessional={isProfessionalMode}
+                  />
                 </div>
 
                 <h1 className="mt-4 text-[4rem] font-black leading-none tracking-[-0.075em] text-slate-950">
@@ -672,7 +677,7 @@ export default function LiveScoringScreen() {
                     Par {currentPar}
                   </div>
 
-                  <div className="h-1 w-1 rounded-full bg-slate-400" />
+                  <div className={`h-1 w-1 rounded-full ${modeTheme.dot}`} />
 
                   <div className="min-w-0 truncate text-sm font-bold text-slate-500">
                     {getCourseName(currentCourse)}
@@ -716,13 +721,13 @@ export default function LiveScoringScreen() {
               <div className="relative p-5">
                 <div
                   aria-hidden="true"
-                  className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-amber-300/24 via-amber-300/6 to-transparent"
+                  className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-slate-500/28 via-slate-500/8 to-transparent"
                 />
 
                 <div className="relative">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <div className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-200/85">
+                      <div className="text-[11px] font-black uppercase tracking-[0.22em] text-white/70">
                         Wolffn Setup
                       </div>
 
@@ -745,7 +750,7 @@ export default function LiveScoringScreen() {
                         key={`${playerName}-${index}`}
                         className={`rounded-[18px] px-2 py-2.5 text-center ${
                           index === 0
-                            ? "bg-amber-300 text-black"
+                            ? "bg-white text-slate-950"
                             : "bg-white/10 text-white"
                         }`}
                       >
@@ -771,7 +776,7 @@ export default function LiveScoringScreen() {
                           onClick={() => handleAskPartner(playerName)}
                           className={`rounded-[20px] px-3 py-3 text-xs font-black transition ${
                             isSelected
-                              ? "bg-amber-300 text-black"
+                              ? "bg-white text-slate-950"
                               : "bg-white/10 text-white"
                           }`}
                         >
@@ -793,7 +798,7 @@ export default function LiveScoringScreen() {
                     }}
                     className={`mt-2 w-full rounded-[20px] px-4 py-3 text-xs font-black transition ${
                       wolffnDecision === "alone"
-                        ? "bg-amber-300 text-black"
+                        ? "bg-white text-slate-950"
                         : "bg-white/10 text-white"
                     }`}
                   >
@@ -922,7 +927,7 @@ export default function LiveScoringScreen() {
                   }}
                   className={`rounded-[32px] border px-6 py-6 shadow-[0_18px_46px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition ${
                     isWinning
-                      ? "border-emerald-300/80 bg-emerald-50/[0.72]"
+                      ? `${modeTheme.activeBorder} ${modeTheme.activeSoftBg}`
                       : "border-white/70 bg-white/[0.46]"
                   }`}
                 >
@@ -950,7 +955,9 @@ export default function LiveScoringScreen() {
                         </div>
 
                         {isWinning && !hasTie && (
-                          <div className="rounded-full bg-emerald-500 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-sm">
+                          <div
+                            className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-sm ${modeTheme.button}`}
+                          >
                             Leader
                           </div>
                         )}
@@ -1046,9 +1053,16 @@ export default function LiveScoringScreen() {
                 </div>
               </div>
 
-              <ModePill>
-                {safeHistory.length}/{HOLE_COUNT}
-              </ModePill>
+              <GameModeBadge
+                gameMode={gameMode}
+                isWolffn={isWolffnMode}
+                isProfessional={isProfessionalMode}
+                className="px-3"
+              />
+            </div>
+
+            <div className="mt-2 text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+              {safeHistory.length}/{HOLE_COUNT}
             </div>
 
             <div className="mt-5 space-y-2.5">
@@ -1170,13 +1184,7 @@ export default function LiveScoringScreen() {
                     duration: 0.24,
                     ease: "easeOut",
                   }}
-                  className={`absolute left-1/2 top-0 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-full items-center justify-center rounded-full text-white shadow-[0_18px_40px_rgba(16,185,129,0.35)] ${
-                    isWolffnMode
-                      ? "bg-slate-950"
-                      : specialScoringEnabled
-                        ? "bg-orange-500"
-                        : "bg-emerald-500"
-                  }`}
+                  className={`absolute left-1/2 top-0 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-full items-center justify-center rounded-full text-white shadow-[0_18px_40px_rgba(16,185,129,0.35)] ${modeTheme.button}`}
                 >
                   <Check size={30} strokeWidth={3.4} />
                 </motion.div>
@@ -1190,16 +1198,12 @@ export default function LiveScoringScreen() {
               }}
               disabled={!wolffnSetupComplete}
               onClick={handleFinishHole}
-              className={`flex w-full items-center justify-between rounded-[32px] px-6 py-5 text-xl font-black text-white shadow-[0_20px_55px_rgba(15,23,42,0.22)] transition disabled:cursor-not-allowed disabled:opacity-45 ${
-                isWolffnMode
-                  ? "bg-slate-950"
-                  : specialScoringEnabled
-                    ? "bg-orange-500"
-                    : "bg-emerald-500"
-              }`}
+              className={`flex w-full items-center justify-between rounded-[32px] px-6 py-5 text-xl font-black text-white shadow-[0_20px_55px_rgba(15,23,42,0.22)] transition disabled:cursor-not-allowed disabled:opacity-45 ${modeTheme.button} ${modeTheme.buttonHover}`}
             >
               <span>
-                {!wolffnSetupComplete ? "Wolffn Setup wählen" : "Loch abschließen"}
+                {!wolffnSetupComplete
+                  ? "Wolffn Setup wählen"
+                  : "Loch abschließen"}
               </span>
 
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
@@ -1248,7 +1252,7 @@ export default function LiveScoringScreen() {
             >
               <div
                 aria-hidden="true"
-                className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-emerald-400/32 via-emerald-500/8 to-transparent"
+                className={`absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t ${modeTheme.glow}`}
               />
 
               <div className="relative">
@@ -1325,7 +1329,9 @@ export default function LiveScoringScreen() {
                 🏆
               </motion.div>
 
-              <div className="mt-6 text-[12px] font-black uppercase tracking-[0.28em] text-emerald-700/80">
+              <div
+                className={`mt-6 text-[12px] font-black uppercase tracking-[0.28em] ${modeTheme.text}`}
+              >
                 Am 19. Loch
               </div>
 
@@ -1419,7 +1425,7 @@ export default function LiveScoringScreen() {
                         key={player.name}
                         className={`flex items-center justify-between rounded-[24px] border px-4 py-4 shadow-sm ${
                           isChampion
-                            ? "border-emerald-300/70 bg-emerald-50/85"
+                            ? `${modeTheme.activeBorder} ${modeTheme.activeSoftBg}`
                             : "border-white/70 bg-white/[0.54]"
                         }`}
                       >
@@ -1492,7 +1498,7 @@ export default function LiveScoringScreen() {
                     scale: 0.98,
                   }}
                   onClick={handleResetGame}
-                  className="w-full rounded-[30px] bg-slate-950 py-5 text-lg font-black text-white shadow-[0_18px_45px_rgba(15,23,42,0.25)]"
+                  className={`w-full rounded-[30px] py-5 text-lg font-black text-white shadow-[0_18px_45px_rgba(15,23,42,0.25)] ${modeTheme.button} ${modeTheme.buttonHover}`}
                 >
                   Neue Runde starten
                 </motion.button>

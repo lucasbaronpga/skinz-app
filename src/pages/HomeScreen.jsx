@@ -3,6 +3,8 @@ import { motion } from "framer-motion"
 
 import AppBackground from "../components/AppBackground"
 
+import { useAuth } from "../context/AuthContext"
+
 import { GAME_MODES, useGame } from "../context/GameContext"
 
 function toNumber(value, fallback = 0) {
@@ -13,6 +15,12 @@ function toNumber(value, fallback = 0) {
 
 function roundMoney(value) {
   return Math.round(toNumber(value, 0) * 100) / 100
+}
+
+function normalizeName(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
 }
 
 function formatEuroAmount(value) {
@@ -41,8 +49,8 @@ function formatMoney(value) {
   return "0€"
 }
 
-function formatPlainMoney(value) {
-  const amount = roundMoney(value)
+function formatLiveMoneyBalance(value) {
+  const amount = roundMoney(Math.abs(value))
 
   return `${formatEuroAmount(amount)}€`
 }
@@ -75,10 +83,12 @@ function formatSkins(value) {
   return "0"
 }
 
-function formatSkinsAtStake(value) {
-  const amount = toNumber(value, 0)
+function formatLiveSkinBalance(value) {
+  const amount = Math.abs(toNumber(value, 0))
 
-  return amount === 1 ? "1 Skin" : `${amount} Skinz`
+  const label = amount === 1 ? "Skin" : "Skinz"
+
+  return `${amount} ${label}`
 }
 
 function getMoneyColor(value) {
@@ -95,6 +105,20 @@ function getMoneyColor(value) {
   return "text-slate-950"
 }
 
+function getMoneyColorDark(value) {
+  const amount = toNumber(value, 0)
+
+  if (amount > 0) {
+    return "text-amber-300"
+  }
+
+  if (amount < 0) {
+    return "text-red-500"
+  }
+
+  return "text-slate-100"
+}
+
 function getSkinsColor(value) {
   const amount = toNumber(value, 0)
 
@@ -107,6 +131,20 @@ function getSkinsColor(value) {
   }
 
   return "text-slate-950"
+}
+
+function getSkinsColorDark(value) {
+  const amount = toNumber(value, 0)
+
+  if (amount > 0) {
+    return "text-amber-300"
+  }
+
+  if (amount < 0) {
+    return "text-red-500"
+  }
+
+  return "text-slate-100"
 }
 
 function getToParColor(value) {
@@ -308,9 +346,20 @@ function getRoundPlayer(round, playerStats) {
   return players[0] || null
 }
 
+function getLiveUserPlayer(players, userName) {
+  const matchedPlayer = players.find(
+    (player) => normalizeName(player?.name) === normalizeName(userName)
+  )
+
+  return matchedPlayer || players[0] || null
+}
+
 function getRoundPar(round) {
   return toNumber(
-    round?.course?.par || round?.currentCourse?.par || round?.coursePar || round?.par,
+    round?.course?.par ||
+      round?.currentCourse?.par ||
+      round?.coursePar ||
+      round?.par,
     72
   )
 }
@@ -406,11 +455,11 @@ function DarkBadge({ children }) {
 export default function HomeScreen() {
   const navigate = useNavigate()
 
+  const { user } = useAuth()
+
   const {
     hole,
-    currentPot,
     currentCourse,
-    currentSkinsAtStake,
     players,
     playerStats,
     matchFinished,
@@ -421,7 +470,18 @@ export default function HomeScreen() {
     specialScoringEnabled,
   } = useGame()
 
-  const liveSortedPlayers = [...players].sort(
+  const safePlayers = Array.isArray(players) ? players : []
+  const safePlayerStats = Array.isArray(playerStats) ? playerStats : []
+  const safeCompletedRounds = Array.isArray(completedRounds)
+    ? completedRounds
+    : []
+
+  const liveUserPlayer = getLiveUserPlayer(safePlayers, user?.name)
+
+  const liveUserSkins = toNumber(liveUserPlayer?.skins, 0)
+  const liveUserWinnings = toNumber(liveUserPlayer?.winnings, 0)
+
+  const liveSortedPlayers = [...safePlayers].sort(
     (a, b) => toNumber(b.winnings, 0) - toNumber(a.winnings, 0)
   )
 
@@ -438,14 +498,17 @@ export default function HomeScreen() {
     liveLeader && !liveLeaderHasTie ? liveLeader.name : "All Square"
 
   const latestRound =
-    [...completedRounds].sort(
+    [...safeCompletedRounds].sort(
       (a, b) => toNumber(b.createdAt, 0) - toNumber(a.createdAt, 0)
     )[0] || null
 
   const latestRoundId = latestRound?.id || "SKZ-0000"
 
-  const latestRoundPlayer = getRoundPlayer(latestRound, playerStats)
-  const latestRoundPlayerName = getPreferredPlayerName(latestRound, playerStats)
+  const latestRoundPlayer = getRoundPlayer(latestRound, safePlayerStats)
+  const latestRoundPlayerName = getPreferredPlayerName(
+    latestRound,
+    safePlayerStats
+  )
 
   const latestRoundStrokes = getPlayerTotalStrokes(
     latestRoundPlayer,
@@ -464,7 +527,7 @@ export default function HomeScreen() {
     latestRound
   )
 
-  const topPlayers = [...playerStats]
+  const topPlayers = [...safePlayerStats]
     .filter((player) => toNumber(player?.roundsPlayed, 0) > 0)
     .sort(
       (a, b) => toNumber(b.totalWinnings, 0) - toNumber(a.totalWinnings, 0)
@@ -477,10 +540,10 @@ export default function HomeScreen() {
   })
 
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden bg-[#e8ebe5] pb-[calc(13rem+env(safe-area-inset-bottom))] text-slate-950">
+    <div className="relative min-h-[100dvh] overflow-x-hidden bg-[#e8ebe5] pb-[calc(10.5rem+env(safe-area-inset-bottom))] text-slate-950">
       <AppBackground />
 
-      <div className="relative px-5 pt-10 sm:pt-12">
+      <div className="relative px-5 pt-8 sm:pt-10">
         <div className="mx-auto w-full max-w-md">
           <motion.div
             initial={{
@@ -495,9 +558,9 @@ export default function HomeScreen() {
               duration: 0.35,
               ease: "easeOut",
             }}
-            className="pt-8"
+            className="pt-5"
           >
-            <h1 className="text-[4.6rem] font-black leading-none tracking-[-0.075em] text-slate-950">
+            <h1 className="text-[4.15rem] font-black leading-none tracking-[-0.075em] text-slate-950">
               Skinz
             </h1>
           </motion.div>
@@ -522,12 +585,12 @@ export default function HomeScreen() {
                 ease: "easeOut",
               }}
               onClick={() => navigate("/live")}
-              className="mt-10 w-full overflow-hidden rounded-[38px] border border-white/20 bg-[#071819] text-left text-white shadow-[0_28px_70px_rgba(7,24,25,0.42)]"
+              className="mt-8 w-full overflow-hidden rounded-[34px] border border-white/20 bg-[#071819] text-left text-white shadow-[0_24px_62px_rgba(7,24,25,0.40)]"
             >
-              <div className="relative p-7">
+              <div className="relative p-6">
                 <div
                   aria-hidden="true"
-                  className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-emerald-400/32 via-emerald-500/8 to-transparent"
+                  className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-emerald-400/32 via-emerald-500/8 to-transparent"
                 />
 
                 <div
@@ -538,11 +601,11 @@ export default function HomeScreen() {
                 <div className="relative">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <div className="text-[12px] font-black uppercase tracking-[0.22em] text-emerald-200/85">
+                      <div className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-200/85">
                         {currentModeLabel}
                       </div>
 
-                      <div className="mt-7 text-[3.45rem] font-black uppercase leading-none tracking-[-0.045em]">
+                      <div className="mt-6 text-[3.2rem] font-black uppercase leading-none tracking-[-0.045em]">
                         Loch {hole}
                       </div>
                     </div>
@@ -552,17 +615,37 @@ export default function HomeScreen() {
                     </div>
                   </div>
 
-                  <div className="mt-7 grid grid-cols-2 items-end gap-4">
-                    <div className="min-w-0 text-[3.45rem] font-black leading-none tracking-[-0.07em] text-amber-300">
-                      {formatSkinsAtStake(currentSkinsAtStake)}
+                  <div className="mt-6 grid grid-cols-2 items-end gap-3">
+                    <div className="min-w-0">
+                      <div
+                        className={`truncate text-[2.8rem] font-black leading-none tracking-[-0.07em] tabular-nums ${getSkinsColorDark(
+                          liveUserSkins
+                        )}`}
+                      >
+                        {formatLiveSkinBalance(liveUserSkins)}
+                      </div>
+
+                      <div className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                        Deine Skinz
+                      </div>
                     </div>
 
-                    <div className="min-w-0 text-right text-[3.45rem] font-black leading-none tracking-[-0.07em] text-slate-100">
-                      {formatPlainMoney(currentPot)}
+                    <div className="min-w-0 text-right">
+                      <div
+                        className={`whitespace-nowrap text-[3.05rem] font-black leading-none tracking-[-0.07em] tabular-nums ${getMoneyColorDark(
+                          liveUserWinnings
+                        )}`}
+                      >
+                        {formatLiveMoneyBalance(liveUserWinnings)}
+                      </div>
+
+                      <div className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                        Earnings
+                      </div>
                     </div>
                   </div>
 
-                  <div className="mt-8 border-t border-white/10 pt-5">
+                  <div className="mt-7 border-t border-white/10 pt-5">
                     <div className="flex items-end justify-between gap-5">
                       <div className="min-w-0">
                         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
@@ -585,7 +668,7 @@ export default function HomeScreen() {
                       </div>
                     </div>
 
-                    <div className="mt-5 truncate text-sm font-bold text-slate-400">
+                    <div className="mt-4 truncate text-sm font-bold text-slate-400">
                       {getCurrentCourseName(currentCourse)}
                     </div>
                   </div>
@@ -607,34 +690,34 @@ export default function HomeScreen() {
                 duration: 0.35,
                 ease: "easeOut",
               }}
-              className="mt-10 overflow-hidden rounded-[38px] border border-white/20 bg-[#071819] text-white shadow-[0_28px_70px_rgba(7,24,25,0.42)]"
+              className="mt-8 overflow-hidden rounded-[34px] border border-white/20 bg-[#071819] text-white shadow-[0_24px_62px_rgba(7,24,25,0.40)]"
             >
-              <div className="relative p-7">
+              <div className="relative p-6">
                 <div
                   aria-hidden="true"
-                  className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-emerald-400/32 via-emerald-500/8 to-transparent"
+                  className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-emerald-400/32 via-emerald-500/8 to-transparent"
                 />
 
                 <div className="relative">
-                  <div className="text-[12px] font-black uppercase tracking-[0.22em] text-emerald-200/85">
+                  <div className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-200/85">
                     Next Match
                   </div>
 
-                  <div className="mt-7 text-[3.35rem] font-black uppercase leading-none tracking-[-0.045em]">
+                  <div className="mt-6 text-[3.05rem] font-black uppercase leading-none tracking-[-0.045em]">
                     Neue Runde
                   </div>
 
-                  <div className="mt-5 max-w-xs text-base font-semibold leading-relaxed text-slate-400">
+                  <div className="mt-4 max-w-xs text-[0.95rem] font-semibold leading-relaxed text-slate-400">
                     Course, Flight und Einsatz wählen. Danach direkt zur
                     Score-Eingabe.
                   </div>
 
                   <Link
                     to="/round"
-                    className="mt-9 flex w-full items-center justify-between rounded-[28px] border border-white/90 bg-white px-6 py-5 text-slate-950 shadow-[0_18px_55px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-2xl transition active:scale-[0.985]"
+                    className="mt-7 flex w-full items-center justify-between rounded-[26px] border border-white/90 bg-white px-5 py-4 text-slate-950 shadow-[0_16px_48px_rgba(0,0,0,0.20),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-2xl transition active:scale-[0.985]"
                   >
                     <div>
-                      <div className="text-2xl font-black tracking-[-0.04em] text-slate-950">
+                      <div className="text-[1.35rem] font-black tracking-[-0.04em] text-slate-950">
                         Runde starten
                       </div>
 
@@ -667,14 +750,14 @@ export default function HomeScreen() {
                 duration: 0.35,
                 ease: "easeOut",
               }}
-              className="mt-6"
+              className="mt-5"
             >
               <Link
                 to="/round"
-                className="flex items-center justify-between rounded-[32px] border border-white/70 bg-white/[0.46] px-6 py-5 shadow-[0_18px_48px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
+                className="flex items-center justify-between rounded-[30px] border border-white/70 bg-white/[0.46] px-5 py-4 shadow-[0_16px_42px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
               >
                 <div>
-                  <div className="text-2xl font-black tracking-[-0.035em]">
+                  <div className="text-[1.35rem] font-black tracking-[-0.035em]">
                     Neue Runde
                   </div>
 
@@ -703,39 +786,39 @@ export default function HomeScreen() {
                 duration: 0.35,
                 ease: "easeOut",
               }}
-              className="mt-7 grid grid-cols-2 gap-4"
+              className="mt-5 grid grid-cols-2 gap-3"
             >
               <button
                 type="button"
                 onClick={() => navigate(`/matches/${latestRoundId}`)}
-                className="min-h-[14rem] rounded-[34px] border border-white/70 bg-white/[0.46] p-6 text-left shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
+                className="min-h-[11.75rem] rounded-[30px] border border-white/70 bg-white/[0.46] p-5 text-left shadow-[0_16px_44px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
               >
-                <div className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">
+                <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
                   Last Round
                 </div>
 
-                <div className="mt-6 truncate text-[2.2rem] font-black leading-none tracking-[-0.06em]">
+                <div className="mt-5 truncate text-[1.9rem] font-black leading-none tracking-[-0.055em] text-slate-950">
                   {latestRoundPlayerName}
                 </div>
 
                 <div className="mt-4 flex items-end justify-between gap-3">
                   <div>
-                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                    <div className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">
                       Schläge
                     </div>
 
-                    <div className="mt-1 text-[2.15rem] font-black leading-none tracking-[-0.06em] text-slate-950">
+                    <div className="mt-1 text-[1.8rem] font-black leading-none tracking-[-0.055em] text-slate-950 tabular-nums">
                       {latestRoundStrokes || "-"}
                     </div>
                   </div>
 
                   <div className="shrink-0 text-right">
-                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                    <div className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">
                       To Par
                     </div>
 
                     <div
-                      className={`mt-1 text-[1.9rem] font-black leading-none tracking-[-0.055em] ${getToParColor(
+                      className={`mt-1 text-[1.65rem] font-black leading-none tracking-[-0.05em] tabular-nums ${getToParColor(
                         latestRoundTotalToPar
                       )}`}
                     >
@@ -744,15 +827,13 @@ export default function HomeScreen() {
                   </div>
                 </div>
 
-                <div className="mt-6 flex items-end justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-black text-slate-950">
-                      {getRoundModeLabel(latestRound)}
-                    </div>
+                <div className="mt-5 min-w-0">
+                  <div className="truncate text-sm font-black text-slate-950">
+                    {getRoundModeLabel(latestRound)}
+                  </div>
 
-                    <div className="mt-1 truncate text-xs font-semibold text-slate-500">
-                      {latestRoundId}
-                    </div>
+                  <div className="mt-1 truncate text-xs font-semibold text-slate-500">
+                    {latestRoundId}
                   </div>
                 </div>
               </button>
@@ -760,34 +841,36 @@ export default function HomeScreen() {
               <button
                 type="button"
                 onClick={() => navigate(`/matches/${latestRoundId}`)}
-                className="min-h-[14rem] rounded-[34px] border border-white/70 bg-white/[0.46] p-6 text-left shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
+                className="flex min-h-[11.75rem] flex-col rounded-[30px] border border-white/70 bg-white/[0.46] p-5 text-left shadow-[0_16px_44px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
               >
-                <div className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">
+                <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
                   Result
                 </div>
 
-                <div
-                  className={`mt-8 text-[3.35rem] font-black leading-none tracking-[-0.07em] ${getSkinsColor(
-                    latestRoundSkins
-                  )}`}
-                >
-                  {formatSkins(latestRoundSkins)}
-                </div>
+                <div className="flex flex-1 flex-col justify-center">
+                  <div
+                    className={`text-center text-[2.75rem] font-black leading-none tracking-[-0.065em] tabular-nums ${getSkinsColor(
+                      latestRoundSkins
+                    )}`}
+                  >
+                    {formatSkins(latestRoundSkins)}
+                  </div>
 
-                <div className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                  Skinz
-                </div>
+                  <div className="mt-1 text-center text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
+                    Skinz
+                  </div>
 
-                <div
-                  className={`mt-8 whitespace-nowrap text-[2.45rem] font-black leading-none tracking-[-0.06em] ${getMoneyColor(
-                    latestRoundWinnings
-                  )}`}
-                >
-                  {formatMoney(latestRoundWinnings)}
-                </div>
+                  <div
+                    className={`mt-5 whitespace-nowrap text-center text-[2.05rem] font-black leading-none tracking-[-0.055em] tabular-nums ${getMoneyColor(
+                      latestRoundWinnings
+                    )}`}
+                  >
+                    {formatMoney(latestRoundWinnings)}
+                  </div>
 
-                <div className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                  Earnings
+                  <div className="mt-1 text-center text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
+                    Earnings
+                  </div>
                 </div>
               </button>
             </motion.div>
@@ -807,11 +890,11 @@ export default function HomeScreen() {
               duration: 0.35,
               ease: "easeOut",
             }}
-            className="mt-7 rounded-[34px] border border-white/70 bg-white/[0.48] p-6 shadow-[0_18px_55px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
+            className="mt-5 rounded-[30px] border border-white/70 bg-white/[0.48] p-5 shadow-[0_16px_48px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-[12px] font-black uppercase tracking-[0.24em] text-slate-600">
+                <div className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-600">
                   Season Leaderboard
                 </div>
               </div>
@@ -826,12 +909,12 @@ export default function HomeScreen() {
             </div>
 
             {topPlayers.length === 0 && (
-              <div className="mt-6 rounded-[24px] border border-white/70 bg-white/[0.40] p-5 text-center text-sm font-bold text-slate-500 backdrop-blur-xl">
+              <div className="mt-5 rounded-[24px] border border-white/70 bg-white/[0.40] p-4 text-center text-sm font-bold text-slate-500 backdrop-blur-xl">
                 Noch kein Leaderboard vorhanden.
               </div>
             )}
 
-            <div className="mt-6 space-y-3">
+            <div className="mt-5 space-y-3">
               {topPlayers.map((player) => (
                 <button
                   type="button"
@@ -839,12 +922,12 @@ export default function HomeScreen() {
                   onClick={() => navigate("/leaderboard")}
                   className="flex w-full items-baseline justify-between gap-5 text-left"
                 >
-                  <div className="min-w-0 truncate text-[1.75rem] font-black leading-none tracking-[-0.045em]">
+                  <div className="min-w-0 truncate text-[1.55rem] font-black leading-none tracking-[-0.045em]">
                     {player.name}
                   </div>
 
                   <div
-                    className={`shrink-0 whitespace-nowrap text-[1.65rem] font-black leading-none tracking-[-0.045em] ${getMoneyColor(
+                    className={`shrink-0 whitespace-nowrap text-[1.45rem] font-black leading-none tracking-[-0.045em] tabular-nums ${getMoneyColor(
                       player.totalWinnings
                     )}`}
                   >
@@ -870,9 +953,9 @@ export default function HomeScreen() {
                 duration: 0.35,
                 ease: "easeOut",
               }}
-              className="mt-7 rounded-[34px] border border-white/70 bg-white/[0.46] p-6 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
+              className="mt-5 rounded-[30px] border border-white/70 bg-white/[0.46] p-5 shadow-[0_16px_44px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
             >
-              <div className="text-[12px] font-black uppercase tracking-[0.24em] text-slate-500">
+              <div className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">
                 Ready
               </div>
 
