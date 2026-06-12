@@ -62,6 +62,10 @@ function formatPlainMoney(value) {
   return `${formatEuroAmount(amount)}€`
 }
 
+function formatCelebrationSpecialLabel(value) {
+  return String(value || "").replaceAll("Skins", "Skinz")
+}
+
 function getMoneyColor(value) {
   const amount = toNumber(value, 0)
 
@@ -324,7 +328,7 @@ function getHistoryResultSummary(item) {
 function getSkinsLabel(value) {
   const amount = toNumber(value, 0)
 
-  return amount === 1 ? "1 Skin" : `${amount} Skins`
+  return amount === 1 ? "1 Skin" : `${amount} Skinz`
 }
 
 function getHistorySpecialLabel(item) {
@@ -453,35 +457,64 @@ function StatusPill({ children }) {
   )
 }
 
+function ScoreInputTile({
+  disabled,
+  golfResultLabel,
+  onSwipe,
+  onKeyDown,
+  playerName,
+  playerScore,
+}) {
+  return (
+    <motion.div
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      drag={disabled ? false : "y"}
+      dragConstraints={{
+        top: 0,
+        bottom: 0,
+      }}
+      dragElastic={0.16}
+      whileTap={{
+        scale: disabled ? 1 : 0.96,
+      }}
+      onDragEnd={(event, info) => {
+        onSwipe(info)
+      }}
+      onKeyDown={onKeyDown}
+      aria-label={`Score von ${playerName} per Wisch ändern. Nach oben erhöht, nach unten verringert.`}
+      aria-disabled={disabled}
+      className={`grid h-[6.55rem] w-[6.55rem] shrink-0 touch-none select-none place-items-center rounded-[32px] text-center outline-none transition focus-visible:ring-4 focus-visible:ring-slate-200 ${
+        disabled ? "cursor-default" : "cursor-grab active:cursor-grabbing"
+      } ${getScoreTileStyle(golfResultLabel)}`}
+    >
+      <span className="flex h-full w-full items-center justify-center tabular-nums text-[4.8rem] font-black leading-none tracking-[-0.015em]">
+        {playerScore}
+      </span>
+    </motion.div>
+  )
+}
+
 export default function LiveScoringScreen() {
   const navigate = useNavigate()
-
   const scoreEntryRef = useRef(null)
 
   const {
     hole,
-
     currentPar,
     currentCourse,
-
     players,
     history,
     celebration,
-
     matchFinished,
     resetGame,
     hasActiveMatch,
-
     lowestScore,
-
     gameMode,
     isWolffnMode,
-
     specialScoringEnabled,
-
     updateScore,
     finishHole,
-
     getGolfResult,
   } = useGame()
 
@@ -513,9 +546,7 @@ export default function LiveScoringScreen() {
   )
 
   const champion = sortedPlayers[0] || null
-
   const historyDisplayItems = buildHistoryDisplayItems(safeHistory)
-
   const safeHole = Math.min(Math.max(toNumber(hole, 1), 1), HOLE_COUNT)
 
   const wolffnSetupIsCurrent =
@@ -526,9 +557,7 @@ export default function LiveScoringScreen() {
     : null
 
   const wolffnDecision = wolffnSetupIsCurrent ? wolffnSetup.decision : null
-
   const wolffnTeeOrder = getWolffnTeeOrder(safePlayers, safeHole)
-
   const wolffnDecisionPlayer = wolffnTeeOrder[0] || null
 
   const wolffnAvailablePartners = wolffnTeeOrder.filter(
@@ -1021,19 +1050,12 @@ export default function LiveScoringScreen() {
                       </div>
                     </div>
 
-                    <motion.div
-                      role="button"
-                      tabIndex={matchFinished ? -1 : 0}
-                      drag={matchFinished ? false : "y"}
-                      dragConstraints={{
-                        top: 0,
-                        bottom: 0,
-                      }}
-                      dragElastic={0.16}
-                      whileTap={{
-                        scale: matchFinished ? 1 : 0.96,
-                      }}
-                      onDragEnd={(event, info) => {
+                    <ScoreInputTile
+                      disabled={matchFinished}
+                      golfResultLabel={golfResult.label}
+                      playerName={player.name}
+                      playerScore={playerScore}
+                      onSwipe={(info) => {
                         handleScoreSwipe({
                           playerIndex: index,
                           playerScore,
@@ -1044,18 +1066,7 @@ export default function LiveScoringScreen() {
                       onKeyDown={(event) => {
                         handleScoreKeyDown(event, index, playerScore)
                       }}
-                      aria-label={`Score von ${player.name} per Wisch ändern. Nach oben erhöht, nach unten verringert.`}
-                      aria-disabled={matchFinished}
-                      className={`grid h-[6.55rem] w-[6.55rem] shrink-0 touch-none select-none place-items-center rounded-[32px] text-center outline-none transition focus-visible:ring-4 focus-visible:ring-slate-200 ${
-                        matchFinished
-                          ? "cursor-default"
-                          : "cursor-grab active:cursor-grabbing"
-                      } ${getScoreTileStyle(golfResult.label)}`}
-                    >
-                      <span className="flex h-full w-full items-center justify-center tabular-nums text-[4.8rem] font-black leading-none tracking-[-0.015em]">
-                        {playerScore}
-                      </span>
-                    </motion.div>
+                    />
                   </div>
                 </motion.div>
               )
@@ -1286,19 +1297,23 @@ export default function LiveScoringScreen() {
               />
 
               <div className="relative">
-                <div
-                  className={`inline-flex rounded-2xl px-5 py-3 text-sm font-black ${celebration.color}`}
-                >
-                  {celebration.result}
-                </div>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <div
+                    className={`inline-flex h-11 items-center justify-center rounded-2xl px-5 text-sm font-black leading-none ${celebration.color}`}
+                  >
+                    {celebration.result}
+                  </div>
 
-                {celebration.specialScoringApplied &&
-                  celebration.specialScoringLabel && (
-                    <div className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-xs font-black uppercase tracking-widest text-white">
-                      <Sparkles size={13} />
-                      {celebration.specialScoringLabel}
-                    </div>
-                  )}
+                  {celebration.specialScoringApplied &&
+                    celebration.specialScoringLabel && (
+                      <div className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-orange-500 px-4 text-xs font-black uppercase tracking-widest text-white">
+                        <Sparkles size={13} />
+                        {formatCelebrationSpecialLabel(
+                          celebration.specialScoringLabel
+                        )}
+                      </div>
+                    )}
+                </div>
 
                 <div className="mt-6 text-6xl font-black tracking-[-0.06em]">
                   {celebration.player}
@@ -1306,7 +1321,7 @@ export default function LiveScoringScreen() {
 
                 <div className="mt-4 text-lg font-bold text-slate-400">
                   holt {celebration.skins || 1}{" "}
-                  {(celebration.skins || 1) === 1 ? "Skin" : "Skins"}
+                  {(celebration.skins || 1) === 1 ? "Skin" : "Skinz"}
                 </div>
 
                 <div className="mt-6 text-7xl font-black tracking-[-0.07em] text-amber-300">
