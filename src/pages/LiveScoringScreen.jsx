@@ -170,26 +170,22 @@ function getResultBadgeStyle(label) {
   return "bg-white/[0.68] text-slate-400"
 }
 
-function getToParBadgeStyle(value) {
-  const amount = toNumber(value, 0)
+function getSpecialBadgeStyle(label) {
+  const safeLabel = String(label || "")
 
-  if (amount < 0) {
+  if (safeLabel.includes("Birdie")) {
     return "bg-red-500 text-white"
   }
 
-  if (amount > 0) {
-    if (amount === 1) {
-      return "bg-blue-500 text-white"
-    }
-
-    if (amount === 2) {
-      return "bg-blue-900 text-white"
-    }
-
-    return "bg-purple-600 text-white"
+  if (safeLabel.includes("Eagle")) {
+    return "bg-orange-500 text-white"
   }
 
-  return "bg-white/[0.68] text-slate-950"
+  if (safeLabel.includes("Albatross")) {
+    return "bg-amber-300 text-black"
+  }
+
+  return "bg-orange-500 text-white"
 }
 
 function getCourseName(course) {
@@ -967,12 +963,6 @@ export default function LiveScoringScreen() {
               const playerScore = toNumber(player.score, currentPar)
               const isWinning = playerScore === lowestScore
               const golfResult = getGolfResult(playerScore, currentPar)
-              const currentToPar = playerScore - currentPar
-              const playerSpecialLabel = getSpecialLabelForScore(
-                playerScore,
-                currentPar,
-                specialScoringEnabled
-              )
 
               return (
                 <motion.div
@@ -1010,23 +1000,6 @@ export default function LiveScoringScreen() {
                         >
                           {golfResult.label}
                         </div>
-
-                        <div
-                          className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] shadow-sm ${getToParBadgeStyle(
-                            currentToPar
-                          )}`}
-                        >
-                          {formatToPar(currentToPar)}
-                        </div>
-
-                        {isWinning &&
-                          specialScoringEnabled &&
-                          playerSpecialLabel && (
-                            <div className="flex items-center gap-1 rounded-full bg-orange-500 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-sm">
-                              <Sparkles size={10} />
-                              {playerSpecialLabel}
-                            </div>
-                          )}
                       </div>
                     </div>
 
@@ -1118,7 +1091,11 @@ export default function LiveScoringScreen() {
                             </div>
 
                             {historySpecialLabel && (
-                              <div className="flex items-center gap-1 rounded-full bg-orange-500 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-white">
+                              <div
+                                className={`flex items-center gap-1 rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-widest shadow-sm ${getSpecialBadgeStyle(
+                                  historySpecialLabel
+                                )}`}
+                              >
                                 <Sparkles size={9} />
                                 {historySpecialLabel}
                               </div>
@@ -1154,7 +1131,7 @@ export default function LiveScoringScreen() {
                                 : "text-amber-500"
                             }`}
                           >
-                            {getSkinsLabel(item.skins || 0)} · {" "}
+                            {getSkinsLabel(item.skins || 0)} ·{" "}
                             {formatPlainMoney(item.pot || 0)}
                           </div>
                         </div>
@@ -1286,7 +1263,11 @@ export default function LiveScoringScreen() {
 
                   {celebration.specialScoringApplied &&
                     celebration.specialScoringLabel && (
-                      <div className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-orange-500 px-4 text-xs font-black uppercase tracking-widest text-white">
+                      <div
+                        className={`inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-4 text-xs font-black uppercase tracking-widest ${getSpecialBadgeStyle(
+                          celebration.specialScoringLabel
+                        )}`}
+                      >
                         <Sparkles size={13} />
                         {formatCelebrationSpecialLabel(
                           celebration.specialScoringLabel

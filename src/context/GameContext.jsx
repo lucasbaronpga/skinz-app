@@ -315,16 +315,44 @@ function getWolffnScoreMultiplier(score, par) {
   return { multiplier: 1, label: null, resultLabel: getGolfResult(score, par).label }
 }
 
+function getWolffnSpecialScoringLabel({ wolffnMultiplier, scoreMultiplier, resultLabel, currentHoleValue }) {
+  if (currentHoleValue <= 1) {
+    return null
+  }
+
+  if (resultLabel === "Eagle" || resultLabel === "Albatross") {
+    return `Eagle ${currentHoleValue} Skinz`
+  }
+
+  if (resultLabel === "Birdie") {
+    return `Birdie ${currentHoleValue} Skinz`
+  }
+
+  if (wolffnMultiplier > 1 && scoreMultiplier === 1) {
+    return `Wolffn ${currentHoleValue} Skinz`
+  }
+
+  return `${currentHoleValue} Skinz`
+}
+
 function getWolffnMultiplier(wolffnSetup, winningScore, par) {
   const wolffnMultiplier = wolffnSetup?.format === "1v3" ? 2 : 1
   const scoreMultiplier = getWolffnScoreMultiplier(winningScore, par)
+  const currentHoleValue = wolffnMultiplier * scoreMultiplier.multiplier
+  const specialScoringLabel = getWolffnSpecialScoringLabel({
+    wolffnMultiplier,
+    scoreMultiplier: scoreMultiplier.multiplier,
+    resultLabel: scoreMultiplier.resultLabel,
+    currentHoleValue,
+  })
 
   return {
     wolffnMultiplier,
     scoreMultiplier: scoreMultiplier.multiplier,
     scoreMultiplierLabel: scoreMultiplier.label,
     resultLabel: scoreMultiplier.resultLabel,
-    currentHoleValue: wolffnMultiplier * scoreMultiplier.multiplier,
+    currentHoleValue,
+    specialScoringLabel,
   }
 }
 
@@ -358,9 +386,7 @@ function calculateWolffnHole({ players, par, carryover, stake, wolffnSetup }) {
   const losingTeam = hasTie ? [] : teamAWon ? wolffnSetup.teamB : wolffnSetup.teamA
   const winnerLabel = hasTie ? "Carryover" : winningTeam.join(" + ")
 
-  const teamPot = hasTie
-    ? roundMoney(nextCarryover * stake * Math.max(players.length - 1, 1))
-    : roundMoney(totalSkins * stake * winningTeam.length * losingTeam.length)
+  const teamPot = roundMoney((hasTie ? nextCarryover : totalSkins) * stake)
 
   return {
     hasTie,
@@ -706,6 +732,8 @@ export function GameProvider({ children }) {
         const winningResult = getGolfResult(wolffnResult.winningScore, currentPar)
         const totalSkins = wolffnResult.totalSkins
         const nextCarryover = wolffnResult.nextCarryover
+        const wolffnSpecialScoringLabel = wolffnResult.multiplierInfo.specialScoringLabel
+        const wolffnSpecialScoringApplied = Boolean(wolffnSpecialScoringLabel)
 
         const holeResult = {
           hole,
@@ -728,13 +756,13 @@ export function GameProvider({ children }) {
           carryoverSkins: carryover,
           carryoverAdded: wolffnResult.hasTie ? wolffnResult.currentHoleValue : 0,
           hasTie: wolffnResult.hasTie,
-          specialScoringEnabled: false,
-          specialScoringApplied: false,
-          specialScoringLabel: null,
-          bonusSkinsEnabled: false,
-          bonusResult: wolffnResult.multiplierInfo.scoreMultiplierLabel,
+          specialScoringEnabled: wolffnSpecialScoringApplied,
+          specialScoringApplied: wolffnSpecialScoringApplied,
+          specialScoringLabel: wolffnSpecialScoringLabel,
+          bonusSkinsEnabled: wolffnSpecialScoringApplied,
+          bonusResult: wolffnSpecialScoringLabel,
           winningResult: winningResult.label,
-          eagleBonusApplied: false,
+          eagleBonusApplied: wolffnResult.multiplierInfo.resultLabel === "Eagle",
           winner: wolffnResult.winnerLabel,
           winningScore: wolffnResult.winningScore,
           course: { id: courseSnapshot.id, name: courseSnapshot.name },
@@ -759,9 +787,9 @@ export function GameProvider({ children }) {
           const skinDelta = wolffnResult.hasTie
             ? 0
             : isOnWinningTeam
-              ? totalSkins * wolffnResult.losingTeam.length
+              ? totalSkins
               : isOnLosingTeam
-                ? -totalSkins * wolffnResult.winningTeam.length
+                ? -totalSkins
                 : 0
 
           const winningsDelta = roundMoney(skinDelta * stake)
@@ -793,14 +821,17 @@ export function GameProvider({ children }) {
                 totalSkins: wolffnResult.hasTie ? 0 : totalSkins,
                 baseSkins: 1,
                 currentHoleValue: wolffnResult.currentHoleValue,
+                wolffnMultiplier: wolffnResult.multiplierInfo.wolffnMultiplier,
+                scoreMultiplier: wolffnResult.multiplierInfo.scoreMultiplier,
+                scoreMultiplierLabel: wolffnResult.multiplierInfo.scoreMultiplierLabel,
                 carryoverAdded: wolffnResult.hasTie ? wolffnResult.currentHoleValue : 0,
-                specialScoringEnabled: false,
-                specialScoringApplied: false,
-                specialScoringLabel: null,
-                bonusSkinsEnabled: false,
-                bonusResult: wolffnResult.multiplierInfo.scoreMultiplierLabel,
+                specialScoringEnabled: wolffnSpecialScoringApplied,
+                specialScoringApplied: wolffnSpecialScoringApplied,
+                specialScoringLabel: wolffnSpecialScoringLabel,
+                bonusSkinsEnabled: wolffnSpecialScoringApplied,
+                bonusResult: wolffnSpecialScoringLabel,
                 winningResult: winningResult.label,
-                eagleBonusApplied: false,
+                eagleBonusApplied: wolffnResult.multiplierInfo.resultLabel === "Eagle",
               },
             ],
             score: currentPars[hole] || DEFAULT_SCORE,
@@ -827,13 +858,13 @@ export function GameProvider({ children }) {
             wolffnSetup,
             wolffnFormat: wolffnSetup.format,
             wolffnPlayer: wolffnSetup.wolffnPlayer || null,
-            specialScoringEnabled: false,
-            specialScoringApplied: false,
-            specialScoringLabel: null,
-            bonusSkinsEnabled: false,
-            bonusResult: wolffnResult.multiplierInfo.scoreMultiplierLabel,
+            specialScoringEnabled: wolffnSpecialScoringApplied,
+            specialScoringApplied: wolffnSpecialScoringApplied,
+            specialScoringLabel: wolffnSpecialScoringLabel,
+            bonusSkinsEnabled: wolffnSpecialScoringApplied,
+            bonusResult: wolffnSpecialScoringLabel,
             winningResult: winningResult.label,
-            eagleBonusApplied: false,
+            eagleBonusApplied: wolffnResult.multiplierInfo.resultLabel === "Eagle",
           })
 
           window.setTimeout(() => setCelebration(null), 2200)
