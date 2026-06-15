@@ -1,14 +1,12 @@
 import { useMemo, useState } from "react"
 
-import { useNavigate } from "react-router-dom"
 import { AnimatePresence, motion } from "framer-motion"
+import { useNavigate } from "react-router-dom"
 
 import AppBackground from "../components/AppBackground"
 import GameModeBadge from "../components/GameModeBadge"
-
 import { useAuth } from "../context/AuthContext"
 import { GAME_MODES, useGame } from "../context/GameContext"
-
 import { getGameModeTheme } from "../utils/gameModeTheme"
 
 const MIN_STAKE = 0.1
@@ -47,8 +45,16 @@ function getCourseName(course) {
   return course?.name || "Erster Golfclub Westpfalz"
 }
 
+function getCourseLocation(course) {
+  return String(course?.location || "").trim()
+}
+
 function getCoursePar(course) {
   return toNumber(course?.par, 72)
+}
+
+function getCourseHoleCount(course) {
+  return Array.isArray(course?.pars) && course.pars.length > 0 ? course.pars.length : 18
 }
 
 function clampStake(value) {
@@ -86,8 +92,7 @@ function buildInitialPlayers(userName) {
     return ["Lucas", "Ben"]
   }
 
-  const defaultOpponent =
-    normalizeName(cleanedUserName) === "ben" ? "Lucas" : "Ben"
+  const defaultOpponent = normalizeName(cleanedUserName) === "ben" ? "Lucas" : "Ben"
 
   return [cleanedUserName, defaultOpponent]
 }
@@ -134,13 +139,19 @@ export default function RoundSetupScreen() {
     currentCourse,
   } = useGame()
 
-  const safeCourses = Array.isArray(courses) ? courses : []
+  const safeCourses = useMemo(() => {
+    return Array.isArray(courses) ? courses.filter(Boolean) : []
+  }, [courses])
 
   const [players, setPlayers] = useState(() => buildInitialPlayers(user?.name))
   const [newPlayer, setNewPlayer] = useState("")
   const [stake, setStake] = useState(2)
   const [selectedGameMode, setSelectedGameMode] = useState(GAME_MODES.CLASSIC)
   const [showWolffnModal, setShowWolffnModal] = useState(false)
+
+  const selectedCourse = currentCourse || safeCourses[0] || null
+  const selectedCourseLocation = getCourseLocation(selectedCourse)
+  const selectedCourseHoleCount = getCourseHoleCount(selectedCourse)
 
   const uniquePlayers = useMemo(() => {
     const playerMap = new Map()
@@ -182,9 +193,7 @@ export default function RoundSetupScreen() {
   const gameModeDescription = getGameModeDescription(selectedGameMode)
   const wolffnPlayerCountValid = uniquePlayers.length === 4
 
-  const canStart = isWolffnMode
-    ? wolffnPlayerCountValid
-    : uniquePlayers.length >= 2
+  const canStart = isWolffnMode ? wolffnPlayerCountValid : uniquePlayers.length >= 2
 
   function addPlayer() {
     if (!cleanedNewPlayer) {
@@ -202,9 +211,7 @@ export default function RoundSetupScreen() {
 
   function removePlayer(name) {
     setPlayers((currentPlayers) =>
-      currentPlayers.filter(
-        (player) => normalizeName(player) !== normalizeName(name)
-      )
+      currentPlayers.filter((player) => normalizeName(player) !== normalizeName(name))
     )
   }
 
@@ -252,12 +259,7 @@ export default function RoundSetupScreen() {
       }
     }
 
-    const didStart = startMatch(
-      uniquePlayers,
-      stake,
-      selectedCourseId,
-      selectedGameMode
-    )
+    const didStart = startMatch(uniquePlayers, stake, selectedCourseId, selectedGameMode)
 
     if (didStart) {
       navigate("/live")
@@ -306,8 +308,7 @@ export default function RoundSetupScreen() {
             </div>
 
             <div className="mt-2 text-sm font-semibold leading-relaxed text-slate-500">
-              Wenn du eine neue Runde startest, wird die aktuelle Runde
-              überschrieben.
+              Wenn du eine neue Runde startest, wird die aktuelle Runde überschrieben.
             </div>
           </motion.div>
         )}
@@ -339,7 +340,19 @@ export default function RoundSetupScreen() {
                   </div>
 
                   <div className="mt-4 max-w-full break-words text-[clamp(2.15rem,11vw,2.55rem)] font-black leading-none tracking-[-0.055em]">
-                    {getCourseName(currentCourse)}
+                    {getCourseName(selectedCourse)}
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {selectedCourseLocation && (
+                      <div className="rounded-full bg-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white">
+                        {selectedCourseLocation}
+                      </div>
+                    )}
+
+                    <div className="rounded-full bg-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white">
+                      {selectedCourseHoleCount} Holes
+                    </div>
                   </div>
                 </div>
 
@@ -403,8 +416,7 @@ export default function RoundSetupScreen() {
                   </div>
 
                   <div className="mt-1 text-sm font-black text-slate-300">
-                    {formatStake(getPreviousStakePreset(stake))} / {" "}
-                    {formatStake(getNextStakePreset(stake))}
+                    {formatStake(getPreviousStakePreset(stake))} / {formatStake(getNextStakePreset(stake))}
                   </div>
                 </div>
               </div>
@@ -536,8 +548,7 @@ export default function RoundSetupScreen() {
 
           {isWolffnMode && (
             <div className="mt-5 rounded-[24px] border border-slate-900/10 bg-slate-950 px-5 py-4 text-sm font-semibold leading-relaxed text-slate-300 shadow-sm">
-              🐺 Wolffn braucht exakt 4 Spieler. Der erste Spieler am Loch
-              entscheidet: Partner, Ablehnung oder allein gegen drei.
+              🐺 Wolffn braucht exakt 4 Spieler. Der erste Spieler am Loch entscheidet: Partner, Ablehnung oder allein gegen drei.
             </div>
           )}
         </motion.div>
@@ -565,9 +576,13 @@ export default function RoundSetupScreen() {
               </div>
 
               <div className="mt-1 text-xl font-black text-slate-950">
-                Par {getCoursePar(currentCourse)}
+                Par {getCoursePar(selectedCourse)}
               </div>
             </div>
+          </div>
+
+          <div className="mt-4 rounded-[24px] border border-white/70 bg-white/[0.42] px-5 py-4 text-sm font-semibold leading-relaxed text-slate-500 backdrop-blur-xl">
+            Gespielte Matches speichern immer einen eigenen Course-Snapshot. Spätere Course-Änderungen verändern keine alten Scorecards.
           </div>
 
           <div className="mt-6 space-y-3">
@@ -579,6 +594,8 @@ export default function RoundSetupScreen() {
 
             {safeCourses.map((course) => {
               const isActive = selectedCourseId === course.id
+              const courseLocation = getCourseLocation(course)
+              const courseHoleCount = getCourseHoleCount(course)
 
               return (
                 <motion.button
@@ -599,12 +616,26 @@ export default function RoundSetupScreen() {
                         {getCourseName(course)}
                       </div>
 
-                      <div
-                        className={`mt-2 text-xs font-black uppercase tracking-[0.18em] ${
-                          isActive ? modeTheme.softText : "text-slate-400"
-                        }`}
-                      >
-                        {isActive ? "Selected" : "Available"}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <div
+                          className={`rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] ${
+                            isActive
+                              ? `${modeTheme.activeBorder} ${modeTheme.activeSoftBg} ${modeTheme.softText}`
+                              : "bg-white/70 text-slate-400"
+                          }`}
+                        >
+                          {isActive ? "Selected" : "Available"}
+                        </div>
+
+                        {courseLocation && (
+                          <div className="rounded-full bg-white/70 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                            {courseLocation}
+                          </div>
+                        )}
+
+                        <div className="rounded-full bg-white/70 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                          {courseHoleCount} Holes
+                        </div>
                       </div>
                     </div>
 
@@ -701,8 +732,7 @@ export default function RoundSetupScreen() {
             )}
 
             {uniquePlayers.map((player) => {
-              const isCurrentUser =
-                normalizeName(player) === normalizeName(user?.name)
+              const isCurrentUser = normalizeName(player) === normalizeName(user?.name)
 
               return (
                 <div
@@ -712,9 +742,7 @@ export default function RoundSetupScreen() {
                   <div className="flex min-w-0 flex-1 items-center gap-4">
                     <div
                       className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg font-black uppercase shadow-sm ${
-                        isCurrentUser
-                          ? modeTheme.avatar
-                          : "bg-slate-950 text-white"
+                        isCurrentUser ? modeTheme.avatar : "bg-slate-950 text-white"
                       }`}
                     >
                       {player.charAt(0)}

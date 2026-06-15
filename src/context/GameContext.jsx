@@ -21,7 +21,7 @@ export const GAME_MODES = {
   WOLFFN: "wolffn",
 }
 
-const courses = [
+const DEFAULT_COURSES = [
   {
     id: "westpfalz",
     name: "Erster Golfclub Westpfalz",
@@ -56,6 +56,80 @@ function normalizeStake(value) {
   return stake > 0 ? stake : DEFAULT_STAKE
 }
 
+function normalizePars(pars, fallbackPars = DEFAULT_COURSES[0].pars) {
+  const sourcePars = Array.isArray(pars) && pars.length > 0 ? pars : fallbackPars
+  const normalizedPars = sourcePars
+    .slice(0, HOLE_COUNT)
+    .map((par) => Math.max(toNumber(par, DEFAULT_SCORE), 1))
+
+  while (normalizedPars.length < HOLE_COUNT) {
+    normalizedPars.push(toNumber(fallbackPars[normalizedPars.length], DEFAULT_SCORE))
+  }
+
+  return normalizedPars
+}
+
+function createCourseId(value, fallback = "course") {
+  const slug = String(value || fallback)
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+
+  return slug || fallback
+}
+
+function normalizeCourse(course, fallbackCourse = DEFAULT_COURSES[0]) {
+  const fallbackPars = normalizePars(fallbackCourse?.pars)
+  const pars = normalizePars(course?.pars, fallbackPars)
+  const fallbackName = fallbackCourse?.name || "Golf Course"
+  const name = String(course?.name || fallbackName).trim() || fallbackName
+  const location = String(course?.location || fallbackCourse?.location || "").trim()
+  const id = createCourseId(course?.id || name, fallbackCourse?.id || DEFAULT_COURSE_ID)
+  const calculatedPar = pars.reduce((total, par) => total + toNumber(par, DEFAULT_SCORE), 0)
+
+  return {
+    id,
+    name,
+    location,
+    par: toNumber(course?.par, calculatedPar),
+    pars,
+  }
+}
+
+function getCourseById(courseId, courseList = DEFAULT_COURSES) {
+  const safeCourseList = Array.isArray(courseList) && courseList.length > 0 ? courseList : DEFAULT_COURSES
+  const normalizedCourseId = String(courseId || "").trim().toLowerCase()
+
+  return (
+    safeCourseList.find((course) => String(course?.id || "").toLowerCase() === normalizedCourseId) ||
+    safeCourseList[0] ||
+    DEFAULT_COURSES[0]
+  )
+}
+
+function normalizeCourseList(savedCourses) {
+  const courseMap = new Map()
+
+  DEFAULT_COURSES.forEach((course) => {
+    const normalizedCourse = normalizeCourse(course, course)
+    courseMap.set(normalizedCourse.id, normalizedCourse)
+  })
+
+  if (Array.isArray(savedCourses)) {
+    savedCourses.forEach((course) => {
+      const fallbackCourse = getCourseById(course?.id, Array.from(courseMap.values()))
+      const normalizedCourse = normalizeCourse(course, fallbackCourse)
+      courseMap.set(normalizedCourse.id, normalizedCourse)
+    })
+  }
+
+  return Array.from(courseMap.values())
+}
+
 export function getGameModeLabel(gameMode) {
   if (gameMode === GAME_MODES.WOLFFN) return "Wolffn"
   if (gameMode === GAME_MODES.PROFESSIONAL) return "Skinz Professional"
@@ -77,12 +151,8 @@ function isWolffnGameMode(gameMode) {
   return gameMode === GAME_MODES.WOLFFN
 }
 
-function getCourseById(courseId) {
-  return courses.find((course) => course.id === courseId) || courses[0]
-}
-
 function createCourseSnapshot(course) {
-  const safeCourse = course || getCourseById(DEFAULT_COURSE_ID)
+  const safeCourse = normalizeCourse(course || getCourseById(DEFAULT_COURSE_ID))
 
   return {
     id: safeCourse.id,
@@ -93,21 +163,29 @@ function createCourseSnapshot(course) {
   }
 }
 
-function normalizeCourseSnapshot(course) {
-  if (!course) return createCourseSnapshot(getCourseById(DEFAULT_COURSE_ID))
+function normalizeCourseSnapshot(course, courseList = DEFAULT_COURSES) {
+  if (!course) return createCourseSnapshot(getCourseById(DEFAULT_COURSE_ID, courseList))
 
   const courseId = String(course.id || "").toLowerCase()
   const courseName = String(course.name || "").toLowerCase()
 
-  if (courseId === "kronberg" || courseName.includes("kronberg")) {
-    return createCourseSnapshot(getCourseById("kronberg"))
+  const matchedCourse = courseList.find((availableCourse) => {
+    const availableCourseId = String(availableCourse?.id || "").toLowerCase()
+    const availableCourseName = String(availableCourse?.name || "").toLowerCase()
+
+    return (
+      availableCourseId === courseId ||
+      (courseName && availableCourseName === courseName) ||
+      (courseName && availableCourseName.includes(courseName)) ||
+      (availableCourseName && courseName.includes(availableCourseName))
+    )
+  })
+
+  if (matchedCourse) {
+    return createCourseSnapshot(matchedCourse)
   }
 
-  if (courseId === "westpfalz" || courseName.includes("westpfalz")) {
-    return createCourseSnapshot(getCourseById("westpfalz"))
-  }
-
-  return createCourseSnapshot(getCourseById(DEFAULT_COURSE_ID))
+  return createCourseSnapshot(normalizeCourse(course))
 }
 
 function createMatchId(number) {
@@ -136,11 +214,12 @@ function normalizePlayer(player, fallbackScore = DEFAULT_SCORE) {
     score: toNumber(player?.score, fallbackScore),
     total: toNumber(player?.total, 0),
     totalToPar: toNumber(player?.totalToPar, 0),
-    skins: toNumber(player?.skins, 0),
+    skins: Math.max(toNumber(player?.skins, 0), 0),
     winnings: roundMoney(player?.winnings),
     holes: Array.isArray(player?.holes)
       ? player.holes.map((hole) => ({
           ...hole,
+          skinDelta: Math.max(toNumber(hole?.skinDelta, 0), 0),
           winningsDelta:
             hole?.winningsDelta !== undefined
               ? roundMoney(hole.winningsDelta)
@@ -163,7 +242,62 @@ function normalizeHistory(history) {
     : []
 }
 
-function normalizeCompletedRounds(rounds) {
+function calculateSettlementWinnings(players, stake) {
+  const safePlayers = Array.isArray(players) ? players : []
+  const safeStake = normalizeStake(stake)
+
+  return safePlayers.map((player) => {
+    const playerSkins = toNumber(player?.skins, 0)
+    const winnings = safePlayers.reduce((total, opponent) => {
+      if (normalizeName(opponent?.name) === normalizeName(player?.name)) {
+        return total
+      }
+
+      return total + (playerSkins - toNumber(opponent?.skins, 0)) * safeStake
+    }, 0)
+
+    return {
+      ...player,
+      winnings: roundMoney(winnings),
+    }
+  })
+}
+
+function applyLatestWinningsDelta(playersAfterSettlement, previousPlayers) {
+  const safePreviousPlayers = Array.isArray(previousPlayers) ? previousPlayers : []
+
+  return playersAfterSettlement.map((player) => {
+    const previousPlayer = safePreviousPlayers.find(
+      (item) => normalizeName(item?.name) === normalizeName(player?.name)
+    )
+    const winningsDelta = roundMoney(
+      toNumber(player?.winnings, 0) - toNumber(previousPlayer?.winnings, 0)
+    )
+    const holes = Array.isArray(player?.holes) ? [...player.holes] : []
+
+    if (holes.length === 0) return player
+
+    const lastHole = holes[holes.length - 1]
+    holes[holes.length - 1] = {
+      ...lastHole,
+      winningsDelta,
+    }
+
+    return {
+      ...player,
+      holes,
+    }
+  })
+}
+
+function settlePlayersAfterHole(playersAfterHole, previousPlayers, stake) {
+  return applyLatestWinningsDelta(
+    calculateSettlementWinnings(playersAfterHole, stake),
+    previousPlayers
+  )
+}
+
+function normalizeCompletedRounds(rounds, courseList = DEFAULT_COURSES) {
   if (!Array.isArray(rounds)) return []
 
   return rounds.map((round) => {
@@ -175,18 +309,30 @@ function normalizeCompletedRounds(rounds) {
 
     const gameMode = normalizeGameMode(round.gameMode, specialScoringEnabled)
     const normalizedSpecialScoringEnabled = isProfessionalGameMode(gameMode)
+    const normalizedPlayers = getRoundPlayers(round).map((player) => normalizePlayer(player))
+    const settledPlayers = calculateSettlementWinnings(normalizedPlayers, round.stake)
+    const sortedPlayers = [...settledPlayers].sort(
+      (a, b) =>
+        toNumber(b.winnings, 0) - toNumber(a.winnings, 0) ||
+        toNumber(b.skins, 0) - toNumber(a.skins, 0) ||
+        toNumber(a.totalToPar, 0) - toNumber(b.totalToPar, 0) ||
+        toNumber(a.total, 0) - toNumber(b.total, 0) ||
+        String(a?.name || "").localeCompare(String(b?.name || ""))
+    )
+    const champion = sortedPlayers[0]
 
     return {
       ...round,
       gameMode,
       gameModeLabel: round.gameModeLabel || getGameModeLabel(gameMode),
-      course: normalizeCourseSnapshot(round.course),
-      players: getRoundPlayers(round).map((player) => normalizePlayer(player)),
+      course: normalizeCourseSnapshot(round.course, courseList),
+      players: settledPlayers,
       history: normalizeHistory(round.history),
       stake: normalizeStake(round.stake),
-      winnings: roundMoney(round.winnings),
-      skins: toNumber(round.skins, 0),
-      totalToPar: toNumber(round.totalToPar, 0),
+      winnings: roundMoney(champion?.winnings || round.winnings || 0),
+      skins: toNumber(champion?.skins ?? round.skins, 0),
+      winner: champion?.name || round.winner || "Unbekannt",
+      totalToPar: toNumber(champion?.totalToPar ?? round.totalToPar, 0),
       specialScoringEnabled: normalizedSpecialScoringEnabled,
       bonusSkinsEnabled: normalizedSpecialScoringEnabled,
       eagleBonusEnabled: normalizedSpecialScoringEnabled,
@@ -257,42 +403,48 @@ function getWolffnSpecialScoringLabel({
   wolffnMultiplier,
   scoreMultiplier,
   resultLabel,
-  currentHoleValue,
+  basePotSkins,
+  totalPotSkins,
 }) {
-  if (currentHoleValue <= 1) return null
+  if (totalPotSkins <= basePotSkins && wolffnMultiplier <= 1 && scoreMultiplier <= 1) return null
 
   if (resultLabel === "Eagle" || resultLabel === "Albatross") {
-    return `Eagle ${currentHoleValue} Skinz`
+    return `Eagle ${totalPotSkins} Skinz`
   }
 
   if (resultLabel === "Birdie") {
-    return `Birdie ${currentHoleValue} Skinz`
+    return `Birdie ${totalPotSkins} Skinz`
   }
 
   if (wolffnMultiplier > 1 && scoreMultiplier === 1) {
-    return `Wolffn ${currentHoleValue} Skinz`
+    return `Wolffn ${totalPotSkins} Skinz`
   }
 
-  return `${currentHoleValue} Skinz`
+  return `${totalPotSkins} Skinz`
 }
 
-function getWolffnMultiplier(wolffnSetup, winningScore, par) {
+function getWolffnMultiplier(wolffnSetup, winningScore, par, basePotSkins = 1) {
   const wolffnMultiplier = wolffnSetup?.format === "1v3" ? 2 : 1
   const scoreMultiplier = getWolffnScoreMultiplier(winningScore, par)
-  const currentHoleValue = wolffnMultiplier * scoreMultiplier.multiplier
+  const totalMultiplier = wolffnMultiplier * scoreMultiplier.multiplier
+  const totalPotSkins = basePotSkins * totalMultiplier
   const specialScoringLabel = getWolffnSpecialScoringLabel({
     wolffnMultiplier,
     scoreMultiplier: scoreMultiplier.multiplier,
     resultLabel: scoreMultiplier.resultLabel,
-    currentHoleValue,
+    basePotSkins,
+    totalPotSkins,
   })
 
   return {
     wolffnMultiplier,
     scoreMultiplier: scoreMultiplier.multiplier,
+    totalMultiplier,
     scoreMultiplierLabel: scoreMultiplier.label,
     resultLabel: scoreMultiplier.resultLabel,
-    currentHoleValue,
+    currentHoleValue: totalPotSkins,
+    basePotSkins,
+    totalPotSkins,
     specialScoringLabel,
   }
 }
@@ -315,10 +467,11 @@ function calculateWolffnHole({ players, par, carryover, stake, wolffnSetup }) {
 
   const hasTie = teamAScore === teamBScore
   const winningScore = Math.min(teamAScore, teamBScore)
-  const multiplierInfo = getWolffnMultiplier(wolffnSetup, winningScore, par)
-  const currentHoleValue = multiplierInfo.currentHoleValue
-  const nextCarryover = hasTie ? carryover + currentHoleValue : 0
-  const totalSkins = hasTie ? 0 : carryover + currentHoleValue
+  const basePotSkins = toNumber(carryover, 0) + 1
+  const multiplierInfo = getWolffnMultiplier(wolffnSetup, winningScore, par, basePotSkins)
+  const totalPotSkins = multiplierInfo.totalPotSkins
+  const nextCarryover = hasTie ? totalPotSkins : 0
+  const totalSkins = hasTie ? 0 : totalPotSkins
   const teamAWon = teamAScore < teamBScore
 
   const winningTeam = hasTie ? [] : teamAWon ? wolffnSetup.teamA : wolffnSetup.teamB
@@ -336,45 +489,29 @@ function calculateWolffnHole({ players, par, carryover, stake, wolffnSetup }) {
     winnerLabel,
     nextCarryover,
     totalSkins,
-    currentHoleValue,
+    basePotSkins,
+    currentHoleValue: totalPotSkins,
+    totalPotSkins,
+    carryoverGrowth: hasTie ? Math.max(totalPotSkins - toNumber(carryover, 0), 0) : 0,
     teamPot,
     multiplierInfo,
   }
 }
 
-function getWolffnPlayerSkinDelta({
-  playerName,
-  hasTie,
-  totalSkins,
-  winningTeam,
-  losingTeam,
-}) {
+function getWolffnPlayerSkinDelta({ playerName, hasTie, totalSkins, winningTeam }) {
   if (hasTie) return 0
 
   const isOnWinningTeam = winningTeam.some(
     (teamPlayerName) => normalizeName(teamPlayerName) === normalizeName(playerName)
   )
-  const isOnLosingTeam = losingTeam.some(
-    (teamPlayerName) => normalizeName(teamPlayerName) === normalizeName(playerName)
-  )
 
-  if (isOnWinningTeam) {
-    return winningTeam.length === 1 ? totalSkins * losingTeam.length : totalSkins
-  }
-
-  if (isOnLosingTeam) {
-    return losingTeam.length === 1 ? -totalSkins * winningTeam.length : -totalSkins
-  }
-
-  return 0
+  return isOnWinningTeam ? totalSkins : 0
 }
 
 function getSavedGame() {
   try {
     const savedGame = localStorage.getItem(STORAGE_KEY)
-
     if (!savedGame) return null
-
     return JSON.parse(savedGame)
   } catch {
     localStorage.removeItem(STORAGE_KEY)
@@ -384,27 +521,27 @@ function getSavedGame() {
 
 function createInitialGameState() {
   const savedGame = getSavedGame()
-  const completedRounds = normalizeCompletedRounds(savedGame?.completedRounds || [])
+  const normalizedCourses = normalizeCourseList(savedGame?.courses)
+  const completedRounds = normalizeCompletedRounds(savedGame?.completedRounds || [], normalizedCourses)
   const matchCounter = toNumber(savedGame?.matchCounter, completedRounds.length || 0)
-  const selectedCourseId = getCourseById(savedGame?.selectedCourseId || DEFAULT_COURSE_ID).id
-  const currentCourse = getCourseById(selectedCourseId)
-  const currentPars = currentCourse?.pars || courses[0].pars
+  const selectedCourseId = getCourseById(savedGame?.selectedCourseId || DEFAULT_COURSE_ID, normalizedCourses).id
+  const currentCourse = getCourseById(selectedCourseId, normalizedCourses)
+  const currentPars = currentCourse?.pars || DEFAULT_COURSES[0].pars
 
-  const players =
+  const rawPlayers =
     Array.isArray(savedGame?.players) && savedGame.players.length > 0
       ? savedGame.players.map((player) => normalizePlayer(player, currentPars[0] || DEFAULT_SCORE))
       : createDefaultPlayers()
+  const players = calculateSettlementWinnings(rawPlayers, savedGame?.stake ?? DEFAULT_STAKE)
 
   const savedSpecialScoringEnabled = Boolean(
-    savedGame?.specialScoringEnabled ||
-      savedGame?.bonusSkinsEnabled ||
-      savedGame?.eagleBonusEnabled
+    savedGame?.specialScoringEnabled || savedGame?.bonusSkinsEnabled || savedGame?.eagleBonusEnabled
   )
-
   const gameMode = normalizeGameMode(savedGame?.gameMode, savedSpecialScoringEnabled)
   const specialScoringEnabled = isProfessionalGameMode(gameMode)
 
   return {
+    courses: normalizedCourses,
     selectedCourseId,
     hole: Math.min(Math.max(toNumber(savedGame?.hole, 1), 1), HOLE_COUNT),
     carryover: toNumber(savedGame?.carryover, 0),
@@ -421,24 +558,16 @@ function createInitialGameState() {
   }
 }
 
-function createCompletedRound({
-  activeMatchId,
-  courseSnapshot,
-  gameMode,
-  gameModeLabel,
-  finalPlayers,
-  history,
-  stake,
-  specialScoringEnabled,
-}) {
-  const sortedFinalPlayers = [...finalPlayers].sort(
+function createCompletedRound({ activeMatchId, courseSnapshot, gameMode, gameModeLabel, finalPlayers, history, stake, specialScoringEnabled }) {
+  const settledFinalPlayers = calculateSettlementWinnings(finalPlayers, stake)
+  const sortedFinalPlayers = [...settledFinalPlayers].sort(
     (a, b) =>
       toNumber(b.winnings, 0) - toNumber(a.winnings, 0) ||
+      toNumber(b.skins, 0) - toNumber(a.skins, 0) ||
       toNumber(a.totalToPar, 0) - toNumber(b.totalToPar, 0) ||
       toNumber(a.total, 0) - toNumber(b.total, 0) ||
       String(a?.name || "").localeCompare(String(b?.name || ""))
   )
-
   const champion = sortedFinalPlayers[0]
 
   return {
@@ -457,14 +586,15 @@ function createCompletedRound({
     bonusSkinsEnabled: specialScoringEnabled,
     eagleBonusEnabled: specialScoringEnabled,
     history,
-    players: finalPlayers,
+    players: settledFinalPlayers,
   }
 }
 
 export function GameProvider({ children }) {
   const initialState = useMemo(() => createInitialGameState(), [])
 
-  const [selectedCourseId, setSelectedCourseId] = useState(initialState.selectedCourseId)
+  const [courses, setCourses] = useState(initialState.courses)
+  const [selectedCourseId, setSelectedCourseIdState] = useState(initialState.selectedCourseId)
   const [hole, setHole] = useState(initialState.hole)
   const [carryover, setCarryover] = useState(initialState.carryover)
   const [history, setHistory] = useState(initialState.history)
@@ -477,22 +607,67 @@ export function GameProvider({ children }) {
   const [matchFinished, setMatchFinished] = useState(initialState.matchFinished)
   const [hasActiveMatch, setHasActiveMatch] = useState(initialState.hasActiveMatch)
   const [gameMode, setGameModeState] = useState(initialState.gameMode)
-  const [specialScoringEnabled, setSpecialScoringEnabledState] = useState(
-    initialState.specialScoringEnabled
-  )
+  const [specialScoringEnabled, setSpecialScoringEnabledState] = useState(initialState.specialScoringEnabled)
 
-  const currentCourse = getCourseById(selectedCourseId)
-  const currentPars = currentCourse?.pars || courses[0].pars
+  const currentCourse = getCourseById(selectedCourseId, courses)
+  const currentPars = currentCourse?.pars || DEFAULT_COURSES[0].pars
   const currentPar = currentPars[hole - 1] || DEFAULT_SCORE
   const isWolffnMode = isWolffnGameMode(gameMode)
   const isProfessionalMode = isProfessionalGameMode(gameMode)
   const gameModeLabel = getGameModeLabel(gameMode)
 
-  const setStake = useCallback((value) => {
-    setStakeState((currentStake) => {
-      const nextStake = typeof value === "function" ? value(currentStake) : value
-      return normalizeStake(nextStake)
+  const setSelectedCourseId = useCallback((courseId) => {
+    const selectedCourse = getCourseById(courseId, courses)
+    setSelectedCourseIdState(selectedCourse.id)
+  }, [courses])
+
+  const addCourse = useCallback((course) => {
+    let createdCourse = null
+    setCourses((currentCourses) => {
+      const normalizedCourses = normalizeCourseList(currentCourses)
+      const baseCourse = normalizeCourse(course)
+      const usedCourseIds = new Set(normalizedCourses.map((currentCourse) => currentCourse.id))
+      let nextCourseId = baseCourse.id
+      let suffix = 2
+      while (usedCourseIds.has(nextCourseId)) {
+        nextCourseId = `${baseCourse.id}-${suffix}`
+        suffix += 1
+      }
+      createdCourse = { ...baseCourse, id: nextCourseId }
+      return [...normalizedCourses, createdCourse]
     })
+    return createdCourse
+  }, [])
+
+  const updateCourse = useCallback((courseId, updates) => {
+    const normalizedCourseId = String(courseId || "").trim()
+    let updatedCourse = null
+    if (!normalizedCourseId) return null
+    setCourses((currentCourses) => {
+      const normalizedCourses = normalizeCourseList(currentCourses)
+      return normalizedCourses.map((course) => {
+        if (course.id !== normalizedCourseId) return course
+        updatedCourse = normalizeCourse({ ...course, ...updates, id: course.id }, course)
+        return updatedCourse
+      })
+    })
+    return updatedCourse
+  }, [])
+
+  const deleteCourse = useCallback((courseId) => {
+    const normalizedCourseId = String(courseId || "").trim()
+    if (!normalizedCourseId || normalizedCourseId === DEFAULT_COURSE_ID) return false
+    if (selectedCourseId === normalizedCourseId) return false
+    setCourses((currentCourses) => {
+      const normalizedCourses = normalizeCourseList(currentCourses)
+      if (normalizedCourses.length <= 1) return normalizedCourses
+      return normalizedCourses.filter((course) => course.id !== normalizedCourseId)
+    })
+    return true
+  }, [selectedCourseId])
+
+  const setStake = useCallback((value) => {
+    setStakeState((currentStake) => normalizeStake(typeof value === "function" ? value(currentStake) : value))
   }, [])
 
   const setGameMode = useCallback((nextGameMode) => {
@@ -509,291 +684,174 @@ export function GameProvider({ children }) {
     })
   }, [])
 
-  const lowestScore =
-    players.length > 0 ? Math.min(...players.map((player) => toNumber(player.score, 0))) : 0
-
+  const lowestScore = players.length > 0 ? Math.min(...players.map((player) => toNumber(player.score, 0))) : 0
   const winners = players.filter((player) => toNumber(player.score, 0) === lowestScore)
   const hasTie = winners.length > 1
-
-  const currentBaseSkins =
-    players.length > 0
-      ? getBaseSkinsForScore(lowestScore, currentPar, specialScoringEnabled)
-      : 1
-
-  const currentBonusSkins =
-    !hasTie && winners[0]
-      ? getBonusSkinsForScore(winners[0].score, currentPar, specialScoringEnabled)
-      : 0
-
+  const currentBaseSkins = players.length > 0 ? getBaseSkinsForScore(lowestScore, currentPar, specialScoringEnabled) : 1
+  const currentBonusSkins = !hasTie && winners[0] ? getBonusSkinsForScore(winners[0].score, currentPar, specialScoringEnabled) : 0
   const currentSkinsAtStake = carryover + currentBaseSkins
   const currentPot = roundMoney(currentSkinsAtStake * stake * Math.max(players.length - 1, 1))
 
   useEffect(() => {
     try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          hole,
-          carryover,
-          history,
-          players,
-          stake,
-          matchFinished,
-          hasActiveMatch,
-          completedRounds,
-          activeMatchId,
-          matchCounter,
-          selectedCourseId,
-          gameMode,
-          gameModeLabel,
-          specialScoringEnabled,
-          bonusSkinsEnabled: specialScoringEnabled,
-          eagleBonusEnabled: specialScoringEnabled,
-        })
-      )
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        courses,
+        hole,
+        carryover,
+        history,
+        players,
+        stake,
+        matchFinished,
+        hasActiveMatch,
+        completedRounds,
+        activeMatchId,
+        matchCounter,
+        selectedCourseId,
+        gameMode,
+        gameModeLabel,
+        specialScoringEnabled,
+        bonusSkinsEnabled: specialScoringEnabled,
+        eagleBonusEnabled: specialScoringEnabled,
+      }))
     } catch {
       // localStorage kann z. B. im Private Mode oder bei vollem Speicher fehlschlagen.
     }
-  }, [
-    hole,
-    carryover,
-    history,
-    players,
-    stake,
-    matchFinished,
-    hasActiveMatch,
-    completedRounds,
-    activeMatchId,
-    matchCounter,
-    selectedCourseId,
-    gameMode,
-    gameModeLabel,
-    specialScoringEnabled,
-  ])
+  }, [courses, hole, carryover, history, players, stake, matchFinished, hasActiveMatch, completedRounds, activeMatchId, matchCounter, selectedCourseId, gameMode, gameModeLabel, specialScoringEnabled])
 
-  const updateScore = useCallback(
-    (index, value) => {
-      if (matchFinished || !hasActiveMatch) return
+  const updateScore = useCallback((index, value) => {
+    if (matchFinished || !hasActiveMatch) return
+    setPlayers((currentPlayers) => currentPlayers.map((player, playerIndex) => playerIndex !== index ? player : { ...player, score: toNumber(value, currentPar) }))
+  }, [matchFinished, hasActiveMatch, currentPar])
 
-      setPlayers((currentPlayers) =>
-        currentPlayers.map((player, playerIndex) => {
-          if (playerIndex !== index) return player
+  const startMatch = useCallback((playerNames, selectedStake = DEFAULT_STAKE, courseId = selectedCourseId, selectedSpecialScoringEnabledOrGameMode = false, selectedGameMode) => {
+    const cleanedNames = Array.isArray(playerNames) ? playerNames.map((name) => String(name || "").trim()).filter(Boolean) : []
+    const uniqueNameMap = new Map()
+    cleanedNames.forEach((name) => {
+      const key = normalizeName(name)
+      if (!uniqueNameMap.has(key)) uniqueNameMap.set(key, name)
+    })
+    const uniqueNames = Array.from(uniqueNameMap.values())
+    if (uniqueNames.length < 2) return false
 
-          return {
-            ...player,
-            score: toNumber(value, currentPar),
-          }
-        })
-      )
-    },
-    [matchFinished, hasActiveMatch, currentPar]
-  )
+    const requestedGameMode = selectedGameMode !== undefined
+      ? selectedGameMode
+      : typeof selectedSpecialScoringEnabledOrGameMode === "string"
+        ? selectedSpecialScoringEnabledOrGameMode
+        : null
+    const requestedSpecialScoringEnabled = typeof selectedSpecialScoringEnabledOrGameMode === "boolean" ? selectedSpecialScoringEnabledOrGameMode : false
+    const nextGameMode = normalizeGameMode(requestedGameMode, requestedSpecialScoringEnabled)
+    if (isWolffnGameMode(nextGameMode) && uniqueNames.length !== 4) return false
 
-  const startMatch = useCallback(
-    (
-      playerNames,
-      selectedStake = DEFAULT_STAKE,
-      courseId = selectedCourseId,
-      selectedSpecialScoringEnabledOrGameMode = false,
-      selectedGameMode
-    ) => {
-      const cleanedNames = Array.isArray(playerNames)
-        ? playerNames.map((name) => String(name || "").trim()).filter(Boolean)
-        : []
+    const matchCourse = getCourseById(courseId, courses)
+    const matchPars = matchCourse?.pars || DEFAULT_COURSES[0].pars
+    const nextCounter = matchCounter + 1
+    const newMatchId = createMatchId(nextCounter)
+    const formattedPlayers = uniqueNames.map((name) => createPlayer(name, matchPars[0] || DEFAULT_SCORE))
 
-      const uniqueNameMap = new Map()
+    setSelectedCourseIdState(matchCourse.id)
+    setPlayers(formattedPlayers)
+    setStakeState(normalizeStake(selectedStake))
+    setHole(1)
+    setCarryover(0)
+    setHistory([])
+    setCelebration(null)
+    setMatchFinished(false)
+    setHasActiveMatch(true)
+    setGameModeState(nextGameMode)
+    setSpecialScoringEnabledState(isProfessionalGameMode(nextGameMode))
+    setActiveMatchId(newMatchId)
+    setMatchCounter(nextCounter)
+    return true
+  }, [selectedCourseId, matchCounter, courses])
 
-      cleanedNames.forEach((name) => {
-        const key = normalizeName(name)
+  const finishHole = useCallback((wolffnSetup = null) => {
+    if (matchFinished || !hasActiveMatch) return
+    const courseSnapshot = createCourseSnapshot(currentCourse)
 
-        if (!uniqueNameMap.has(key)) uniqueNameMap.set(key, name)
-      })
+    if (isWolffnMode) {
+      const wolffnResult = calculateWolffnHole({ players, par: currentPar, carryover, stake, wolffnSetup })
+      if (!wolffnResult) return
 
-      const uniqueNames = Array.from(uniqueNameMap.values())
+      const winningResult = getGolfResult(wolffnResult.winningScore, currentPar)
+      const totalSkins = wolffnResult.totalSkins
+      const nextCarryover = wolffnResult.nextCarryover
+      const wolffnSpecialScoringLabel = wolffnResult.multiplierInfo.specialScoringLabel
+      const wolffnSpecialScoringApplied = Boolean(wolffnSpecialScoringLabel)
 
-      if (uniqueNames.length < 2) return false
+      const holeResult = {
+        hole,
+        par: currentPar,
+        gameMode,
+        gameModeLabel,
+        wolffnSetup,
+        wolffnFormat: wolffnSetup.format,
+        wolffnPlayer: wolffnSetup.wolffnPlayer || null,
+        wolffnTeamA: wolffnSetup.teamA,
+        wolffnTeamB: wolffnSetup.teamB,
+        pot: roundMoney(wolffnResult.teamPot),
+        skins: wolffnResult.hasTie ? nextCarryover : totalSkins,
+        baseSkins: 1,
+        basePotSkins: wolffnResult.basePotSkins,
+        currentHoleValue: wolffnResult.currentHoleValue,
+        totalPotSkins: wolffnResult.totalPotSkins,
+        totalMultiplier: wolffnResult.multiplierInfo.totalMultiplier,
+        wolffnMultiplier: wolffnResult.multiplierInfo.wolffnMultiplier,
+        scoreMultiplier: wolffnResult.multiplierInfo.scoreMultiplier,
+        scoreMultiplierLabel: wolffnResult.multiplierInfo.scoreMultiplierLabel,
+        bonusSkins: Math.max(wolffnResult.currentHoleValue - wolffnResult.basePotSkins, 0),
+        carryoverSkins: carryover,
+        carryoverAdded: wolffnResult.hasTie ? wolffnResult.carryoverGrowth : 0,
+        hasTie: wolffnResult.hasTie,
+        specialScoringEnabled: wolffnSpecialScoringApplied,
+        specialScoringApplied: wolffnSpecialScoringApplied,
+        specialScoringLabel: wolffnSpecialScoringLabel,
+        bonusSkinsEnabled: wolffnSpecialScoringApplied,
+        bonusResult: wolffnSpecialScoringLabel,
+        winningResult: winningResult.label,
+        eagleBonusApplied: wolffnResult.multiplierInfo.resultLabel === "Eagle",
+        winner: wolffnResult.winnerLabel,
+        winningScore: wolffnResult.winningScore,
+        course: { id: courseSnapshot.id, name: courseSnapshot.name },
+        players: players.map((player) => ({ name: player.name, score: player.score, result: getGolfResult(player.score, currentPar) })),
+      }
 
-      const requestedGameMode =
-        selectedGameMode !== undefined
-          ? selectedGameMode
-          : typeof selectedSpecialScoringEnabledOrGameMode === "string"
-            ? selectedSpecialScoringEnabledOrGameMode
-            : null
+      const updatedHistory = [...history, holeResult]
+      const playersAfterHole = players.map((player) => {
+        const playerScore = toNumber(player.score, currentPar)
+        const toPar = playerScore - currentPar
+        const skinDelta = getWolffnPlayerSkinDelta({ playerName: player.name, hasTie: wolffnResult.hasTie, totalSkins, winningTeam: wolffnResult.winningTeam })
 
-      const requestedSpecialScoringEnabled =
-        typeof selectedSpecialScoringEnabledOrGameMode === "boolean"
-          ? selectedSpecialScoringEnabledOrGameMode
-          : false
-
-      const nextGameMode = normalizeGameMode(requestedGameMode, requestedSpecialScoringEnabled)
-
-      if (isWolffnGameMode(nextGameMode) && uniqueNames.length !== 4) return false
-
-      const matchCourse = getCourseById(courseId)
-      const matchPars = matchCourse?.pars || courses[0].pars
-      const nextCounter = matchCounter + 1
-      const newMatchId = createMatchId(nextCounter)
-      const formattedPlayers = uniqueNames.map((name) =>
-        createPlayer(name, matchPars[0] || DEFAULT_SCORE)
-      )
-
-      setSelectedCourseId(matchCourse.id)
-      setPlayers(formattedPlayers)
-      setStakeState(normalizeStake(selectedStake))
-      setHole(1)
-      setCarryover(0)
-      setHistory([])
-      setCelebration(null)
-      setMatchFinished(false)
-      setHasActiveMatch(true)
-      setGameModeState(nextGameMode)
-      setSpecialScoringEnabledState(isProfessionalGameMode(nextGameMode))
-      setActiveMatchId(newMatchId)
-      setMatchCounter(nextCounter)
-
-      return true
-    },
-    [selectedCourseId, matchCounter]
-  )
-
-  const finishHole = useCallback(
-    (wolffnSetup = null) => {
-      if (matchFinished || !hasActiveMatch) return
-
-      const courseSnapshot = createCourseSnapshot(currentCourse)
-
-      if (isWolffnMode) {
-        const wolffnResult = calculateWolffnHole({
-          players,
-          par: currentPar,
-          carryover,
-          stake,
-          wolffnSetup,
-        })
-
-        if (!wolffnResult) return
-
-        const winningResult = getGolfResult(wolffnResult.winningScore, currentPar)
-        const totalSkins = wolffnResult.totalSkins
-        const nextCarryover = wolffnResult.nextCarryover
-        const wolffnSpecialScoringLabel = wolffnResult.multiplierInfo.specialScoringLabel
-        const wolffnSpecialScoringApplied = Boolean(wolffnSpecialScoringLabel)
-
-        const holeResult = {
-          hole,
-          par: currentPar,
-          gameMode,
-          gameModeLabel,
-          wolffnSetup,
-          wolffnFormat: wolffnSetup.format,
-          wolffnPlayer: wolffnSetup.wolffnPlayer || null,
-          wolffnTeamA: wolffnSetup.teamA,
-          wolffnTeamB: wolffnSetup.teamB,
-          pot: roundMoney(wolffnResult.teamPot),
-          skins: wolffnResult.hasTie ? nextCarryover : totalSkins,
-          baseSkins: 1,
-          currentHoleValue: wolffnResult.currentHoleValue,
-          wolffnMultiplier: wolffnResult.multiplierInfo.wolffnMultiplier,
-          scoreMultiplier: wolffnResult.multiplierInfo.scoreMultiplier,
-          scoreMultiplierLabel: wolffnResult.multiplierInfo.scoreMultiplierLabel,
-          bonusSkins: Math.max(wolffnResult.currentHoleValue - 1, 0),
-          carryoverSkins: carryover,
-          carryoverAdded: wolffnResult.hasTie ? wolffnResult.currentHoleValue : 0,
-          hasTie: wolffnResult.hasTie,
-          specialScoringEnabled: wolffnSpecialScoringApplied,
-          specialScoringApplied: wolffnSpecialScoringApplied,
-          specialScoringLabel: wolffnSpecialScoringLabel,
-          bonusSkinsEnabled: wolffnSpecialScoringApplied,
-          bonusResult: wolffnSpecialScoringLabel,
-          winningResult: winningResult.label,
-          eagleBonusApplied: wolffnResult.multiplierInfo.resultLabel === "Eagle",
-          winner: wolffnResult.winnerLabel,
-          winningScore: wolffnResult.winningScore,
-          course: { id: courseSnapshot.id, name: courseSnapshot.name },
-          players: players.map((player) => ({
-            name: player.name,
-            score: player.score,
-            result: getGolfResult(player.score, currentPar),
-          })),
-        }
-
-        const updatedHistory = [...history, holeResult]
-        const updatedPlayers = players.map((player) => {
-          const playerScore = toNumber(player.score, currentPar)
-          const toPar = playerScore - currentPar
-          const skinDelta = getWolffnPlayerSkinDelta({
-            playerName: player.name,
-            hasTie: wolffnResult.hasTie,
-            totalSkins,
-            winningTeam: wolffnResult.winningTeam,
-            losingTeam: wolffnResult.losingTeam,
-          })
-          const winningsDelta = roundMoney(skinDelta * stake)
-
-          return {
-            ...player,
-            total: toNumber(player.total, 0) + playerScore,
-            totalToPar: toNumber(player.totalToPar, 0) + toPar,
-            skins: toNumber(player.skins, 0) + skinDelta,
-            winnings: roundMoney(toNumber(player.winnings, 0) + winningsDelta),
-            holes: [
-              ...(Array.isArray(player.holes) ? player.holes : []),
-              {
-                hole,
-                par: currentPar,
-                score: playerScore,
-                toPar,
-                courseId: courseSnapshot.id,
-                gameMode,
-                gameModeLabel,
-                wolffnSetup,
-                wolffnFormat: wolffnSetup.format,
-                wolffnPlayer: wolffnSetup.wolffnPlayer || null,
-                wolffnTeamA: wolffnSetup.teamA,
-                wolffnTeamB: wolffnSetup.teamB,
-                result: getGolfResult(playerScore, currentPar),
-                skinDelta,
-                winningsDelta,
-                totalSkins: wolffnResult.hasTie ? 0 : totalSkins,
-                baseSkins: 1,
-                currentHoleValue: wolffnResult.currentHoleValue,
-                wolffnMultiplier: wolffnResult.multiplierInfo.wolffnMultiplier,
-                scoreMultiplier: wolffnResult.multiplierInfo.scoreMultiplier,
-                scoreMultiplierLabel: wolffnResult.multiplierInfo.scoreMultiplierLabel,
-                carryoverAdded: wolffnResult.hasTie ? wolffnResult.currentHoleValue : 0,
-                specialScoringEnabled: wolffnSpecialScoringApplied,
-                specialScoringApplied: wolffnSpecialScoringApplied,
-                specialScoringLabel: wolffnSpecialScoringLabel,
-                bonusSkinsEnabled: wolffnSpecialScoringApplied,
-                bonusResult: wolffnSpecialScoringLabel,
-                winningResult: winningResult.label,
-                eagleBonusApplied: wolffnResult.multiplierInfo.resultLabel === "Eagle",
-              },
-            ],
-            score: currentPars[hole] || DEFAULT_SCORE,
-          }
-        })
-
-        setHistory(updatedHistory)
-        setPlayers(updatedPlayers)
-
-        if (wolffnResult.hasTie) {
-          setCarryover(nextCarryover)
-        } else {
-          setCarryover(0)
-          setCelebration({
-            player: wolffnResult.winnerLabel,
-            result: winningResult.label,
-            color: winningResult.color,
-            pot: roundMoney(wolffnResult.teamPot),
-            skins: totalSkins,
-            baseSkins: 1,
-            bonusSkins: Math.max(wolffnResult.currentHoleValue - 1, 0),
+        return {
+          ...player,
+          total: toNumber(player.total, 0) + playerScore,
+          totalToPar: toNumber(player.totalToPar, 0) + toPar,
+          skins: toNumber(player.skins, 0) + skinDelta,
+          holes: [...(Array.isArray(player.holes) ? player.holes : []), {
+            hole,
+            par: currentPar,
+            score: playerScore,
+            toPar,
+            courseId: courseSnapshot.id,
             gameMode,
             gameModeLabel,
             wolffnSetup,
             wolffnFormat: wolffnSetup.format,
             wolffnPlayer: wolffnSetup.wolffnPlayer || null,
+            wolffnTeamA: wolffnSetup.teamA,
+            wolffnTeamB: wolffnSetup.teamB,
+            result: getGolfResult(playerScore, currentPar),
+            skinDelta,
+            winningsDelta: 0,
+            totalSkins: wolffnResult.hasTie ? 0 : totalSkins,
+            baseSkins: 1,
+            basePotSkins: wolffnResult.basePotSkins,
+            currentHoleValue: wolffnResult.currentHoleValue,
+            totalPotSkins: wolffnResult.totalPotSkins,
+            totalMultiplier: wolffnResult.multiplierInfo.totalMultiplier,
+            wolffnMultiplier: wolffnResult.multiplierInfo.wolffnMultiplier,
+            scoreMultiplier: wolffnResult.multiplierInfo.scoreMultiplier,
+            scoreMultiplierLabel: wolffnResult.multiplierInfo.scoreMultiplierLabel,
+            carryoverAdded: wolffnResult.hasTie ? wolffnResult.carryoverGrowth : 0,
             specialScoringEnabled: wolffnSpecialScoringApplied,
             specialScoringApplied: wolffnSpecialScoringApplied,
             specialScoringLabel: wolffnSpecialScoringLabel,
@@ -801,205 +859,50 @@ export function GameProvider({ children }) {
             bonusResult: wolffnSpecialScoringLabel,
             winningResult: winningResult.label,
             eagleBonusApplied: wolffnResult.multiplierInfo.resultLabel === "Eagle",
-          })
-
-          window.setTimeout(() => setCelebration(null), 2200)
-        }
-
-        if (hole >= HOLE_COUNT) {
-          const finalPlayers = updatedPlayers.map((player) => ({
-            ...player,
-            holes: Array.isArray(player.holes)
-              ? player.holes.map((playedHole) => ({ ...playedHole }))
-              : [],
-          }))
-
-          const completedRound = createCompletedRound({
-            activeMatchId,
-            courseSnapshot,
-            gameMode,
-            gameModeLabel,
-            finalPlayers,
-            history: updatedHistory,
-            stake,
-            specialScoringEnabled: false,
-          })
-
-          setCompletedRounds((previousRounds) => [completedRound, ...previousRounds])
-          setMatchFinished(true)
-          setHasActiveMatch(false)
-          setActiveMatchId(createMatchId(matchCounter + 1))
-          return
-        }
-
-        setHole(hole + 1)
-        return
-      }
-
-      const winner = !hasTie ? winners[0] : null
-      const winningResult = getGolfResult(lowestScore, currentPar)
-      const tieBaseSkins = getBaseSkinsForScore(lowestScore, currentPar, specialScoringEnabled)
-      const winnerBaseSkins = winner
-        ? getBaseSkinsForScore(winner.score, currentPar, specialScoringEnabled)
-        : 1
-      const baseSkins = hasTie ? tieBaseSkins : winnerBaseSkins
-      const bonusSkins = winner
-        ? getBonusSkinsForScore(winner.score, currentPar, specialScoringEnabled)
-        : 0
-      const specialScoringLabel = getSpecialScoringLabel(lowestScore, currentPar, specialScoringEnabled)
-      const specialScoringApplied = Boolean(
-        specialScoringEnabled && !hasTie && specialScoringLabel && bonusSkins > 0
-      )
-      const nextCarryover = hasTie ? carryover + baseSkins : 0
-      const totalSkins = hasTie ? 0 : winnerBaseSkins + carryover
-      const opponentCount = Math.max(players.length - 1, 1)
-      const totalWinnerPot = roundMoney(totalSkins * stake * opponentCount)
-      const carryoverPot = roundMoney(nextCarryover * stake * opponentCount)
-
-      const holeResult = {
-        hole,
-        par: currentPar,
-        gameMode,
-        gameModeLabel,
-        pot: hasTie ? carryoverPot : totalWinnerPot,
-        skins: hasTie ? nextCarryover : totalSkins,
-        baseSkins,
-        bonusSkins: hasTie ? 0 : bonusSkins,
-        carryoverSkins: carryover,
-        carryoverAdded: hasTie ? baseSkins : 0,
-        hasTie,
-        specialScoringEnabled,
-        specialScoringApplied,
-        specialScoringLabel,
-        bonusSkinsEnabled: specialScoringEnabled,
-        bonusResult: specialScoringLabel,
-        winningResult: winningResult.label,
-        eagleBonusApplied: specialScoringApplied && specialScoringLabel === "Eagle 3 Skins",
-        winner: hasTie ? "Carryover" : winner?.name,
-        winningScore: lowestScore,
-        course: { id: courseSnapshot.id, name: courseSnapshot.name },
-        players: players.map((player) => ({
-          name: player.name,
-          score: player.score,
-          result: getGolfResult(player.score, currentPar),
-        })),
-      }
-
-      const updatedHistory = [...history, holeResult]
-      const updatedPlayers = players.map((player) => {
-        const playerScore = toNumber(player.score, currentPar)
-        const toPar = playerScore - currentPar
-        const isWinner = !hasTie && winner && normalizeName(player.name) === normalizeName(winner.name)
-        const skinDelta = hasTie ? 0 : isWinner ? totalSkins * opponentCount : -totalSkins
-        const winningsDelta = roundMoney(skinDelta * stake)
-        const playerSpecialScoringApplied = Boolean(isWinner && specialScoringApplied)
-        const playerSpecialScoringLabel = playerSpecialScoringApplied ? specialScoringLabel : null
-        const playerBonusSkins = playerSpecialScoringApplied ? bonusSkins : 0
-
-        return {
-          ...player,
-          total: toNumber(player.total, 0) + playerScore,
-          totalToPar: toNumber(player.totalToPar, 0) + toPar,
-          skins: toNumber(player.skins, 0) + skinDelta,
-          winnings: roundMoney(toNumber(player.winnings, 0) + winningsDelta),
-          holes: [
-            ...(Array.isArray(player.holes) ? player.holes : []),
-            {
-              hole,
-              par: currentPar,
-              score: playerScore,
-              toPar,
-              courseId: courseSnapshot.id,
-              gameMode,
-              gameModeLabel,
-              result: getGolfResult(playerScore, currentPar),
-              skinDelta,
-              winningsDelta,
-              totalSkins: hasTie ? 0 : totalSkins,
-              baseSkins,
-              bonusSkins: playerBonusSkins,
-              carryoverAdded: hasTie ? baseSkins : 0,
-              specialScoringEnabled,
-              specialScoringApplied: playerSpecialScoringApplied,
-              specialScoringLabel: playerSpecialScoringLabel,
-              bonusSkinsEnabled: specialScoringEnabled,
-              bonusResult: playerSpecialScoringLabel,
-              winningResult: winningResult.label,
-              eagleBonusApplied:
-                playerSpecialScoringApplied && playerSpecialScoringLabel === "Eagle 3 Skins",
-            },
-          ],
+          }],
           score: currentPars[hole] || DEFAULT_SCORE,
         }
       })
+      const updatedPlayers = settlePlayersAfterHole(playersAfterHole, players, stake)
 
       setHistory(updatedHistory)
       setPlayers(updatedPlayers)
 
-      if (hasTie) {
+      if (wolffnResult.hasTie) {
         setCarryover(nextCarryover)
       } else {
         setCarryover(0)
-
-        if (winner) {
-          const winnerResult = getGolfResult(winner.score, currentPar)
-          const winnerSpecialScoringLabel = getSpecialScoringLabel(
-            winner.score,
-            currentPar,
-            specialScoringEnabled
-          )
-          const winnerBonusSkins = getBonusSkinsForScore(
-            winner.score,
-            currentPar,
-            specialScoringEnabled
-          )
-          const winnerSpecialScoringApplied = Boolean(
-            specialScoringEnabled && winnerSpecialScoringLabel && winnerBonusSkins > 0
-          )
-
-          setCelebration({
-            player: winner.name,
-            result: winnerResult.label,
-            color: winnerResult.color,
-            pot: totalWinnerPot,
-            skins: totalSkins,
-            baseSkins: winnerBaseSkins,
-            bonusSkins: winnerBonusSkins,
-            gameMode,
-            gameModeLabel,
-            specialScoringEnabled,
-            specialScoringApplied: winnerSpecialScoringApplied,
-            specialScoringLabel: winnerSpecialScoringApplied ? winnerSpecialScoringLabel : null,
-            bonusSkinsEnabled: specialScoringEnabled,
-            bonusResult: winnerSpecialScoringApplied ? winnerSpecialScoringLabel : null,
-            winningResult: winnerResult.label,
-            eagleBonusApplied:
-              winnerSpecialScoringApplied && winnerSpecialScoringLabel === "Eagle 3 Skins",
-          })
-
-          window.setTimeout(() => setCelebration(null), 2200)
-        }
+        setCelebration({
+          player: wolffnResult.winnerLabel,
+          result: winningResult.label,
+          color: winningResult.color,
+          pot: roundMoney(wolffnResult.teamPot),
+          skins: totalSkins,
+          baseSkins: 1,
+          basePotSkins: wolffnResult.basePotSkins,
+          currentHoleValue: wolffnResult.currentHoleValue,
+          totalPotSkins: wolffnResult.totalPotSkins,
+          totalMultiplier: wolffnResult.multiplierInfo.totalMultiplier,
+          bonusSkins: Math.max(wolffnResult.currentHoleValue - wolffnResult.basePotSkins, 0),
+          gameMode,
+          gameModeLabel,
+          wolffnSetup,
+          wolffnFormat: wolffnSetup.format,
+          wolffnPlayer: wolffnSetup.wolffnPlayer || null,
+          specialScoringEnabled: wolffnSpecialScoringApplied,
+          specialScoringApplied: wolffnSpecialScoringApplied,
+          specialScoringLabel: wolffnSpecialScoringLabel,
+          bonusSkinsEnabled: wolffnSpecialScoringApplied,
+          bonusResult: wolffnSpecialScoringLabel,
+          winningResult: winningResult.label,
+          eagleBonusApplied: wolffnResult.multiplierInfo.resultLabel === "Eagle",
+        })
+        window.setTimeout(() => setCelebration(null), 2200)
       }
 
       if (hole >= HOLE_COUNT) {
-        const finalPlayers = updatedPlayers.map((player) => ({
-          ...player,
-          holes: Array.isArray(player.holes)
-            ? player.holes.map((playedHole) => ({ ...playedHole }))
-            : [],
-        }))
-
-        const completedRound = createCompletedRound({
-          activeMatchId,
-          courseSnapshot,
-          gameMode,
-          gameModeLabel,
-          finalPlayers,
-          history: updatedHistory,
-          stake,
-          specialScoringEnabled,
-        })
-
+        const finalPlayers = updatedPlayers.map((player) => ({ ...player, holes: Array.isArray(player.holes) ? player.holes.map((playedHole) => ({ ...playedHole })) : [] }))
+        const completedRound = createCompletedRound({ activeMatchId, courseSnapshot, gameMode, gameModeLabel, finalPlayers, history: updatedHistory, stake, specialScoringEnabled: false })
         setCompletedRounds((previousRounds) => [completedRound, ...previousRounds])
         setMatchFinished(true)
         setHasActiveMatch(false)
@@ -1008,29 +911,137 @@ export function GameProvider({ children }) {
       }
 
       setHole(hole + 1)
-    },
-    [
-      matchFinished,
-      hasActiveMatch,
-      currentCourse,
-      isWolffnMode,
-      players,
-      currentPar,
-      carryover,
-      stake,
+      return
+    }
+
+    const winner = !hasTie ? winners[0] : null
+    const winningResult = getGolfResult(lowestScore, currentPar)
+    const tieBaseSkins = getBaseSkinsForScore(lowestScore, currentPar, specialScoringEnabled)
+    const winnerBaseSkins = winner ? getBaseSkinsForScore(winner.score, currentPar, specialScoringEnabled) : 1
+    const baseSkins = hasTie ? tieBaseSkins : winnerBaseSkins
+    const bonusSkins = winner ? getBonusSkinsForScore(winner.score, currentPar, specialScoringEnabled) : 0
+    const specialScoringLabel = getSpecialScoringLabel(lowestScore, currentPar, specialScoringEnabled)
+    const specialScoringApplied = Boolean(specialScoringEnabled && !hasTie && specialScoringLabel && bonusSkins > 0)
+    const nextCarryover = hasTie ? carryover + baseSkins : 0
+    const totalSkins = hasTie ? 0 : winnerBaseSkins + carryover
+    const opponentCount = Math.max(players.length - 1, 1)
+    const totalWinnerPot = roundMoney(totalSkins * stake * opponentCount)
+    const carryoverPot = roundMoney(nextCarryover * stake * opponentCount)
+
+    const holeResult = {
       hole,
+      par: currentPar,
       gameMode,
       gameModeLabel,
-      history,
-      currentPars,
-      activeMatchId,
-      matchCounter,
+      pot: hasTie ? carryoverPot : totalWinnerPot,
+      skins: hasTie ? nextCarryover : totalSkins,
+      baseSkins,
+      bonusSkins: hasTie ? 0 : bonusSkins,
+      carryoverSkins: carryover,
+      carryoverAdded: hasTie ? baseSkins : 0,
       hasTie,
-      winners,
       specialScoringEnabled,
-      lowestScore,
-    ]
-  )
+      specialScoringApplied,
+      specialScoringLabel,
+      bonusSkinsEnabled: specialScoringEnabled,
+      bonusResult: specialScoringLabel,
+      winningResult: winningResult.label,
+      eagleBonusApplied: specialScoringApplied && specialScoringLabel === "Eagle 3 Skins",
+      winner: hasTie ? "Carryover" : winner?.name,
+      winningScore: lowestScore,
+      course: { id: courseSnapshot.id, name: courseSnapshot.name },
+      players: players.map((player) => ({ name: player.name, score: player.score, result: getGolfResult(player.score, currentPar) })),
+    }
+
+    const updatedHistory = [...history, holeResult]
+    const playersAfterHole = players.map((player) => {
+      const playerScore = toNumber(player.score, currentPar)
+      const toPar = playerScore - currentPar
+      const isWinner = !hasTie && winner && normalizeName(player.name) === normalizeName(winner.name)
+      const skinDelta = isWinner ? totalSkins : 0
+      const playerSpecialScoringApplied = Boolean(isWinner && specialScoringApplied)
+      const playerSpecialScoringLabel = playerSpecialScoringApplied ? specialScoringLabel : null
+      const playerBonusSkins = playerSpecialScoringApplied ? bonusSkins : 0
+
+      return {
+        ...player,
+        total: toNumber(player.total, 0) + playerScore,
+        totalToPar: toNumber(player.totalToPar, 0) + toPar,
+        skins: toNumber(player.skins, 0) + skinDelta,
+        holes: [...(Array.isArray(player.holes) ? player.holes : []), {
+          hole,
+          par: currentPar,
+          score: playerScore,
+          toPar,
+          courseId: courseSnapshot.id,
+          gameMode,
+          gameModeLabel,
+          result: getGolfResult(playerScore, currentPar),
+          skinDelta,
+          winningsDelta: 0,
+          totalSkins: hasTie ? 0 : totalSkins,
+          baseSkins,
+          bonusSkins: playerBonusSkins,
+          carryoverAdded: hasTie ? baseSkins : 0,
+          specialScoringEnabled,
+          specialScoringApplied: playerSpecialScoringApplied,
+          specialScoringLabel: playerSpecialScoringLabel,
+          bonusSkinsEnabled: specialScoringEnabled,
+          bonusResult: playerSpecialScoringLabel,
+          winningResult: winningResult.label,
+          eagleBonusApplied: playerSpecialScoringApplied && playerSpecialScoringLabel === "Eagle 3 Skins",
+        }],
+        score: currentPars[hole] || DEFAULT_SCORE,
+      }
+    })
+    const updatedPlayers = settlePlayersAfterHole(playersAfterHole, players, stake)
+
+    setHistory(updatedHistory)
+    setPlayers(updatedPlayers)
+
+    if (hasTie) {
+      setCarryover(nextCarryover)
+    } else {
+      setCarryover(0)
+      if (winner) {
+        const winnerResult = getGolfResult(winner.score, currentPar)
+        const winnerSpecialScoringLabel = getSpecialScoringLabel(winner.score, currentPar, specialScoringEnabled)
+        const winnerBonusSkins = getBonusSkinsForScore(winner.score, currentPar, specialScoringEnabled)
+        const winnerSpecialScoringApplied = Boolean(specialScoringEnabled && winnerSpecialScoringLabel && winnerBonusSkins > 0)
+        setCelebration({
+          player: winner.name,
+          result: winnerResult.label,
+          color: winnerResult.color,
+          pot: totalWinnerPot,
+          skins: totalSkins,
+          baseSkins: winnerBaseSkins,
+          bonusSkins: winnerBonusSkins,
+          gameMode,
+          gameModeLabel,
+          specialScoringEnabled,
+          specialScoringApplied: winnerSpecialScoringApplied,
+          specialScoringLabel: winnerSpecialScoringApplied ? winnerSpecialScoringLabel : null,
+          bonusSkinsEnabled: specialScoringEnabled,
+          bonusResult: winnerSpecialScoringApplied ? winnerSpecialScoringLabel : null,
+          winningResult: winnerResult.label,
+          eagleBonusApplied: winnerSpecialScoringApplied && winnerSpecialScoringLabel === "Eagle 3 Skins",
+        })
+        window.setTimeout(() => setCelebration(null), 2200)
+      }
+    }
+
+    if (hole >= HOLE_COUNT) {
+      const finalPlayers = updatedPlayers.map((player) => ({ ...player, holes: Array.isArray(player.holes) ? player.holes.map((playedHole) => ({ ...playedHole })) : [] }))
+      const completedRound = createCompletedRound({ activeMatchId, courseSnapshot, gameMode, gameModeLabel, finalPlayers, history: updatedHistory, stake, specialScoringEnabled })
+      setCompletedRounds((previousRounds) => [completedRound, ...previousRounds])
+      setMatchFinished(true)
+      setHasActiveMatch(false)
+      setActiveMatchId(createMatchId(matchCounter + 1))
+      return
+    }
+
+    setHole(hole + 1)
+  }, [matchFinished, hasActiveMatch, currentCourse, isWolffnMode, players, currentPar, carryover, stake, hole, gameMode, gameModeLabel, history, currentPars, activeMatchId, matchCounter, hasTie, winners, specialScoringEnabled, lowestScore])
 
   const resetGame = useCallback(() => {
     setHole(1)
@@ -1048,213 +1059,119 @@ export function GameProvider({ children }) {
 
   const deleteCompletedRound = useCallback((roundId) => {
     const normalizedRoundId = String(roundId || "").trim()
-
     if (!normalizedRoundId) return false
-
-    setCompletedRounds((previousRounds) =>
-      previousRounds.filter(
-        (round) => String(round?.id || "").trim() !== normalizedRoundId
-      )
-    )
-
+    setCompletedRounds((previousRounds) => previousRounds.filter((round) => String(round?.id || "").trim() !== normalizedRoundId))
     return true
   }, [])
 
   const uniquePlayerNames = useMemo(() => {
     const playerMap = new Map()
-
     completedRounds.forEach((round) => {
       getRoundPlayers(round).forEach((player) => {
         const name = String(player?.name || "").trim()
         const key = normalizeName(name)
-
         if (name && !playerMap.has(key)) playerMap.set(key, name)
       })
     })
-
     players.forEach((player) => {
       const name = String(player?.name || "").trim()
       const key = normalizeName(name)
-
       if (name && !playerMap.has(key)) playerMap.set(key, name)
     })
-
     return Array.from(playerMap.values())
   }, [completedRounds, players])
 
   const playerStats = useMemo(() => {
     return uniquePlayerNames.map((playerName) => {
       const playerKey = normalizeName(playerName)
-
-      const playerRounds = completedRounds.filter((round) =>
-        getRoundPlayers(round).some((player) => normalizeName(player.name) === playerKey)
-      )
-
-      const wins = completedRounds.filter(
-        (round) => normalizeName(round.winner) === playerKey
-      ).length
-
+      const playerRounds = completedRounds.filter((round) => getRoundPlayers(round).some((player) => normalizeName(player.name) === playerKey))
+      const wins = completedRounds.filter((round) => normalizeName(round.winner) === playerKey).length
       const birdies = completedRounds.reduce((total, round) => {
-        const roundPlayer = getRoundPlayers(round).find(
-          (player) => normalizeName(player.name) === playerKey
-        )
-        const count =
-          roundPlayer?.holes?.filter((playedHole) => playedHole.result?.label === "Birdie").length || 0
-        return total + count
+        const roundPlayer = getRoundPlayers(round).find((player) => normalizeName(player.name) === playerKey)
+        return total + (roundPlayer?.holes?.filter((playedHole) => playedHole.result?.label === "Birdie").length || 0)
       }, 0)
-
       const eagles = completedRounds.reduce((total, round) => {
-        const roundPlayer = getRoundPlayers(round).find(
-          (player) => normalizeName(player.name) === playerKey
-        )
-        const count =
-          roundPlayer?.holes?.filter(
-            (playedHole) =>
-              playedHole.result?.label === "Eagle" || playedHole.result?.label === "Albatross"
-          ).length || 0
-        return total + count
+        const roundPlayer = getRoundPlayers(round).find((player) => normalizeName(player.name) === playerKey)
+        return total + (roundPlayer?.holes?.filter((playedHole) => playedHole.result?.label === "Eagle" || playedHole.result?.label === "Albatross").length || 0)
       }, 0)
-
-      const totalWinnings = roundMoney(
-        completedRounds.reduce((total, round) => {
-          const roundPlayer = getRoundPlayers(round).find(
-            (player) => normalizeName(player.name) === playerKey
-          )
-          return total + toNumber(roundPlayer?.winnings, 0)
-        }, 0)
-      )
-
+      const totalWinnings = roundMoney(completedRounds.reduce((total, round) => {
+        const roundPlayer = getRoundPlayers(round).find((player) => normalizeName(player.name) === playerKey)
+        return total + toNumber(roundPlayer?.winnings, 0)
+      }, 0))
       const totalToPar = completedRounds.reduce((total, round) => {
-        const roundPlayer = getRoundPlayers(round).find(
-          (player) => normalizeName(player.name) === playerKey
-        )
+        const roundPlayer = getRoundPlayers(round).find((player) => normalizeName(player.name) === playerKey)
         return total + toNumber(roundPlayer?.totalToPar, 0)
       }, 0)
-
       const totalStrokes = completedRounds.reduce((total, round) => {
-        const roundPlayer = getRoundPlayers(round).find(
-          (player) => normalizeName(player.name) === playerKey
-        )
+        const roundPlayer = getRoundPlayers(round).find((player) => normalizeName(player.name) === playerKey)
         return total + toNumber(roundPlayer?.total, 0)
       }, 0)
-
-      const avgToPar =
-        playerRounds.length > 0 ? Number((totalToPar / playerRounds.length).toFixed(1)) : 0
-      const averageScore =
-        playerRounds.length > 0 ? Number((totalStrokes / playerRounds.length).toFixed(1)) : 0
-
-      return {
-        name: playerName,
-        wins,
-        birdies,
-        eagles,
-        totalWinnings,
-        totalToPar,
-        totalStrokes,
-        avgToPar,
-        averageScore,
-        roundsPlayed: playerRounds.length,
-      }
+      const avgToPar = playerRounds.length > 0 ? Number((totalToPar / playerRounds.length).toFixed(1)) : 0
+      const averageScore = playerRounds.length > 0 ? Number((totalStrokes / playerRounds.length).toFixed(1)) : 0
+      return { name: playerName, wins, birdies, eagles, totalWinnings, totalToPar, totalStrokes, avgToPar, averageScore, roundsPlayed: playerRounds.length }
     })
   }, [completedRounds, uniquePlayerNames])
 
-  const value = useMemo(
-    () => ({
-      courses,
-      GAME_MODES,
-      gameMode,
-      setGameMode,
-      gameModeLabel,
-      isWolffnMode,
-      isProfessionalMode,
-      getGameModeLabel,
-      selectedCourseId,
-      setSelectedCourseId,
-      currentCourse,
-      hole,
-      setHole,
-      currentPar,
-      carryover,
-      currentBaseSkins,
-      currentBonusSkins,
-      currentSkinsAtStake,
-      currentPot,
-      players,
-      setPlayers,
-      stake,
-      setStake,
-      history,
-      celebration,
-      completedRounds,
-      deleteCompletedRound,
-      playerStats,
-      activeMatchId,
-      hasActiveMatch,
-      matchFinished,
-      setMatchFinished,
-      lowestScore,
-      winners,
-      hasTie,
-      specialScoringEnabled,
-      setSpecialScoringEnabled,
-      bonusSkinsEnabled: specialScoringEnabled,
-      setBonusSkinsEnabled: setSpecialScoringEnabled,
-      eagleBonusEnabled: specialScoringEnabled,
-      setEagleBonusEnabled: setSpecialScoringEnabled,
-      eagleBonusAvailable: false,
-      updateScore,
-      finishHole,
-      startMatch,
-      resetGame,
-      getGolfResult,
-    }),
-    [
-      gameMode,
-      setGameMode,
-      gameModeLabel,
-      isWolffnMode,
-      isProfessionalMode,
-      selectedCourseId,
-      currentCourse,
-      hole,
-      currentPar,
-      carryover,
-      currentBaseSkins,
-      currentBonusSkins,
-      currentSkinsAtStake,
-      currentPot,
-      players,
-      stake,
-      setStake,
-      history,
-      celebration,
-      completedRounds,
-      deleteCompletedRound,
-      playerStats,
-      activeMatchId,
-      hasActiveMatch,
-      matchFinished,
-      lowestScore,
-      winners,
-      hasTie,
-      specialScoringEnabled,
-      setSpecialScoringEnabled,
-      updateScore,
-      finishHole,
-      startMatch,
-      resetGame,
-    ]
-  )
+  const value = useMemo(() => ({
+    courses,
+    addCourse,
+    updateCourse,
+    deleteCourse,
+    GAME_MODES,
+    gameMode,
+    setGameMode,
+    gameModeLabel,
+    isWolffnMode,
+    isProfessionalMode,
+    getGameModeLabel,
+    selectedCourseId,
+    setSelectedCourseId,
+    currentCourse,
+    hole,
+    setHole,
+    currentPar,
+    carryover,
+    currentBaseSkins,
+    currentBonusSkins,
+    currentSkinsAtStake,
+    currentPot,
+    players,
+    setPlayers,
+    stake,
+    setStake,
+    history,
+    celebration,
+    completedRounds,
+    deleteCompletedRound,
+    playerStats,
+    activeMatchId,
+    hasActiveMatch,
+    matchFinished,
+    setMatchFinished,
+    lowestScore,
+    winners,
+    hasTie,
+    specialScoringEnabled,
+    setSpecialScoringEnabled,
+    bonusSkinsEnabled: specialScoringEnabled,
+    setBonusSkinsEnabled: setSpecialScoringEnabled,
+    eagleBonusEnabled: specialScoringEnabled,
+    setEagleBonusEnabled: setSpecialScoringEnabled,
+    eagleBonusAvailable: false,
+    updateScore,
+    finishHole,
+    startMatch,
+    resetGame,
+    getGolfResult,
+  }), [courses, addCourse, updateCourse, deleteCourse, gameMode, setGameMode, gameModeLabel, isWolffnMode, isProfessionalMode, selectedCourseId, setSelectedCourseId, currentCourse, hole, currentPar, carryover, currentBaseSkins, currentBonusSkins, currentSkinsAtStake, currentPot, players, stake, setStake, history, celebration, completedRounds, deleteCompletedRound, playerStats, activeMatchId, hasActiveMatch, matchFinished, lowestScore, winners, hasTie, specialScoringEnabled, setSpecialScoringEnabled, updateScore, finishHole, startMatch, resetGame])
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>
 }
 
 export function useGame() {
   const context = useContext(GameContext)
-
   if (!context) {
     throw new Error("useGame must be used within a GameProvider.")
   }
-
   return context
 }
