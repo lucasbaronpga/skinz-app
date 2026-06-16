@@ -181,10 +181,7 @@ function normalizeCourseSnapshot(course, courseList = DEFAULT_COURSES) {
     )
   })
 
-  if (matchedCourse) {
-    return createCourseSnapshot(matchedCourse)
-  }
-
+  if (matchedCourse) return createCourseSnapshot(matchedCourse)
   return createCourseSnapshot(normalizeCourse(course))
 }
 
@@ -208,13 +205,38 @@ function createDefaultPlayers() {
   return [createPlayer("Lucas", DEFAULT_SCORE), createPlayer("Ben", DEFAULT_SCORE)]
 }
 
+function getRoundPlayers(round) {
+  return Array.isArray(round?.players) ? round.players : []
+}
+
+function getPlayerWonSkinzFromHoles(holes) {
+  if (!Array.isArray(holes) || holes.length === 0) return null
+
+  const wonSkinz = holes.reduce((total, hole) => {
+    const skinDelta = toNumber(hole?.skinDelta, 0)
+    const totalSkins = toNumber(hole?.totalSkins, 0)
+
+    if (skinDelta <= 0 || totalSkins <= 0) return total
+    return total + totalSkins
+  }, 0)
+
+  return wonSkinz
+}
+
+function getNormalizedPlayerSkins(player) {
+  const skinsFromHoles = getPlayerWonSkinzFromHoles(player?.holes)
+
+  if (skinsFromHoles !== null) return skinsFromHoles
+  return Math.max(toNumber(player?.skins, 0), 0)
+}
+
 function normalizePlayer(player, fallbackScore = DEFAULT_SCORE) {
   return {
     name: String(player?.name || "Player").trim() || "Player",
     score: toNumber(player?.score, fallbackScore),
     total: toNumber(player?.total, 0),
     totalToPar: toNumber(player?.totalToPar, 0),
-    skins: Math.max(toNumber(player?.skins, 0), 0),
+    skins: getNormalizedPlayerSkins(player),
     winnings: roundMoney(player?.winnings),
     holes: Array.isArray(player?.holes)
       ? player.holes.map((hole) => ({
@@ -227,10 +249,6 @@ function normalizePlayer(player, fallbackScore = DEFAULT_SCORE) {
         }))
       : [],
   }
-}
-
-function getRoundPlayers(round) {
-  return Array.isArray(round?.players) ? round.players : []
 }
 
 function normalizeHistory(history) {
@@ -247,17 +265,17 @@ function calculateSettlementWinnings(players, stake) {
   const safeStake = normalizeStake(stake)
 
   return safePlayers.map((player) => {
-    const playerSkins = toNumber(player?.skins, 0)
+    const playerSkins = Math.max(toNumber(player?.skins, 0), 0)
     const winnings = safePlayers.reduce((total, opponent) => {
-      if (normalizeName(opponent?.name) === normalizeName(player?.name)) {
-        return total
-      }
+      if (normalizeName(opponent?.name) === normalizeName(player?.name)) return total
 
-      return total + (playerSkins - toNumber(opponent?.skins, 0)) * safeStake
+      const opponentSkins = Math.max(toNumber(opponent?.skins, 0), 0)
+      return total + (playerSkins - opponentSkins) * safeStake
     }, 0)
 
     return {
       ...player,
+      skins: playerSkins,
       winnings: roundMoney(winnings),
     }
   })
@@ -372,8 +390,8 @@ function getSpecialScoringLabel(score, par, isSpecialScoringEnabled = false) {
 
   const difference = toNumber(score, DEFAULT_SCORE) - toNumber(par, DEFAULT_SCORE)
 
-  if (difference <= -2) return "Eagle 3 Skins"
-  if (difference === -1) return "Birdie 2 Skins"
+  if (difference <= -2) return "Eagle 3 Skinz"
+  if (difference === -1) return "Birdie 2 Skinz"
   return null
 }
 
@@ -629,10 +647,12 @@ export function GameProvider({ children }) {
       const usedCourseIds = new Set(normalizedCourses.map((currentCourse) => currentCourse.id))
       let nextCourseId = baseCourse.id
       let suffix = 2
+
       while (usedCourseIds.has(nextCourseId)) {
         nextCourseId = `${baseCourse.id}-${suffix}`
         suffix += 1
       }
+
       createdCourse = { ...baseCourse, id: nextCourseId }
       return [...normalizedCourses, createdCourse]
     })
@@ -642,7 +662,9 @@ export function GameProvider({ children }) {
   const updateCourse = useCallback((courseId, updates) => {
     const normalizedCourseId = String(courseId || "").trim()
     let updatedCourse = null
+
     if (!normalizedCourseId) return null
+
     setCourses((currentCourses) => {
       const normalizedCourses = normalizeCourseList(currentCourses)
       return normalizedCourses.map((course) => {
@@ -651,18 +673,22 @@ export function GameProvider({ children }) {
         return updatedCourse
       })
     })
+
     return updatedCourse
   }, [])
 
   const deleteCourse = useCallback((courseId) => {
     const normalizedCourseId = String(courseId || "").trim()
+
     if (!normalizedCourseId || normalizedCourseId === DEFAULT_COURSE_ID) return false
     if (selectedCourseId === normalizedCourseId) return false
+
     setCourses((currentCourses) => {
       const normalizedCourses = normalizeCourseList(currentCourses)
       if (normalizedCourses.length <= 1) return normalizedCourses
       return normalizedCourses.filter((course) => course.id !== normalizedCourseId)
     })
+
     return true
   }, [selectedCourseId])
 
@@ -731,6 +757,7 @@ export function GameProvider({ children }) {
       if (!uniqueNameMap.has(key)) uniqueNameMap.set(key, name)
     })
     const uniqueNames = Array.from(uniqueNameMap.values())
+
     if (uniqueNames.length < 2) return false
 
     const requestedGameMode = selectedGameMode !== undefined
@@ -740,6 +767,7 @@ export function GameProvider({ children }) {
         : null
     const requestedSpecialScoringEnabled = typeof selectedSpecialScoringEnabledOrGameMode === "boolean" ? selectedSpecialScoringEnabledOrGameMode : false
     const nextGameMode = normalizeGameMode(requestedGameMode, requestedSpecialScoringEnabled)
+
     if (isWolffnGameMode(nextGameMode) && uniqueNames.length !== 4) return false
 
     const matchCourse = getCourseById(courseId, courses)
@@ -946,7 +974,7 @@ export function GameProvider({ children }) {
       bonusSkinsEnabled: specialScoringEnabled,
       bonusResult: specialScoringLabel,
       winningResult: winningResult.label,
-      eagleBonusApplied: specialScoringApplied && specialScoringLabel === "Eagle 3 Skins",
+      eagleBonusApplied: specialScoringApplied && specialScoringLabel === "Eagle 3 Skinz",
       winner: hasTie ? "Carryover" : winner?.name,
       winningScore: lowestScore,
       course: { id: courseSnapshot.id, name: courseSnapshot.name },
@@ -989,7 +1017,7 @@ export function GameProvider({ children }) {
           bonusSkinsEnabled: specialScoringEnabled,
           bonusResult: playerSpecialScoringLabel,
           winningResult: winningResult.label,
-          eagleBonusApplied: playerSpecialScoringApplied && playerSpecialScoringLabel === "Eagle 3 Skins",
+          eagleBonusApplied: playerSpecialScoringApplied && playerSpecialScoringLabel === "Eagle 3 Skinz",
         }],
         score: currentPars[hole] || DEFAULT_SCORE,
       }
@@ -1024,7 +1052,7 @@ export function GameProvider({ children }) {
           bonusSkinsEnabled: specialScoringEnabled,
           bonusResult: winnerSpecialScoringApplied ? winnerSpecialScoringLabel : null,
           winningResult: winnerResult.label,
-          eagleBonusApplied: winnerSpecialScoringApplied && winnerSpecialScoringLabel === "Eagle 3 Skins",
+          eagleBonusApplied: winnerSpecialScoringApplied && winnerSpecialScoringLabel === "Eagle 3 Skinz",
         })
         window.setTimeout(() => setCelebration(null), 2200)
       }
