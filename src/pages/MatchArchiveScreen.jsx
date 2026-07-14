@@ -81,43 +81,35 @@ function getArchiveMoneyTextSize(value) {
   const formattedValue = formatMoney(value)
 
   if (formattedValue.length >= 10) {
-    return "text-[2.35rem]"
+    return "text-[1.2rem]"
   }
 
   if (formattedValue.length >= 8) {
-    return "text-[2.75rem]"
+    return "text-[1.35rem]"
   }
 
   if (formattedValue.length >= 6) {
-    return "text-[3.15rem]"
+    return "text-[1.55rem]"
   }
 
-  return "text-6xl"
+  return "text-[1.75rem]"
 }
 
-function formatSkinSaldo(value) {
-  const amount = toNumber(value, 0)
-
-  if (amount > 0) {
-    return `+${amount}`
-  }
-
-  if (amount < 0) {
-    return `${amount}`
-  }
-
-  return "0"
+function getPlayerWonSkinz(player) {
+  return Math.max(toNumber(player?.skins, 0), 0)
 }
 
-function getSkinColor(value) {
-  const amount = toNumber(value, 0)
+function formatWonSkinz(value) {
+  const amount = Math.max(toNumber(value, 0), 0)
+
+  return amount === 1 ? "1 Skin" : `${amount} Skinz`
+}
+
+function getWonSkinzColor(value) {
+  const amount = Math.max(toNumber(value, 0), 0)
 
   if (amount > 0) {
     return "text-amber-500"
-  }
-
-  if (amount < 0) {
-    return "text-red-500"
   }
 
   return "text-slate-950"
@@ -141,11 +133,11 @@ function getToParColor(value) {
   const amount = toNumber(value, 0)
 
   if (amount < 0) {
-    return "text-emerald-500"
+    return "text-red-500"
   }
 
   if (amount > 0) {
-    return "text-red-500"
+    return "text-blue-500"
   }
 
   return "text-slate-950"
@@ -155,11 +147,11 @@ function getToParColorDark(value) {
   const amount = toNumber(value, 0)
 
   if (amount < 0) {
-    return "text-emerald-400"
+    return "text-red-400"
   }
 
   if (amount > 0) {
-    return "text-red-400"
+    return "text-blue-400"
   }
 
   return "text-white"
@@ -195,12 +187,19 @@ function getSortedPlayers(round) {
   return [...getRoundPlayers(round)].sort((a, b) => {
     const winningsA = toNumber(a.winnings, 0)
     const winningsB = toNumber(b.winnings, 0)
+    const skinsA = getPlayerWonSkinz(a)
+    const skinsB = getPlayerWonSkinz(b)
     const toParA = toNumber(a.totalToPar, 0)
     const toParB = toNumber(b.totalToPar, 0)
     const nameA = String(a?.name || "")
     const nameB = String(b?.name || "")
 
-    return winningsB - winningsA || toParA - toParB || nameA.localeCompare(nameB)
+    return (
+      winningsB - winningsA ||
+      skinsB - skinsA ||
+      toParA - toParB ||
+      nameA.localeCompare(nameB)
+    )
   })
 }
 
@@ -504,8 +503,9 @@ export default function MatchArchiveScreen() {
             const roundPlayers = getRoundPlayers(round)
             const roundId = getRoundId(round)
             const courseName = getCourseName(round)
-            const displayWinnerName = round?.winner || winner?.name || "Unbekannt"
+            const displayWinnerName = winner?.name || round?.winner || "Unbekannt"
             const displayEarnings = round?.winnings ?? winner?.winnings ?? 0
+            const displayWinnerSkinz = getPlayerWonSkinz(winner)
             const gameModeMeta = getRoundGameModeMeta(round)
             const isConfirmingDelete = confirmDeleteRoundId === roundId
             const isDeleting = deletingRoundId === roundId
@@ -578,14 +578,24 @@ export default function MatchArchiveScreen() {
                       </span>
                     </div>
 
-                    <div className="mt-8 flex items-end justify-between gap-5">
-                      <div className="min-w-0 overflow-hidden">
-                        <div className="text-xs font-black uppercase tracking-widest text-slate-500">
+                    <div className="mt-8 grid grid-cols-[0.82fr_1.36fr_0.82fr] gap-3">
+                      <div className="min-w-0 rounded-[24px] bg-black/[0.24] p-4">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                          Skinz
+                        </div>
+
+                        <div className="mt-2 truncate text-4xl font-black leading-none tracking-[-0.055em] text-white tabular-nums">
+                          {displayWinnerSkinz}
+                        </div>
+                      </div>
+
+                      <div className="min-w-0 rounded-[24px] bg-black/[0.24] p-4">
+                        <div className="text-center text-[10px] font-black uppercase tracking-widest text-slate-500">
                           Earnings
                         </div>
 
                         <div
-                          className={`mt-2 max-w-full overflow-hidden whitespace-nowrap font-black leading-none tracking-[-0.06em] tabular-nums ${getArchiveMoneyTextSize(
+                          className={`mt-2 max-w-full overflow-hidden whitespace-nowrap text-center font-black leading-none tracking-[-0.035em] tabular-nums ${getArchiveMoneyTextSize(
                             displayEarnings
                           )} ${getMoneyColorDark(displayEarnings)}`}
                         >
@@ -593,13 +603,13 @@ export default function MatchArchiveScreen() {
                         </div>
                       </div>
 
-                      <div className="shrink-0 text-right">
-                        <div className="text-xs font-black uppercase tracking-widest text-slate-500">
+                      <div className="min-w-0 rounded-[24px] bg-black/[0.24] p-4 text-right">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                           To Par
                         </div>
 
                         <div
-                          className={`mt-2 text-5xl font-black tracking-[-0.055em] ${getToParColorDark(
+                          className={`mt-2 text-4xl font-black tracking-[-0.055em] ${getToParColorDark(
                             winner?.totalToPar
                           )}`}
                         >
@@ -646,6 +656,7 @@ export default function MatchArchiveScreen() {
                     {sortedPlayers.map((player, playerIndex) => {
                       const isWinner =
                         normalizeName(player?.name) === normalizeName(displayWinnerName)
+                      const playerWonSkinz = getPlayerWonSkinz(player)
 
                       return (
                         <div
@@ -682,11 +693,11 @@ export default function MatchArchiveScreen() {
 
                                 <div className="mt-1 flex flex-wrap gap-2">
                                   <div
-                                    className={`text-xs font-black uppercase tracking-widest ${getSkinColor(
-                                      player?.skins
+                                    className={`text-xs font-black uppercase tracking-widest ${getWonSkinzColor(
+                                      playerWonSkinz
                                     )}`}
                                   >
-                                    {formatSkinSaldo(player?.skins)} Skinz
+                                    {formatWonSkinz(playerWonSkinz)}
                                   </div>
 
                                   <div

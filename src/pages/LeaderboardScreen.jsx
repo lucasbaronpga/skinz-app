@@ -1,4 +1,5 @@
 import { useState } from "react"
+
 import { AnimatePresence, motion } from "framer-motion"
 import { useNavigate } from "react-router-dom"
 import {
@@ -81,46 +82,38 @@ function getLeaderMoneyTextSize(value) {
   const formattedValue = formatMoney(value)
 
   if (formattedValue.length >= 10) {
-    return "text-[2.45rem]"
+    return "text-[2.15rem]"
   }
 
   if (formattedValue.length >= 8) {
-    return "text-[2.85rem]"
+    return "text-[2.45rem]"
   }
 
   if (formattedValue.length >= 6) {
-    return "text-[3.25rem]"
+    return "text-[2.85rem]"
   }
 
-  return "text-6xl"
+  return "text-5xl"
 }
 
-function formatSkinSaldo(value) {
-  const amount = toNumber(value, 0)
-
-  if (amount > 0) {
-    return `+${amount}`
-  }
-
-  if (amount < 0) {
-    return `${amount}`
-  }
-
-  return "0"
+function getPlayerWonSkinz(player) {
+  return Math.max(toNumber(player?.skins, 0), 0)
 }
 
-function getSkinColor(value) {
-  const amount = toNumber(value, 0)
+function formatWonSkinz(value) {
+  const amount = Math.max(toNumber(value, 0), 0)
+
+  return amount === 1 ? "1 Skin" : `${amount} Skinz`
+}
+
+function getWonSkinzColor(value) {
+  const amount = Math.max(toNumber(value, 0), 0)
 
   if (amount > 0) {
     return "text-amber-500"
   }
 
-  if (amount < 0) {
-    return "text-red-500"
-  }
-
-  return "text-slate-500"
+  return "text-slate-950"
 }
 
 function getRankStyle(index) {
@@ -444,9 +437,7 @@ export default function LeaderboardScreen() {
         <div className="flex items-center justify-between">
           <motion.button
             type="button"
-            whileTap={{
-              scale: 0.92,
-            }}
+            whileTap={{ scale: 0.92 }}
             onClick={handleBack}
             aria-label="Zurück"
             className="flex h-14 w-14 items-center justify-center rounded-full border border-white/70 bg-white/[0.48] shadow-[0_14px_38px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
@@ -466,18 +457,9 @@ export default function LeaderboardScreen() {
         </div>
 
         <motion.div
-          initial={{
-            opacity: 0,
-            y: 20,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            duration: 0.35,
-            ease: "easeOut",
-          }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
           className="mt-8"
         >
           <h1 className="text-6xl font-black tracking-[-0.055em] text-slate-950">
@@ -485,25 +467,15 @@ export default function LeaderboardScreen() {
           </h1>
 
           <p className="mt-4 max-w-sm text-sm font-bold leading-relaxed text-slate-500">
-            Season Rankings, Winnings & Performance of all Players.
+            Season Rankings, Earnings & Performance of all Players.
           </p>
         </motion.div>
 
         {sortedPlayers.length === 0 && (
           <motion.div
-            initial={{
-              opacity: 0,
-              y: 20,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              delay: 0.06,
-              duration: 0.35,
-              ease: "easeOut",
-            }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.06, duration: 0.35, ease: "easeOut" }}
             className="mt-16 rounded-[40px] border border-white/70 bg-white/[0.48] p-10 text-center shadow-[0_18px_55px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
           >
             <div className="text-7xl" aria-hidden="true">
@@ -530,19 +502,9 @@ export default function LeaderboardScreen() {
 
         {seasonLeader && (
           <motion.div
-            initial={{
-              opacity: 0,
-              y: 20,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              delay: 0.05,
-              duration: 0.35,
-              ease: "easeOut",
-            }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05, duration: 0.35, ease: "easeOut" }}
             className="mt-8 overflow-hidden rounded-[42px] border border-white/20 bg-[#071819] text-white shadow-[0_28px_70px_rgba(7,24,25,0.42)]"
           >
             <div className="relative p-8">
@@ -578,11 +540,11 @@ export default function LeaderboardScreen() {
                 <div className="mt-10 flex items-end justify-between gap-5">
                   <div className="min-w-0 overflow-hidden">
                     <div className="text-xs font-black uppercase tracking-widest text-slate-500">
-                      Winnings
+                      Earnings
                     </div>
 
                     <div
-                      className={`mt-2 max-w-full overflow-hidden whitespace-nowrap font-black leading-none tracking-[-0.06em] tabular-nums ${getLeaderMoneyTextSize(
+                      className={`mt-2 max-w-full overflow-hidden whitespace-nowrap font-black leading-none tracking-[-0.045em] tabular-nums ${getLeaderMoneyTextSize(
                         seasonLeader.totalWinnings
                       )} ${getMoneyColorDark(seasonLeader.totalWinnings)}`}
                     >
@@ -619,7 +581,7 @@ export default function LeaderboardScreen() {
               </div>
 
               <div className="pb-1 text-right text-sm font-black uppercase tracking-widest text-slate-500">
-                Winnings
+                Earnings
               </div>
             </div>
 
@@ -639,14 +601,8 @@ export default function LeaderboardScreen() {
                   <motion.div
                     key={player.name}
                     layout
-                    initial={{
-                      opacity: 0,
-                      y: 24,
-                    }}
-                    animate={{
-                      opacity: 1,
-                      y: 0,
-                    }}
+                    initial={{ opacity: 0, y: 24 }}
+                    animate={{ opacity: 1, y: 0 }}
                     transition={{
                       duration: 0.35,
                       delay: index * 0.04,
@@ -655,9 +611,7 @@ export default function LeaderboardScreen() {
                   >
                     <motion.button
                       type="button"
-                      whileTap={{
-                        scale: 0.985,
-                      }}
+                      whileTap={{ scale: 0.985 }}
                       onClick={() =>
                         setExpandedPlayer(isExpanded ? null : player.name)
                       }
@@ -699,13 +653,8 @@ export default function LeaderboardScreen() {
 
                             <motion.div
                               className="shrink-0 pt-1"
-                              animate={{
-                                rotate: isExpanded ? 180 : 0,
-                              }}
-                              transition={{
-                                duration: 0.2,
-                                ease: "easeOut",
-                              }}
+                              animate={{ rotate: isExpanded ? 180 : 0 }}
+                              transition={{ duration: 0.2, ease: "easeOut" }}
                             >
                               <ChevronDown
                                 size={24}
@@ -725,7 +674,7 @@ export default function LeaderboardScreen() {
                               </div>
 
                               <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                                Total
+                                Earnings
                               </div>
                             </div>
 
@@ -778,22 +727,10 @@ export default function LeaderboardScreen() {
                     <AnimatePresence>
                       {isExpanded && (
                         <motion.div
-                          initial={{
-                            opacity: 0,
-                            height: 0,
-                          }}
-                          animate={{
-                            opacity: 1,
-                            height: "auto",
-                          }}
-                          exit={{
-                            opacity: 0,
-                            height: 0,
-                          }}
-                          transition={{
-                            duration: 0.24,
-                            ease: "easeOut",
-                          }}
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.24, ease: "easeOut" }}
                           className="overflow-hidden"
                         >
                           <div className="mt-4 rounded-[34px] border border-white/70 bg-white/[0.48] p-5 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl">
@@ -827,6 +764,7 @@ export default function LeaderboardScreen() {
                                 )
                                 const roundId = getRoundId(round)
                                 const courseName = getRoundCourseName(round)
+                                const playerWonSkinz = getPlayerWonSkinz(roundPlayer)
                                 const isWolffnRound = roundIsWolffn(round)
                                 const roundHasSpecialMode =
                                   roundHasSpecialScoring(round)
@@ -886,13 +824,11 @@ export default function LeaderboardScreen() {
 
                                         <div className="mt-3 flex flex-wrap items-center gap-2">
                                           <div
-                                            className={`text-xs font-black uppercase tracking-widest ${getSkinColor(
-                                              roundPlayer?.skins
+                                            className={`text-xs font-black uppercase tracking-widest ${getWonSkinzColor(
+                                              playerWonSkinz
                                             )}`}
                                           >
-                                            {formatSkinSaldo(
-                                              roundPlayer?.skins
-                                            )} Skinz
+                                            {formatWonSkinz(playerWonSkinz)}
                                           </div>
 
                                           {playerHasSpecialMode && (

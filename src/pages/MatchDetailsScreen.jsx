@@ -86,6 +86,24 @@ function getMoneyColorDark(value) {
   return "text-white"
 }
 
+function getDetailMoneyTextSize(value) {
+  const formattedValue = formatMoney(value)
+
+  if (formattedValue.length >= 10) {
+    return "text-[1.2rem]"
+  }
+
+  if (formattedValue.length >= 8) {
+    return "text-[1.35rem]"
+  }
+
+  if (formattedValue.length >= 6) {
+    return "text-[1.55rem]"
+  }
+
+  return "text-[1.75rem]"
+}
+
 function formatToPar(value) {
   const amount = toNumber(value, 0)
 
@@ -104,11 +122,11 @@ function getToParColor(value) {
   const amount = toNumber(value, 0)
 
   if (amount < 0) {
-    return "text-emerald-500"
+    return "text-red-500"
   }
 
   if (amount > 0) {
-    return "text-red-500"
+    return "text-blue-500"
   }
 
   return "text-slate-950"
@@ -118,11 +136,11 @@ function getToParColorDark(value) {
   const amount = toNumber(value, 0)
 
   if (amount < 0) {
-    return "text-emerald-400"
+    return "text-red-400"
   }
 
   if (amount > 0) {
-    return "text-red-400"
+    return "text-blue-400"
   }
 
   return "text-white"
@@ -151,6 +169,11 @@ function getRoundPlayers(round) {
 
 function getPlayerWonSkinz(player) {
   return Math.max(toNumber(player?.skins, 0), 0)
+}
+
+function formatWonSkinz(value) {
+  const amount = Math.max(toNumber(value, 0), 0)
+  return amount === 1 ? "1 Skin" : `${amount} Skinz`
 }
 
 function getSettlementRows({ player, players, stake }) {
@@ -745,24 +768,24 @@ export default function MatchDetailsScreen() {
                 </div>
               </div>
 
-              <div className="mt-7 grid grid-cols-3 gap-3">
-                <div className="min-w-0 rounded-[28px] bg-black/[0.24] p-4 sm:p-5">
-                  <div className="text-[11px] font-black uppercase tracking-widest text-white/40">Skinz</div>
-                  <div className="mt-2 min-w-0 break-words text-[clamp(1.75rem,9vw,2.5rem)] font-black leading-none tracking-tight text-white">
+              <div className="mt-7 grid grid-cols-[0.82fr_1.36fr_0.82fr] gap-3">
+                <div className="min-w-0 rounded-[24px] bg-black/[0.24] p-4">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-white/40">Skinz</div>
+                  <div className="mt-2 truncate text-4xl font-black leading-none tracking-[-0.055em] text-white tabular-nums">
                     {winnerSkinz}
                   </div>
                 </div>
 
-                <div className="min-w-0 rounded-[28px] bg-black/[0.24] p-4 sm:p-5">
-                  <div className="text-[11px] font-black uppercase tracking-widest text-white/40">Earnings</div>
-                  <div className={`mt-2 min-w-0 break-words text-[clamp(1.75rem,9vw,2.5rem)] font-black leading-none tracking-tight ${getMoneyColorDark(displayEarnings)}`}>
+                <div className="min-w-0 rounded-[24px] bg-black/[0.24] p-4">
+                  <div className="text-center text-[10px] font-black uppercase tracking-widest text-white/40">Earnings</div>
+                  <div className={`mt-2 max-w-full overflow-hidden whitespace-nowrap text-center font-black leading-none tracking-[-0.035em] tabular-nums ${getDetailMoneyTextSize(displayEarnings)} ${getMoneyColorDark(displayEarnings)}`}>
                     {formatMoney(displayEarnings)}
                   </div>
                 </div>
 
-                <div className="min-w-0 rounded-[28px] bg-black/[0.24] p-4 text-right sm:p-5">
-                  <div className="text-[11px] font-black uppercase tracking-widest text-white/40">To Par</div>
-                  <div className={`mt-2 min-w-0 break-words text-[clamp(1.75rem,9vw,2.5rem)] font-black leading-none tracking-tight ${getToParColorDark(winnerToPar)}`}>
+                <div className="min-w-0 rounded-[24px] bg-black/[0.24] p-4 text-right">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-white/40">To Par</div>
+                  <div className={`mt-2 text-4xl font-black tracking-[-0.055em] ${getToParColorDark(winnerToPar)}`}>
                     {formatToPar(winnerToPar)}
                   </div>
                 </div>
@@ -811,10 +834,9 @@ export default function MatchDetailsScreen() {
 
                         <div className="min-w-0 flex-1">
                           <div className="break-words text-2xl font-black leading-[0.95] tracking-tight text-slate-950 sm:text-3xl">{player.name}</div>
-                          <div className="mt-2 text-sm font-black uppercase tracking-widest text-slate-400">Score {totalScore}</div>
                           <div className="mt-2 flex flex-wrap items-center gap-2">
                             <div className="rounded-full bg-slate-950 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-white">
-                              {playerSkinz} Skinz
+                              {formatWonSkinz(playerSkinz)}
                             </div>
                             <div className={`rounded-full bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-widest shadow-sm ${getMoneyColor(player.winnings)}`}>
                               {formatMoney(player.winnings)}
@@ -921,7 +943,6 @@ export default function MatchDetailsScreen() {
                 <div className="text-xs font-black uppercase tracking-[0.25em] text-slate-500">Match Details</div>
                 <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">Holes</div>
               </div>
-              <div className="text-4xl" aria-hidden="true">{gameModeMeta.emoji}</div>
             </div>
 
             <div className="mt-6 space-y-3">
@@ -1113,7 +1134,7 @@ export default function MatchDetailsScreen() {
                     {selectedSettlementPlayer.name}
                   </h3>
                   <div className="mt-2 text-sm font-black uppercase tracking-widest text-slate-500">
-                    {getPlayerWonSkinz(selectedSettlementPlayer)} Skinz
+                    {formatWonSkinz(getPlayerWonSkinz(selectedSettlementPlayer))}
                   </div>
                 </div>
 
