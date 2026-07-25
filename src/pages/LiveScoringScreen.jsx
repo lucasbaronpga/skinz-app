@@ -6,7 +6,7 @@ import { Check, ChevronRight, Crown, Sparkles, X } from "lucide-react"
 
 import AppBackground from "../components/AppBackground"
 import GameModeBadge from "../components/GameModeBadge"
-import { useGame } from "../context/GameContext"
+import { getOozleSettlementRows, useGame } from "../context/GameContext"
 import { getGameModeTheme } from "../utils/gameModeTheme"
 
 const HOLE_COUNT = 18
@@ -95,6 +95,57 @@ function formatSettlementAction(row) {
   if (row.amount > 0) return `bekommt von ${row.opponentName}`
   if (row.amount < 0) return `zahlt an ${row.opponentName}`
   return `ausgeglichen mit ${row.opponentName}`
+}
+
+function getPlayerOozleSettlementRows(players, player) {
+  if (!player) return []
+  if (Array.isArray(player?.oozleSettlementRows) && player.oozleSettlementRows.length > 0) {
+    return player.oozleSettlementRows
+  }
+  return getOozleSettlementRows(players, player.name)
+}
+
+function getOozleAmountAgainstOpponent(players, player, opponentName) {
+  const row = getPlayerOozleSettlementRows(players, player).find(
+    (item) => normalizeName(item?.opponentName) === normalizeName(opponentName)
+  )
+  return roundMoney(row?.amount)
+}
+
+function getFinalSettlementPayments(players, stake) {
+  if (!Array.isArray(players) || players.length < 2) return []
+
+  const safeStake = toNumber(stake, 0)
+  const payments = []
+
+  for (let playerIndex = 0; playerIndex < players.length; playerIndex += 1) {
+    const player = players[playerIndex]
+
+    for (let opponentIndex = playerIndex + 1; opponentIndex < players.length; opponentIndex += 1) {
+      const opponent = players[opponentIndex]
+      const skinzAmount = roundMoney(
+        (getPlayerWonSkinz(player) - getPlayerWonSkinz(opponent)) * safeStake
+      )
+      const oozleAmount = getOozleAmountAgainstOpponent(players, player, opponent?.name)
+      const combinedAmount = roundMoney(skinzAmount + oozleAmount)
+
+      if (combinedAmount > 0) {
+        payments.push({
+          from: opponent?.name || "Player",
+          to: player?.name || "Player",
+          amount: combinedAmount,
+        })
+      } else if (combinedAmount < 0) {
+        payments.push({
+          from: player?.name || "Player",
+          to: opponent?.name || "Player",
+          amount: Math.abs(combinedAmount),
+        })
+      }
+    }
+  }
+
+  return payments
 }
 
 function formatToPar(value) {
@@ -287,7 +338,7 @@ function joinTeamNames(team) {
 
 function StatusPill({ children }) {
   return (
-    <span className="inline-flex rounded-full border border-white/70 bg-white/[0.46] px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 backdrop-blur-xl">
+    <span className="inline-flex min-h-7 items-center justify-center rounded-full border border-white/70 bg-white/[0.46] px-3 py-1 text-center text-[10px] font-black uppercase leading-none tracking-[0.2em] text-slate-600 backdrop-blur-xl">
       {children}
     </span>
   )
@@ -378,6 +429,7 @@ export default function LiveScoringScreen() {
 
   const champion = sortedPlayers[0] || null
   const championWonSkinz = getPlayerWonSkinz(champion)
+  const showOozleSettlement = Boolean(oozleConfig?.enabled) || safePlayers.some((player) => Math.abs(toNumber(player?.oozleWinnings, 0)) > 0)
   const historyDisplayItems = buildHistoryDisplayItems(safeHistory)
   const safeHole = Math.min(Math.max(toNumber(hole, 1), 1), HOLE_COUNT)
   const selectedSettlementRows = getSettlementRows({
@@ -385,6 +437,11 @@ export default function LiveScoringScreen() {
     players: safePlayers,
     stake,
   })
+  const finalSettlementPayments = getFinalSettlementPayments(safePlayers, stake)
+  const selectedOozleSettlementRows = getPlayerOozleSettlementRows(
+    safePlayers,
+    selectedSettlementPlayer
+  )
 
   const wolffnSetupIsCurrent = wolffnSetup.hole === safeHole && wolffnSetup.gameMode === gameMode
   const wolffnAskedPlayer = wolffnSetupIsCurrent ? wolffnSetup.askedPlayer : null
@@ -410,7 +467,7 @@ export default function LiveScoringScreen() {
     oozleNoGreen ||
     (Boolean(oozlePlayerName) && [1, 2, 3].includes(oozlePutts))
   const holeSetupComplete = wolffnSetupComplete && oozleSetupComplete
-  const oozleUnitsAtStake = Math.max(toNumber(oozleCarryover, 0), 0) + 1
+  const oozleUnitsAtStake = Math.max(toNumber(oozleCarryover, 0), 1)
   const oozleAmountPerOpponent = roundMoney(
     oozleUnitsAtStake * toNumber(oozleConfig?.value, 0)
   )
@@ -776,7 +833,7 @@ export default function LiveScoringScreen() {
 
                 {oozleCarryover > 0 && (
                   <div className="mt-4 rounded-[20px] border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black uppercase tracking-widest text-amber-700">
-                    Carryover: {oozleCarryover} + aktuelles Par 3 = {oozleUnitsAtStake} Einheiten
+                    Carryover x{oozleUnitsAtStake} · {formatPlainMoney(oozleAmountPerOpponent)} je Gegner
                   </div>
                 )}
 
@@ -788,7 +845,7 @@ export default function LiveScoringScreen() {
                         key={`oozle-${player.name}`}
                         type="button"
                         onClick={() => handleSelectOozlePlayer(player.name)}
-                        className={`rounded-[22px] border px-4 py-4 text-left transition ${
+                        className={`flex min-h-20 flex-col items-center justify-center rounded-[22px] border px-4 py-4 text-center transition ${
                           isSelected
                             ? "border-amber-400 bg-amber-300 text-slate-950 shadow-sm"
                             : "border-white/70 bg-white/70 text-slate-950"
@@ -832,7 +889,7 @@ export default function LiveScoringScreen() {
                             key={option.value}
                             type="button"
                             onClick={() => handleSelectOozlePutts(option.value)}
-                            className={`rounded-[18px] px-3 py-3 text-xs font-black transition ${
+                            className={`flex min-h-11 items-center justify-center rounded-[18px] px-3 py-3 text-center text-xs font-black leading-none transition ${
                               isSelected
                                 ? option.value >= 3
                                   ? "bg-red-500 text-white"
@@ -849,7 +906,7 @@ export default function LiveScoringScreen() {
                 )}
 
                 {oozleSetupComplete && (
-                  <div className={`mt-4 rounded-[20px] px-4 py-3 text-xs font-black uppercase tracking-widest ${
+                  <div className={`mt-4 flex min-h-11 items-center justify-center rounded-[20px] px-4 py-3 text-center text-xs font-black uppercase leading-none tracking-widest ${
                     oozleNoGreen
                       ? "bg-slate-100 text-slate-600"
                       : oozlePutts >= 3
@@ -890,7 +947,7 @@ export default function LiveScoringScreen() {
                       </div>
 
                       <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <div className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] shadow-sm ${getResultBadgeStyle(golfResult.label)}`}>
+                        <div className={`inline-flex min-h-7 items-center justify-center rounded-full px-3 py-1 text-center text-[10px] font-black uppercase leading-none tracking-[0.18em] shadow-sm ${getResultBadgeStyle(golfResult.label)}`}>
                           {golfResult.label}
                         </div>
                       </div>
@@ -948,7 +1005,7 @@ export default function LiveScoringScreen() {
                           <div className="text-lg font-black tracking-[-0.035em] text-slate-950">Loch {item.hole}</div>
 
                           {historySpecialLabel && (
-                            <div className={`flex items-center gap-1 rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-widest shadow-sm ${getSpecialBadgeStyle(historySpecialLabel)}`}>
+                            <div className={`inline-flex min-h-7 items-center justify-center gap-1 rounded-full px-2 py-1 text-center text-[8px] font-black uppercase leading-none tracking-widest shadow-sm ${getSpecialBadgeStyle(historySpecialLabel)}`}>
                               <Sparkles size={9} />
                               {historySpecialLabel}
                             </div>
@@ -957,12 +1014,12 @@ export default function LiveScoringScreen() {
 
                         <div className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Par {item.par}</div>
 
-                        <div className="mt-2 rounded-full bg-white/[0.62] px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 shadow-sm">
+                        <div className="mt-2 inline-flex min-h-7 items-center justify-center rounded-full bg-white/[0.62] px-2.5 py-1 text-center text-[9px] font-black uppercase leading-none tracking-[0.16em] text-slate-500 shadow-sm">
                           {historyResultSummary}
                         </div>
 
                         {item?.oozle?.enabled && (
-                          <div className={`mt-2 inline-flex w-fit max-w-full rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest shadow-sm ${
+                          <div className={`mt-2 inline-flex min-h-7 w-fit max-w-full items-center justify-center rounded-full px-3 py-1 text-center text-[9px] font-black uppercase leading-none tracking-widest shadow-sm ${
                             item.oozle.outcome === "oozle"
                               ? "bg-amber-300 text-slate-950"
                               : item.oozle.outcome === "foozle"
@@ -980,7 +1037,7 @@ export default function LiveScoringScreen() {
                         )}
                         {!item.hasTie && wonHolesLabel && (
                           <div className="mt-2">
-                            <div className="inline-flex w-fit max-w-full rounded-full bg-slate-950 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-white shadow-sm">
+                            <div className="inline-flex min-h-7 w-fit max-w-full items-center justify-center rounded-full bg-slate-950 px-3 py-1 text-center text-[9px] font-black uppercase leading-none tracking-widest text-white shadow-sm">
                               Holes: {wonHolesLabel}
                             </div>
                           </div>
@@ -1115,7 +1172,7 @@ export default function LiveScoringScreen() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               className="mx-auto w-full max-w-md overflow-hidden rounded-[44px] border border-white/70 bg-white/[0.82] p-8 text-center shadow-2xl backdrop-blur-2xl"
             >
-              <div className="inline-flex rounded-full border border-white/70 bg-white/[0.52] px-4 py-2 text-[13px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm backdrop-blur-xl">
+              <div className="inline-flex min-h-9 items-center justify-center rounded-full border border-white/70 bg-white/[0.52] px-4 py-2 text-center text-[13px] font-black uppercase leading-none tracking-[0.12em] text-slate-600 shadow-sm backdrop-blur-xl">
                 Match complete
               </div>
 
@@ -1123,7 +1180,7 @@ export default function LiveScoringScreen() {
                 {champion?.name || "Winner"}
               </h2>
 
-              <div className="mt-4 inline-flex max-w-full rounded-full border border-white/70 bg-white/[0.46] px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-500 shadow-sm backdrop-blur-xl">
+              <div className="mt-4 inline-flex min-h-9 max-w-full items-center justify-center rounded-full border border-white/70 bg-white/[0.46] px-4 py-2 text-center text-xs font-black uppercase leading-none tracking-widest text-slate-500 shadow-sm backdrop-blur-xl">
                 <span className="truncate">{getCourseName(currentCourse)}</span>
               </div>
 
@@ -1132,21 +1189,21 @@ export default function LiveScoringScreen() {
               </div>
 
               <div className="mt-8 grid grid-cols-3 gap-2">
-                <div className="rounded-[24px] border border-white/70 bg-white/[0.48] p-4 shadow-sm backdrop-blur-xl">
+                <div className="flex min-h-28 flex-col items-center justify-center rounded-[24px] border border-white/70 bg-white/[0.48] p-4 text-center shadow-sm backdrop-blur-xl">
                   <div className="text-sm font-bold text-slate-500">Skinz</div>
                   <div className="mt-2 whitespace-nowrap text-[2rem] font-black leading-none tracking-[-0.045em] text-slate-950">
                     {championWonSkinz}
                   </div>
                 </div>
 
-                <div className="rounded-[24px] border border-white/70 bg-white/[0.48] p-4 shadow-sm backdrop-blur-xl">
-                  <div className="text-sm font-bold text-slate-500">Earnings</div>
+                <div className="flex min-h-28 flex-col items-center justify-center rounded-[24px] border border-white/70 bg-white/[0.48] p-4 text-center shadow-sm backdrop-blur-xl">
+                  <div className="text-sm font-bold text-slate-500">Gesamt</div>
                   <div className={`mt-2 whitespace-nowrap text-[1.85rem] font-black leading-none tracking-[-0.045em] ${getMoneyColor(champion?.winnings)}`}>
                     {formatMoney(champion?.winnings)}
                   </div>
                 </div>
 
-                <div className="rounded-[24px] border border-white/70 bg-white/[0.48] p-4 shadow-sm backdrop-blur-xl">
+                <div className="flex min-h-28 flex-col items-center justify-center rounded-[24px] border border-white/70 bg-white/[0.48] p-4 text-center shadow-sm backdrop-blur-xl">
                   <div className="text-sm font-bold text-slate-500">To Par</div>
                   <div className={`mt-2 whitespace-nowrap text-[2rem] font-black leading-none tracking-[-0.045em] ${getToParColor(champion?.totalToPar)}`}>
                     {formatToPar(champion?.totalToPar)}
@@ -1196,18 +1253,30 @@ export default function LiveScoringScreen() {
                             <div className="flex items-center gap-2">
                               <div className="truncate text-lg font-black text-slate-950">{player.name}</div>
                               {isChampion && (
-                                <div className="flex shrink-0 items-center gap-1 rounded-full bg-amber-300 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-black">
+                                <div className="inline-flex min-h-7 shrink-0 items-center justify-center gap-1 rounded-full bg-amber-300 px-2 py-1 text-center text-[10px] font-black uppercase leading-none tracking-widest text-black">
                                   <Crown size={10} />
                                   Winner
                                 </div>
                               )}
                             </div>
                             <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-950">{playerWonSkinz} Skinz</div>
+                            <div className="mt-3 space-y-1.5 border-t border-slate-200/80 pt-3">
+                              <div className="flex items-center justify-between gap-4 text-xs font-black">
+                                <span className="text-slate-500">Skinz-Abrechnung</span>
+                                <span className={getMoneyColor(player.skinzWinnings)}>{formatMoney(player.skinzWinnings)}</span>
+                              </div>
+                              {showOozleSettlement && (
+                                <div className="flex items-center justify-between gap-4 text-xs font-black">
+                                  <span className="text-slate-500">Oozle-Abrechnung</span>
+                                  <span className={getMoneyColor(player.oozleWinnings)}>{formatMoney(player.oozleWinnings)}</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-
-                        <div className="shrink-0 text-right">
-                          <div className={`text-2xl font-black ${getMoneyColor(player.winnings)}`}>{formatMoney(player.winnings)}</div>
+                        <div className="shrink-0 pl-3 text-right">
+                          <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">Gesamt</div>
+                          <div className={`mt-1 text-2xl font-black ${getMoneyColor(player.winnings)}`}>{formatMoney(player.winnings)}</div>
                           <div className="mt-1 flex items-center justify-end gap-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
                             Details
                             <ChevronRight size={12} strokeWidth={3} />
@@ -1217,6 +1286,35 @@ export default function LiveScoringScreen() {
                       </button>
                     )
                   })}
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-[32px] border border-white/70 bg-white/[0.42] p-4 shadow-sm backdrop-blur-xl">
+                <div className="text-center text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Endabrechnung</div>
+                <div className="mx-auto mt-2 max-w-xs text-center text-sm font-bold leading-relaxed text-slate-500">
+                  Skinz und Oozle sind im Gesamtbetrag bereits verrechnet.
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  {finalSettlementPayments.length > 0 ? (
+                    finalSettlementPayments.map((payment, index) => (
+                      <div
+                        key={`${payment.from}-${payment.to}-${index}`}
+                        className="rounded-[24px] border border-white/70 bg-white/[0.72] px-4 py-4 text-center shadow-sm"
+                      >
+                        <div className="break-words text-sm font-black leading-relaxed text-slate-950 sm:text-base">
+                          {payment.from} zahlt {payment.to}
+                        </div>
+                        <div className="mt-1 text-2xl font-black tracking-tight text-slate-950 tabular-nums">
+                          {formatPlainMoney(payment.amount)}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-[24px] border border-emerald-200/80 bg-emerald-50/80 px-4 py-4 text-center text-sm font-black text-emerald-700 shadow-sm">
+                      Keine Zahlungen erforderlich.
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1283,35 +1381,68 @@ export default function LiveScoringScreen() {
                 </button>
               </div>
 
-              <div className="mt-5 rounded-[28px] border border-white/70 bg-white/[0.48] p-3 shadow-sm backdrop-blur-xl">
-                <div className="space-y-2">
-                  {selectedSettlementRows.map((row) => (
-                    <div
-                      key={`${selectedSettlementPlayer.name}-${row.opponentName}`}
-                      className="rounded-[22px] border border-white/70 bg-white/[0.62] px-4 py-3 shadow-sm"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-black text-slate-950">{formatSettlementAction(row)}</div>
-                          <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            Diff. {row.skinzDifference > 0 ? "+" : ""}{row.skinzDifference} Skinz
+              <div className="mt-5 text-left">
+                <div className="px-1 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
+                  Skinz-Abrechnung
+                </div>
+                <div className="mt-2 rounded-[28px] border border-white/70 bg-white/[0.48] p-3 shadow-sm backdrop-blur-xl">
+                  <div className="space-y-2">
+                    {selectedSettlementRows.map((row) => (
+                      <div
+                        key={`skinz-${selectedSettlementPlayer.name}-${row.opponentName}`}
+                        className="rounded-[22px] border border-white/70 bg-white/[0.62] px-4 py-3 shadow-sm"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-sm font-black text-slate-950">{formatSettlementAction(row)}</div>
+                            <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                              Diff. {row.skinzDifference > 0 ? "+" : ""}{row.skinzDifference} Skinz
+                            </div>
+                          </div>
+                          <div className={`shrink-0 text-xl font-black ${getMoneyColor(row.amount)}`}>
+                            {formatMoney(row.amount)}
                           </div>
                         </div>
-
-                        <div className={`shrink-0 text-xl font-black ${getMoneyColor(row.amount)}`}>
-                          {formatMoney(row.amount)}
-                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
 
+              {showOozleSettlement && (
+                <div className="mt-4 text-left">
+                  <div className="px-1 text-[10px] font-black uppercase tracking-[0.22em] text-amber-600">
+                    Oozle-Abrechnung
+                  </div>
+                  <div className="mt-2 rounded-[28px] border border-amber-200/70 bg-amber-50/70 p-3 shadow-sm backdrop-blur-xl">
+                    <div className="space-y-2">
+                      {selectedOozleSettlementRows.map((row) => (
+                        <div
+                          key={`oozle-${selectedSettlementPlayer.name}-${row.opponentName}`}
+                          className="rounded-[22px] border border-amber-100 bg-white/80 px-4 py-3 shadow-sm"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-sm font-black text-slate-950">{formatSettlementAction(row)}</div>
+                              <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-amber-600/70">
+                                Oozle / Foozle
+                              </div>
+                            </div>
+                            <div className={`shrink-0 text-xl font-black ${getMoneyColor(row.amount)}`}>
+                              {formatMoney(row.amount)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="mt-4 rounded-[28px] border border-white/70 bg-slate-950 px-5 py-4 text-white shadow-[0_18px_45px_rgba(15,23,42,0.22)]">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <div className="text-[10px] font-black uppercase tracking-[0.22em] text-white/55">Gesamt</div>
-                    <div className="mt-1 text-sm font-bold text-white/70">Schuld / Gewinn</div>
+                    <div className="mt-1 text-sm font-bold text-white/70">{toNumber(selectedSettlementPlayer.winnings, 0) < 0 ? "Gesamtschuld" : "Gesamtgewinn"}</div>
                   </div>
 
                   <div className={`text-4xl font-black tracking-[-0.06em] ${getDarkMoneyColor(selectedSettlementPlayer.winnings)}`}>

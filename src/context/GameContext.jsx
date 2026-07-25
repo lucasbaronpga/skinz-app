@@ -258,6 +258,12 @@ function normalizePlayer(player, fallbackScore = DEFAULT_SCORE) {
     skins: getNormalizedPlayerSkins(player),
     skinzWinnings: roundMoney(player?.skinzWinnings),
     oozleWinnings: roundMoney(player?.oozleWinnings),
+    oozleSettlementRows: Array.isArray(player?.oozleSettlementRows)
+      ? player.oozleSettlementRows.map((row) => ({
+          opponentName: String(row?.opponentName || "Player").trim() || "Player",
+          amount: roundMoney(row?.amount),
+        }))
+      : [],
     winnings: roundMoney(player?.winnings),
     holes: Array.isArray(player?.holes)
       ? player.holes.map((hole) => ({
@@ -281,6 +287,60 @@ function normalizeHistory(history) {
     : []
 }
 
+export function getOozleSettlementRows(players, playerName) {
+  const safePlayers = Array.isArray(players) ? players : []
+  const selectedPlayer = safePlayers.find(
+    (player) => normalizeName(player?.name) === normalizeName(playerName)
+  )
+
+  if (!selectedPlayer) return []
+
+  const selectedKey = normalizeName(selectedPlayer.name)
+  const rows = new Map(
+    safePlayers
+      .filter((opponent) => normalizeName(opponent?.name) !== selectedKey)
+      .map((opponent) => [
+        normalizeName(opponent?.name),
+        {
+          opponentName: opponent?.name || "Player",
+          amount: 0,
+        },
+      ])
+  )
+
+  const playedHoles = Array.isArray(selectedPlayer?.holes) ? selectedPlayer.holes : []
+
+  playedHoles.forEach((playedHole) => {
+    const oozle = playedHole?.oozle
+    const outcome = String(oozle?.outcome || "").toLowerCase()
+    if (!["oozle", "foozle"].includes(outcome)) return
+
+    const eventPlayerKey = normalizeName(oozle?.playerName)
+    const amountPerOpponent = roundMoney(oozle?.amountPerOpponent)
+    if (!eventPlayerKey || amountPerOpponent <= 0) return
+
+    const selectedIsEventPlayer = selectedKey === eventPlayerKey
+    const direction = outcome === "oozle" ? 1 : -1
+
+    rows.forEach((row, opponentKey) => {
+      let delta = 0
+
+      if (selectedIsEventPlayer) {
+        delta = direction * amountPerOpponent
+      } else if (opponentKey === eventPlayerKey) {
+        delta = -direction * amountPerOpponent
+      }
+
+      row.amount = roundMoney(row.amount + delta)
+    })
+  })
+
+  return Array.from(rows.values()).map((row) => ({
+    ...row,
+    amount: roundMoney(row.amount),
+  }))
+}
+
 function calculateSettlementWinnings(players, stake) {
   const safePlayers = Array.isArray(players) ? players : []
   const safeStake = normalizeStake(stake)
@@ -290,8 +350,26 @@ function calculateSettlementWinnings(players, stake) {
       if (normalizeName(opponent?.name) === normalizeName(player?.name)) return total
       return total + (playerSkins - Math.max(toNumber(opponent?.skins, 0), 0)) * safeStake
     }, 0)
-    const oozleWinnings = roundMoney(player?.oozleWinnings)
-    return { ...player, skins: playerSkins, skinzWinnings: roundMoney(skinzWinnings), oozleWinnings, winnings: roundMoney(skinzWinnings + oozleWinnings) }
+    const calculatedOozleRows = getOozleSettlementRows(safePlayers, player?.name)
+    const calculatedOozleWinnings = roundMoney(
+      calculatedOozleRows.reduce((total, row) => total + toNumber(row?.amount, 0), 0)
+    )
+    const storedOozleWinnings = roundMoney(player?.oozleWinnings)
+    const hasRecordedOozleEvents = calculatedOozleRows.some(
+      (row) => Math.abs(toNumber(row?.amount, 0)) > 0
+    )
+    const oozleWinnings = hasRecordedOozleEvents
+      ? calculatedOozleWinnings
+      : storedOozleWinnings
+
+    return {
+      ...player,
+      skins: playerSkins,
+      skinzWinnings: roundMoney(skinzWinnings),
+      oozleWinnings,
+      oozleSettlementRows: calculatedOozleRows,
+      winnings: roundMoney(skinzWinnings + oozleWinnings),
+    }
   })
 }
 
@@ -549,14 +627,16 @@ function calculateOozleResult({ players, input, config, carryover, hasFutureParT
   const player = outcome === "carryover" ? null : getPlayerByName(players, input?.playerName)
   if (outcome !== "carryover" && !player) return null
   const carryoverUnits = Math.max(toNumber(carryover, 0), 0)
-  const unitsAtStake = carryoverUnits + 1
+  const unitsAtStake = carryoverUnits > 0 ? carryoverUnits : 1
   const unitValue = roundMoney(config?.value) || DEFAULT_OOZLE_VALUE
   const amountPerOpponent = roundMoney(unitsAtStake * unitValue)
   const deltas = new Map(players.map((item) => [normalizeName(item.name), 0]))
   let nextCarryover = 0
   let expired = false
   if (outcome === "carryover") {
-    if (config?.carryoverEnabled !== false && hasFutureParThree) nextCarryover = unitsAtStake
+    if (config?.carryoverEnabled !== false && hasFutureParThree) {
+      nextCarryover = unitsAtStake * 2
+    }
     else expired = true
   } else {
     const selectedKey = normalizeName(player.name)
