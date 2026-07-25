@@ -147,6 +147,8 @@ export default function RoundSetupScreen() {
   const [newPlayer, setNewPlayer] = useState("")
   const [stake, setStake] = useState(2)
   const [selectedGameMode, setSelectedGameMode] = useState(GAME_MODES.CLASSIC)
+  const [oozleEnabled, setOozleEnabled] = useState(false)
+  const [oozleValue, setOozleValue] = useState(1)
   const [showWolffnModal, setShowWolffnModal] = useState(false)
 
   const selectedCourse = currentCourse || safeCourses[0] || null
@@ -223,6 +225,18 @@ export default function RoundSetupScreen() {
     setStake((currentStake) => clampStake(getNextStakePreset(currentStake)))
   }
 
+  function decreaseOozleValue() {
+    setOozleValue((currentValue) =>
+      clampStake(getPreviousStakePreset(currentValue))
+    )
+  }
+
+  function increaseOozleValue() {
+    setOozleValue((currentValue) =>
+      clampStake(getNextStakePreset(currentValue))
+    )
+  }
+
   function selectGameMode(nextGameMode) {
     if (
       nextGameMode === GAME_MODES.WOLFFN &&
@@ -237,6 +251,7 @@ export default function RoundSetupScreen() {
 
   function confirmWolffnMode() {
     setSelectedGameMode(GAME_MODES.WOLFFN)
+    setOozleEnabled(false)
     setShowWolffnModal(false)
   }
 
@@ -259,7 +274,21 @@ export default function RoundSetupScreen() {
       }
     }
 
-    const didStart = startMatch(uniquePlayers, stake, selectedCourseId, selectedGameMode)
+    const selectedOozleConfig = {
+      enabled: !isWolffnMode && oozleEnabled,
+      value: clampStake(oozleValue),
+      foozleEnabled: true,
+      carryoverEnabled: true,
+    }
+
+    const didStart = startMatch(
+      uniquePlayers,
+      stake,
+      selectedCourseId,
+      selectedGameMode,
+      undefined,
+      selectedOozleConfig
+    )
 
     if (didStart) {
       navigate("/live")
@@ -552,6 +581,106 @@ export default function RoundSetupScreen() {
             </div>
           )}
         </motion.div>
+
+        {!isWolffnMode && (
+          <motion.div
+            initial={{ opacity: 0, y: 22 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.35, ease: "easeOut" }}
+            className="mt-7 rounded-[34px] border border-white/70 bg-white/[0.48] p-6 shadow-[0_18px_55px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="text-3xl font-black tracking-[-0.045em] text-slate-950">
+                  Oozle
+                </div>
+                <div className="mt-3 text-sm font-semibold leading-relaxed text-slate-500">
+                  Nächster Abschlag auf dem Grün: mit maximal zwei Putts gewinnen,
+                  bei drei oder mehr Putts als Foozle zahlen.
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={oozleEnabled}
+                onClick={() => setOozleEnabled((currentValue) => !currentValue)}
+                className={`relative h-9 w-16 shrink-0 rounded-full border transition-colors ${
+                  oozleEnabled
+                    ? `${modeTheme.activeBorder} ${modeTheme.button}`
+                    : "border-slate-200 bg-slate-200"
+                }`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`absolute left-1 top-1 h-7 w-7 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                    oozleEnabled ? "translate-x-7" : "translate-x-0"
+                  }`}
+                />
+                <span className="sr-only">
+                  Oozle {oozleEnabled ? "deaktivieren" : "aktivieren"}
+                </span>
+              </button>
+            </div>
+
+            {oozleEnabled && (
+              <div className="mt-6 overflow-hidden rounded-[28px] border border-white/70 bg-white/[0.50] p-5 shadow-sm backdrop-blur-xl">
+                <div className="flex items-end justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">
+                      Einsatz pro Oozle
+                    </div>
+                    <div className={`mt-2 text-[3.35rem] font-black leading-none tracking-[-0.065em] tabular-nums ${modeTheme.text}`}>
+                      {formatStake(oozleValue)}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: 0.9 }}
+                      onClick={decreaseOozleValue}
+                      disabled={roundStake(oozleValue) <= MIN_STAKE}
+                      aria-label="Oozle-Einsatz verringern"
+                      className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-2xl font-black text-slate-950 shadow-sm transition disabled:opacity-30"
+                    >
+                      −
+                    </motion.button>
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: 0.9 }}
+                      onClick={increaseOozleValue}
+                      disabled={roundStake(oozleValue) >= MAX_STAKE}
+                      aria-label="Oozle-Einsatz erhöhen"
+                      className={`flex h-11 w-11 items-center justify-center rounded-full text-2xl font-black text-white shadow-sm transition disabled:opacity-30 ${modeTheme.button}`}
+                    >
+                      +
+                    </motion.button>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <div className="rounded-[22px] border border-white/70 bg-white/70 px-4 py-3">
+                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                      Foozle
+                    </div>
+                    <div className="mt-1 text-sm font-black text-slate-950">
+                      3+ Putts
+                    </div>
+                  </div>
+                  <div className="rounded-[22px] border border-white/70 bg-white/70 px-4 py-3">
+                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                      Carryover
+                    </div>
+                    <div className="mt-1 text-sm font-black text-slate-950">
+                      Nächstes Par 3
+                    </div>
+                  </div>
+                </div>
+
+
+              </div>
+            )}
+          </motion.div>
+        )}
 
         <motion.div
           initial={{ opacity: 0, y: 22 }}

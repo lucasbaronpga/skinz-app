@@ -171,6 +171,15 @@ function getPlayerWonSkinz(player) {
   return Math.max(toNumber(player?.skins, 0), 0)
 }
 
+function getPlayerSkinzWinnings(player) {
+  if (player?.skinzWinnings !== undefined) return roundMoney(player.skinzWinnings)
+  return roundMoney(toNumber(player?.winnings, 0) - toNumber(player?.oozleWinnings, 0))
+}
+
+function getPlayerOozleWinnings(player) {
+  return roundMoney(player?.oozleWinnings)
+}
+
 function formatWonSkinz(value) {
   const amount = Math.max(toNumber(value, 0), 0)
   return amount === 1 ? "1 Skin" : `${amount} Skinz`
@@ -333,6 +342,15 @@ function roundHasWolffnData(round) {
 
   return getRoundPlayers(round).some(
     (player) => Array.isArray(player?.holes) && player.holes.some((playedHole) => isWolffnItem(playedHole))
+  )
+}
+
+function roundHasOozle(round) {
+  if (!round || roundHasWolffnData(round)) return false
+  if (round?.oozleConfig?.enabled || round?.oozleEnabled) return true
+  if (Array.isArray(round?.history) && round.history.some((hole) => hole?.oozle?.enabled)) return true
+  return getRoundPlayers(round).some((player) =>
+    Array.isArray(player?.holes) && player.holes.some((hole) => hole?.oozle?.enabled)
   )
 }
 
@@ -631,6 +649,21 @@ function HoleGrid({ holes }) {
             </div>
 
             <BonusBadge label={bonusLabel} className={bonusStyle} />
+            {hole?.oozle?.enabled && (
+              <div className={`mt-3 rounded-full px-2 py-1 text-center text-[9px] font-black uppercase tracking-widest ${
+                hole.oozle.outcome === "oozle"
+                  ? "bg-amber-300 text-slate-950"
+                  : hole.oozle.outcome === "foozle"
+                    ? "bg-red-500 text-white"
+                    : "bg-slate-950 text-white"
+              }`}>
+                {hole.oozle.outcome === "oozle"
+                  ? "Oozle"
+                  : hole.oozle.outcome === "foozle"
+                    ? "Foozle"
+                    : hole.oozle.expired ? "Expired" : "Carryover"}
+              </div>
+            )}
           </div>
         )
       })}
@@ -707,6 +740,8 @@ export default function MatchDetailsScreen() {
   const winnerToPar = getPlayerTotalToPar(winner, coursePar)
   const winnerSkinz = getPlayerWonSkinz(winner)
   const gameModeMeta = getRoundGameModeMeta(round)
+  const hasOozle = roundHasOozle(round)
+  const oozleValue = roundMoney(round?.oozleConfig?.value)
   const settlementRows = getSettlementRows({
     player: selectedSettlementPlayer,
     players: sortedPlayers,
@@ -762,6 +797,12 @@ export default function MatchDetailsScreen() {
                   {gameModeMeta.icon && <span aria-hidden="true">{gameModeMeta.icon}</span>}
                   <span className="min-w-0 whitespace-normal leading-tight">{gameModeMeta.label}</span>
                 </div>
+                {hasOozle && (
+                  <div className="inline-flex items-center gap-2 rounded-full bg-amber-300 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-slate-950 shadow-sm">
+                    Oozle
+                    {oozleValue > 0 && <span>{formatPlainMoney(oozleValue)}</span>}
+                  </div>
+                )}
                 <div className="inline-flex max-w-full items-start gap-2 rounded-full bg-white/[0.12] px-4 py-2 text-[11px] font-black uppercase tracking-widest text-white">
                   <MapPin size={13} className="mt-0.5 shrink-0" />
                   <span className="min-w-0 whitespace-normal leading-tight">{courseName}</span>
@@ -974,6 +1015,23 @@ export default function MatchDetailsScreen() {
                         <div className="mt-3 flex flex-wrap items-center gap-2">
                           <div className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-widest ${outcomeStyle}`}>{outcomeLabel}</div>
 
+                          {item?.oozle?.enabled && (
+                            <div className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-widest ${
+                              item.oozle.outcome === "oozle"
+                                ? "bg-amber-300 text-slate-950"
+                                : item.oozle.outcome === "foozle"
+                                  ? "bg-red-500 text-white"
+                                  : "bg-slate-950 text-white"
+                            }`}>
+                              {item.oozle.outcome === "oozle"
+                                ? `Oozle · ${item.oozle.playerName}`
+                                : item.oozle.outcome === "foozle"
+                                  ? `Foozle · ${item.oozle.playerName}`
+                                  : item.oozle.expired
+                                    ? "Oozle Carryover verfallen"
+                                    : "Oozle Carryover"}
+                            </div>
+                          )}
                           {wolffnHole && (
                             <div className="flex items-center gap-1 rounded-full bg-slate-950 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white">
                               <span aria-hidden="true">🐺</span>
@@ -1165,6 +1223,23 @@ export default function MatchDetailsScreen() {
                   ))}
                 </div>
               </div>
+
+              {hasOozle && (
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="rounded-[24px] border border-white/70 bg-white/[0.62] p-4 shadow-sm">
+                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">Skinz</div>
+                    <div className={`mt-2 text-xl font-black ${getMoneyColor(getPlayerSkinzWinnings(selectedSettlementPlayer))}`}>
+                      {formatMoney(getPlayerSkinzWinnings(selectedSettlementPlayer))}
+                    </div>
+                  </div>
+                  <div className="rounded-[24px] border border-amber-200 bg-amber-50 p-4 shadow-sm">
+                    <div className="text-[9px] font-black uppercase tracking-widest text-amber-600">Oozle</div>
+                    <div className={`mt-2 text-xl font-black ${getMoneyColor(getPlayerOozleWinnings(selectedSettlementPlayer))}`}>
+                      {formatMoney(getPlayerOozleWinnings(selectedSettlementPlayer))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="mt-4 rounded-[28px] border border-white/70 bg-slate-950 px-5 py-4 text-white shadow-[0_18px_45px_rgba(15,23,42,0.22)]">
                 <div className="flex items-center justify-between gap-4">

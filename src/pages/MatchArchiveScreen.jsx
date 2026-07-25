@@ -99,6 +99,20 @@ function getPlayerWonSkinz(player) {
   return Math.max(toNumber(player?.skins, 0), 0)
 }
 
+function getPlayerSkinzWinnings(player) {
+  if (player?.skinzWinnings !== undefined) {
+    return roundMoney(player.skinzWinnings)
+  }
+
+  return roundMoney(
+    toNumber(player?.winnings, 0) - toNumber(player?.oozleWinnings, 0)
+  )
+}
+
+function getPlayerOozleWinnings(player) {
+  return roundMoney(player?.oozleWinnings)
+}
+
 function formatWonSkinz(value) {
   const amount = Math.max(toNumber(value, 0), 0)
 
@@ -279,6 +293,24 @@ function roundIsWolffn(round) {
     (player) =>
       Array.isArray(player?.holes) &&
       player.holes.some((playedHole) => itemIsWolffn(playedHole))
+  )
+}
+
+function roundHasOozle(round) {
+  if (!round || roundIsWolffn(round)) return false
+
+  if (round?.oozleConfig?.enabled || round?.oozleEnabled) return true
+
+  const historyHasOozle =
+    Array.isArray(round?.history) &&
+    round.history.some((playedHole) => Boolean(playedHole?.oozle?.enabled))
+
+  if (historyHasOozle) return true
+
+  return getRoundPlayers(round).some(
+    (player) =>
+      Array.isArray(player?.holes) &&
+      player.holes.some((playedHole) => Boolean(playedHole?.oozle?.enabled))
   )
 }
 
@@ -507,6 +539,8 @@ export default function MatchArchiveScreen() {
             const displayEarnings = round?.winnings ?? winner?.winnings ?? 0
             const displayWinnerSkinz = getPlayerWonSkinz(winner)
             const gameModeMeta = getRoundGameModeMeta(round)
+            const hasOozle = roundHasOozle(round)
+            const oozleValue = roundMoney(round?.oozleConfig?.value)
             const isConfirmingDelete = confirmDeleteRoundId === roundId
             const isDeleting = deletingRoundId === roundId
 
@@ -565,9 +599,18 @@ export default function MatchArchiveScreen() {
                         {gameModeMeta.icon && (
                           <span aria-hidden="true">{gameModeMeta.icon}</span>
                         )}
-
                         {gameModeMeta.label}
                       </div>
+                      {hasOozle && (
+                        <div className="inline-flex items-center gap-2 rounded-full bg-amber-300 px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-950 shadow-sm">
+                          Oozle
+                          {oozleValue > 0 && (
+                            <span className="text-slate-700">
+                              {formatEuroAmount(oozleValue)}€
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="mt-3 inline-flex w-full max-w-full items-start gap-2 rounded-[22px] bg-white/10 px-4 py-3 text-xs font-black uppercase tracking-widest text-white">
@@ -657,7 +700,8 @@ export default function MatchArchiveScreen() {
                       const isWinner =
                         normalizeName(player?.name) === normalizeName(displayWinnerName)
                       const playerWonSkinz = getPlayerWonSkinz(player)
-
+                      const playerSkinzWinnings = getPlayerSkinzWinnings(player)
+                      const playerOozleWinnings = getPlayerOozleWinnings(player)
                       return (
                         <div
                           key={`${roundId}-${player?.name || playerIndex}`}
@@ -699,15 +743,24 @@ export default function MatchArchiveScreen() {
                                   >
                                     {formatWonSkinz(playerWonSkinz)}
                                   </div>
-
                                   <div
                                     className={`text-xs font-black uppercase tracking-widest ${getMoneyColor(
                                       player?.winnings
                                     )}`}
                                   >
-                                    {formatMoney(player?.winnings)}
+                                    Gesamt {formatMoney(player?.winnings)}
                                   </div>
                                 </div>
+                                {hasOozle && (
+                                  <div className="mt-2 flex flex-wrap gap-2">
+                                    <div className={`rounded-full bg-white/80 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest shadow-sm ${getMoneyColor(playerSkinzWinnings)}`}>
+                                      Skinz {formatMoney(playerSkinzWinnings)}
+                                    </div>
+                                    <div className={`rounded-full bg-amber-100 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest shadow-sm ${getMoneyColor(playerOozleWinnings)}`}>
+                                      Oozle {formatMoney(playerOozleWinnings)}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>

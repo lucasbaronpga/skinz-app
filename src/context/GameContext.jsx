@@ -14,6 +14,13 @@ const DEFAULT_COURSE_ID = "westpfalz"
 const DEFAULT_STAKE = 2
 const DEFAULT_SCORE = 4
 const HOLE_COUNT = 18
+const DEFAULT_OOZLE_VALUE = 1
+const DEFAULT_OOZLE_CONFIG = {
+  enabled: false,
+  value: DEFAULT_OOZLE_VALUE,
+  foozleEnabled: true,
+  carryoverEnabled: true,
+}
 
 export const GAME_MODES = {
   CLASSIC: "classic",
@@ -54,6 +61,16 @@ function normalizeName(value) {
 function normalizeStake(value) {
   const stake = roundMoney(value)
   return stake > 0 ? stake : DEFAULT_STAKE
+}
+
+function normalizeOozleConfig(config, gameMode = GAME_MODES.CLASSIC) {
+  const value = roundMoney(config?.value)
+  return {
+    enabled: Boolean(config?.enabled) && gameMode !== GAME_MODES.WOLFFN,
+    value: value > 0 ? value : DEFAULT_OOZLE_VALUE,
+    foozleEnabled: config?.foozleEnabled !== false,
+    carryoverEnabled: config?.carryoverEnabled !== false,
+  }
 }
 
 function normalizePars(pars, fallbackPars = DEFAULT_COURSES[0].pars) {
@@ -196,6 +213,8 @@ function createPlayer(name, initialScore = DEFAULT_SCORE) {
     total: 0,
     totalToPar: 0,
     skins: 0,
+    skinzWinnings: 0,
+    oozleWinnings: 0,
     winnings: 0,
     holes: [],
   }
@@ -237,6 +256,8 @@ function normalizePlayer(player, fallbackScore = DEFAULT_SCORE) {
     total: toNumber(player?.total, 0),
     totalToPar: toNumber(player?.totalToPar, 0),
     skins: getNormalizedPlayerSkins(player),
+    skinzWinnings: roundMoney(player?.skinzWinnings),
+    oozleWinnings: roundMoney(player?.oozleWinnings),
     winnings: roundMoney(player?.winnings),
     holes: Array.isArray(player?.holes)
       ? player.holes.map((hole) => ({
@@ -263,21 +284,14 @@ function normalizeHistory(history) {
 function calculateSettlementWinnings(players, stake) {
   const safePlayers = Array.isArray(players) ? players : []
   const safeStake = normalizeStake(stake)
-
   return safePlayers.map((player) => {
     const playerSkins = Math.max(toNumber(player?.skins, 0), 0)
-    const winnings = safePlayers.reduce((total, opponent) => {
+    const skinzWinnings = safePlayers.reduce((total, opponent) => {
       if (normalizeName(opponent?.name) === normalizeName(player?.name)) return total
-
-      const opponentSkins = Math.max(toNumber(opponent?.skins, 0), 0)
-      return total + (playerSkins - opponentSkins) * safeStake
+      return total + (playerSkins - Math.max(toNumber(opponent?.skins, 0), 0)) * safeStake
     }, 0)
-
-    return {
-      ...player,
-      skins: playerSkins,
-      winnings: roundMoney(winnings),
-    }
+    const oozleWinnings = roundMoney(player?.oozleWinnings)
+    return { ...player, skins: playerSkins, skinzWinnings: roundMoney(skinzWinnings), oozleWinnings, winnings: roundMoney(skinzWinnings + oozleWinnings) }
   })
 }
 
@@ -327,6 +341,7 @@ function normalizeCompletedRounds(rounds, courseList = DEFAULT_COURSES) {
 
     const gameMode = normalizeGameMode(round.gameMode, specialScoringEnabled)
     const normalizedSpecialScoringEnabled = isProfessionalGameMode(gameMode)
+    const oozleConfig = normalizeOozleConfig(round.oozleConfig, gameMode)
     const normalizedPlayers = getRoundPlayers(round).map((player) => normalizePlayer(player))
     const settledPlayers = calculateSettlementWinnings(normalizedPlayers, round.stake)
     const sortedPlayers = [...settledPlayers].sort(
@@ -352,6 +367,8 @@ function normalizeCompletedRounds(rounds, courseList = DEFAULT_COURSES) {
       winner: champion?.name || round.winner || "Unbekannt",
       totalToPar: toNumber(champion?.totalToPar ?? round.totalToPar, 0),
       specialScoringEnabled: normalizedSpecialScoringEnabled,
+      oozleConfig,
+      oozleEnabled: oozleConfig.enabled,
       bonusSkinsEnabled: normalizedSpecialScoringEnabled,
       eagleBonusEnabled: normalizedSpecialScoringEnabled,
     }
@@ -526,6 +543,30 @@ function getWolffnPlayerSkinDelta({ playerName, hasTie, totalSkins, winningTeam 
   return isOnWinningTeam ? totalSkins : 0
 }
 
+function calculateOozleResult({ players, input, config, carryover, hasFutureParThree }) {
+  const outcome = String(input?.outcome || "").toLowerCase()
+  if (!["oozle", "foozle", "carryover"].includes(outcome)) return null
+  const player = outcome === "carryover" ? null : getPlayerByName(players, input?.playerName)
+  if (outcome !== "carryover" && !player) return null
+  const carryoverUnits = Math.max(toNumber(carryover, 0), 0)
+  const unitsAtStake = carryoverUnits + 1
+  const unitValue = roundMoney(config?.value) || DEFAULT_OOZLE_VALUE
+  const amountPerOpponent = roundMoney(unitsAtStake * unitValue)
+  const deltas = new Map(players.map((item) => [normalizeName(item.name), 0]))
+  let nextCarryover = 0
+  let expired = false
+  if (outcome === "carryover") {
+    if (config?.carryoverEnabled !== false && hasFutureParThree) nextCarryover = unitsAtStake
+    else expired = true
+  } else {
+    const selectedKey = normalizeName(player.name)
+    const direction = outcome === "oozle" ? 1 : -1
+    deltas.set(selectedKey, roundMoney(direction * amountPerOpponent * Math.max(players.length - 1, 0)))
+    players.forEach((item) => { const key = normalizeName(item.name); if (key !== selectedKey) deltas.set(key, roundMoney(-direction * amountPerOpponent)) })
+  }
+  return { enabled: true, outcome, playerName: player?.name || null, putts: outcome === "oozle" ? Math.min(Math.max(toNumber(input?.putts, 2), 1), 2) : outcome === "foozle" ? Math.max(toNumber(input?.putts, 3), 3) : null, unitValue, carryoverUnits, unitsAtStake, amountPerOpponent, nextCarryover, expired, deltas }
+}
+
 function getSavedGame() {
   try {
     const savedGame = localStorage.getItem(STORAGE_KEY)
@@ -557,12 +598,15 @@ function createInitialGameState() {
   )
   const gameMode = normalizeGameMode(savedGame?.gameMode, savedSpecialScoringEnabled)
   const specialScoringEnabled = isProfessionalGameMode(gameMode)
+  const oozleConfig = normalizeOozleConfig(savedGame?.oozleConfig, gameMode)
 
   return {
     courses: normalizedCourses,
     selectedCourseId,
     hole: Math.min(Math.max(toNumber(savedGame?.hole, 1), 1), HOLE_COUNT),
     carryover: toNumber(savedGame?.carryover, 0),
+    oozleCarryover: oozleConfig.enabled ? Math.max(toNumber(savedGame?.oozleCarryover, 0), 0) : 0,
+    oozleConfig,
     history: normalizeHistory(savedGame?.history),
     players,
     stake: normalizeStake(savedGame?.stake ?? DEFAULT_STAKE),
@@ -576,7 +620,7 @@ function createInitialGameState() {
   }
 }
 
-function createCompletedRound({ activeMatchId, courseSnapshot, gameMode, gameModeLabel, finalPlayers, history, stake, specialScoringEnabled }) {
+function createCompletedRound({ activeMatchId, courseSnapshot, gameMode, gameModeLabel, finalPlayers, history, stake, specialScoringEnabled, oozleConfig }) {
   const settledFinalPlayers = calculateSettlementWinnings(finalPlayers, stake)
   const sortedFinalPlayers = [...settledFinalPlayers].sort(
     (a, b) =>
@@ -601,6 +645,8 @@ function createCompletedRound({ activeMatchId, courseSnapshot, gameMode, gameMod
     totalToPar: toNumber(champion?.totalToPar, 0),
     stake: normalizeStake(stake),
     specialScoringEnabled,
+    oozleConfig: normalizeOozleConfig(oozleConfig, gameMode),
+    oozleEnabled: normalizeOozleConfig(oozleConfig, gameMode).enabled,
     bonusSkinsEnabled: specialScoringEnabled,
     eagleBonusEnabled: specialScoringEnabled,
     history,
@@ -615,6 +661,8 @@ export function GameProvider({ children }) {
   const [selectedCourseId, setSelectedCourseIdState] = useState(initialState.selectedCourseId)
   const [hole, setHole] = useState(initialState.hole)
   const [carryover, setCarryover] = useState(initialState.carryover)
+  const [oozleCarryover, setOozleCarryover] = useState(initialState.oozleCarryover)
+  const [oozleConfig, setOozleConfigState] = useState(initialState.oozleConfig)
   const [history, setHistory] = useState(initialState.history)
   const [players, setPlayers] = useState(initialState.players)
   const [stake, setStakeState] = useState(initialState.stake)
@@ -710,7 +758,14 @@ export function GameProvider({ children }) {
     })
   }, [])
 
-  const lowestScore = players.length > 0 ? Math.min(...players.map((player) => toNumber(player.score, 0))) : 0
+  const setOozleConfig = useCallback((value) => {
+    setOozleConfigState((current) => normalizeOozleConfig(typeof value === "function" ? value(current) : value, gameMode))
+  }, [gameMode])
+
+ const lowestScore =
+  players.length > 0
+    ? Math.min(...players.map((player) => toNumber(player.score, 0)))
+    : 0
   const winners = players.filter((player) => toNumber(player.score, 0) === lowestScore)
   const hasTie = winners.length > 1
   const currentBaseSkins = players.length > 0 ? getBaseSkinsForScore(lowestScore, currentPar, specialScoringEnabled) : 1
@@ -722,8 +777,9 @@ export function GameProvider({ children }) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         courses,
-        hole,
-        carryover,
+        hole,        carryover,
+        oozleCarryover,
+        oozleConfig,
         history,
         players,
         stake,
@@ -742,14 +798,14 @@ export function GameProvider({ children }) {
     } catch {
       // localStorage kann z. B. im Private Mode oder bei vollem Speicher fehlschlagen.
     }
-  }, [courses, hole, carryover, history, players, stake, matchFinished, hasActiveMatch, completedRounds, activeMatchId, matchCounter, selectedCourseId, gameMode, gameModeLabel, specialScoringEnabled])
+  }, [courses, hole, carryover, oozleCarryover, oozleConfig, history, players, stake, matchFinished, hasActiveMatch, completedRounds, activeMatchId, matchCounter, selectedCourseId, gameMode, gameModeLabel, specialScoringEnabled])
 
   const updateScore = useCallback((index, value) => {
     if (matchFinished || !hasActiveMatch) return
     setPlayers((currentPlayers) => currentPlayers.map((player, playerIndex) => playerIndex !== index ? player : { ...player, score: toNumber(value, currentPar) }))
   }, [matchFinished, hasActiveMatch, currentPar])
 
-  const startMatch = useCallback((playerNames, selectedStake = DEFAULT_STAKE, courseId = selectedCourseId, selectedSpecialScoringEnabledOrGameMode = false, selectedGameMode) => {
+  const startMatch = useCallback((playerNames, selectedStake = DEFAULT_STAKE, courseId = selectedCourseId, selectedSpecialScoringEnabledOrGameMode = false, selectedGameMode, selectedOozleConfig) => {
     const cleanedNames = Array.isArray(playerNames) ? playerNames.map((name) => String(name || "").trim()).filter(Boolean) : []
     const uniqueNameMap = new Map()
     cleanedNames.forEach((name) => {
@@ -781,18 +837,20 @@ export function GameProvider({ children }) {
     setStakeState(normalizeStake(selectedStake))
     setHole(1)
     setCarryover(0)
+    setOozleCarryover(0)
     setHistory([])
     setCelebration(null)
     setMatchFinished(false)
     setHasActiveMatch(true)
     setGameModeState(nextGameMode)
     setSpecialScoringEnabledState(isProfessionalGameMode(nextGameMode))
+    setOozleConfigState(normalizeOozleConfig(selectedOozleConfig, nextGameMode))
     setActiveMatchId(newMatchId)
     setMatchCounter(nextCounter)
     return true
   }, [selectedCourseId, matchCounter, courses])
 
-  const finishHole = useCallback((wolffnSetup = null) => {
+  const finishHole = useCallback((wolffnSetup = null, oozleInput = null) => {
     if (matchFinished || !hasActiveMatch) return
     const courseSnapshot = createCourseSnapshot(currentCourse)
 
@@ -930,7 +988,7 @@ export function GameProvider({ children }) {
 
       if (hole >= HOLE_COUNT) {
         const finalPlayers = updatedPlayers.map((player) => ({ ...player, holes: Array.isArray(player.holes) ? player.holes.map((playedHole) => ({ ...playedHole })) : [] }))
-        const completedRound = createCompletedRound({ activeMatchId, courseSnapshot, gameMode, gameModeLabel, finalPlayers, history: updatedHistory, stake, specialScoringEnabled: false })
+        const completedRound = createCompletedRound({ activeMatchId, courseSnapshot, gameMode, gameModeLabel, finalPlayers, history: updatedHistory, stake, specialScoringEnabled: false, oozleConfig: DEFAULT_OOZLE_CONFIG })
         setCompletedRounds((previousRounds) => [completedRound, ...previousRounds])
         setMatchFinished(true)
         setHasActiveMatch(false)
@@ -942,6 +1000,10 @@ export function GameProvider({ children }) {
       return
     }
 
+    const oozleRequired = oozleConfig.enabled && currentPar === 3
+    const hasFutureParThree = currentPars.slice(hole).some((par) => toNumber(par, 0) === 3)
+    const oozleResult = oozleRequired ? calculateOozleResult({ players, input: oozleInput, config: oozleConfig, carryover: oozleCarryover, hasFutureParThree }) : null
+    if (oozleRequired && !oozleResult) return
     const winner = !hasTie ? winners[0] : null
     const winningResult = getGolfResult(lowestScore, currentPar)
     const tieBaseSkins = getBaseSkinsForScore(lowestScore, currentPar, specialScoringEnabled)
@@ -977,6 +1039,7 @@ export function GameProvider({ children }) {
       eagleBonusApplied: specialScoringApplied && specialScoringLabel === "Eagle 3 Skinz",
       winner: hasTie ? "Carryover" : winner?.name,
       winningScore: lowestScore,
+      oozle: oozleResult ? { ...oozleResult, deltas: undefined } : null,
       course: { id: courseSnapshot.id, name: courseSnapshot.name },
       players: players.map((player) => ({ name: player.name, score: player.score, result: getGolfResult(player.score, currentPar) })),
     }
@@ -990,12 +1053,14 @@ export function GameProvider({ children }) {
       const playerSpecialScoringApplied = Boolean(isWinner && specialScoringApplied)
       const playerSpecialScoringLabel = playerSpecialScoringApplied ? specialScoringLabel : null
       const playerBonusSkins = playerSpecialScoringApplied ? bonusSkins : 0
+      const oozleWinningsDelta = oozleResult?.deltas.get(normalizeName(player.name)) || 0
 
       return {
         ...player,
         total: toNumber(player.total, 0) + playerScore,
         totalToPar: toNumber(player.totalToPar, 0) + toPar,
         skins: toNumber(player.skins, 0) + skinDelta,
+        oozleWinnings: roundMoney(toNumber(player.oozleWinnings, 0) + oozleWinningsDelta),
         holes: [...(Array.isArray(player.holes) ? player.holes : []), {
           hole,
           par: currentPar,
@@ -1007,6 +1072,8 @@ export function GameProvider({ children }) {
           result: getGolfResult(playerScore, currentPar),
           skinDelta,
           winningsDelta: 0,
+          oozleWinningsDelta,
+          oozle: oozleResult ? { ...oozleResult, deltas: undefined } : null,
           totalSkins: hasTie ? 0 : totalSkins,
           baseSkins,
           bonusSkins: playerBonusSkins,
@@ -1026,6 +1093,7 @@ export function GameProvider({ children }) {
 
     setHistory(updatedHistory)
     setPlayers(updatedPlayers)
+    if (oozleResult) setOozleCarryover(oozleResult.nextCarryover)
 
     if (hasTie) {
       setCarryover(nextCarryover)
@@ -1060,7 +1128,7 @@ export function GameProvider({ children }) {
 
     if (hole >= HOLE_COUNT) {
       const finalPlayers = updatedPlayers.map((player) => ({ ...player, holes: Array.isArray(player.holes) ? player.holes.map((playedHole) => ({ ...playedHole })) : [] }))
-      const completedRound = createCompletedRound({ activeMatchId, courseSnapshot, gameMode, gameModeLabel, finalPlayers, history: updatedHistory, stake, specialScoringEnabled })
+      const completedRound = createCompletedRound({ activeMatchId, courseSnapshot, gameMode, gameModeLabel, finalPlayers, history: updatedHistory, stake, specialScoringEnabled, oozleConfig })
       setCompletedRounds((previousRounds) => [completedRound, ...previousRounds])
       setMatchFinished(true)
       setHasActiveMatch(false)
@@ -1069,11 +1137,13 @@ export function GameProvider({ children }) {
     }
 
     setHole(hole + 1)
-  }, [matchFinished, hasActiveMatch, currentCourse, isWolffnMode, players, currentPar, carryover, stake, hole, gameMode, gameModeLabel, history, currentPars, activeMatchId, matchCounter, hasTie, winners, specialScoringEnabled, lowestScore])
+  }, [matchFinished, hasActiveMatch, currentCourse, isWolffnMode, players, currentPar, carryover, stake, hole, gameMode, gameModeLabel, history, currentPars, activeMatchId, matchCounter, hasTie, winners, specialScoringEnabled, lowestScore, oozleConfig, oozleCarryover])
 
   const resetGame = useCallback(() => {
     setHole(1)
     setCarryover(0)
+    setOozleCarryover(0)
+    setOozleConfigState(DEFAULT_OOZLE_CONFIG)
     setHistory([])
     setCelebration(null)
     setMatchFinished(false)
@@ -1157,8 +1227,11 @@ export function GameProvider({ children }) {
     currentCourse,
     hole,
     setHole,
-    currentPar,
-    carryover,
+    currentPar,    carryover,
+    oozleCarryover,
+    oozleConfig,
+    setOozleConfig,
+    oozleEnabled: oozleConfig.enabled,
     currentBaseSkins,
     currentBonusSkins,
     currentSkinsAtStake,
@@ -1191,7 +1264,7 @@ export function GameProvider({ children }) {
     startMatch,
     resetGame,
     getGolfResult,
-  }), [courses, addCourse, updateCourse, deleteCourse, gameMode, setGameMode, gameModeLabel, isWolffnMode, isProfessionalMode, selectedCourseId, setSelectedCourseId, currentCourse, hole, currentPar, carryover, currentBaseSkins, currentBonusSkins, currentSkinsAtStake, currentPot, players, stake, setStake, history, celebration, completedRounds, deleteCompletedRound, playerStats, activeMatchId, hasActiveMatch, matchFinished, lowestScore, winners, hasTie, specialScoringEnabled, setSpecialScoringEnabled, updateScore, finishHole, startMatch, resetGame])
+  }), [courses, addCourse, updateCourse, deleteCourse, gameMode, setGameMode, gameModeLabel, isWolffnMode, isProfessionalMode, selectedCourseId, setSelectedCourseId, currentCourse, hole, currentPar, carryover, oozleCarryover, oozleConfig, setOozleConfig, currentBaseSkins, currentBonusSkins, currentSkinsAtStake, currentPot, players, stake, setStake, history, celebration, completedRounds, deleteCompletedRound, playerStats, activeMatchId, hasActiveMatch, matchFinished, lowestScore, winners, hasTie, specialScoringEnabled, setSpecialScoringEnabled, updateScore, finishHole, startMatch, resetGame])
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>
 }

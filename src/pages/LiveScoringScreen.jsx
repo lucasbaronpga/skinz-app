@@ -335,6 +335,8 @@ export default function LiveScoringScreen() {
     gameMode,
     isWolffnMode,
     specialScoringEnabled,
+    oozleConfig,
+    oozleCarryover,
     stake,
     updateScore,
     finishHole,
@@ -347,6 +349,12 @@ export default function LiveScoringScreen() {
   const [showAbortModal, setShowAbortModal] = useState(false)
   const [showSavedFeedback, setShowSavedFeedback] = useState(false)
   const [selectedSettlementPlayer, setSelectedSettlementPlayer] = useState(null)
+  const [oozleSetup, setOozleSetup] = useState({
+    hole: null,
+    playerName: null,
+    putts: null,
+    noGreen: false,
+  })
   const [wolffnSetup, setWolffnSetup] = useState({
     hole: null,
     gameMode: null,
@@ -391,6 +399,21 @@ export default function LiveScoringScreen() {
     wolffnDecision,
   })
   const wolffnSetupComplete = !isWolffnMode || Boolean(wolffnTeams)
+  const oozleEnabled = Boolean(oozleConfig?.enabled) && !isWolffnMode
+  const oozleRequired = oozleEnabled && currentPar === 3 && !matchFinished
+  const oozleSetupIsCurrent = oozleSetup.hole === safeHole
+  const oozlePlayerName = oozleSetupIsCurrent ? oozleSetup.playerName : null
+  const oozlePutts = oozleSetupIsCurrent ? oozleSetup.putts : null
+  const oozleNoGreen = oozleSetupIsCurrent ? oozleSetup.noGreen : false
+  const oozleSetupComplete =
+    !oozleRequired ||
+    oozleNoGreen ||
+    (Boolean(oozlePlayerName) && [1, 2, 3].includes(oozlePutts))
+  const holeSetupComplete = wolffnSetupComplete && oozleSetupComplete
+  const oozleUnitsAtStake = Math.max(toNumber(oozleCarryover, 0), 0) + 1
+  const oozleAmountPerOpponent = roundMoney(
+    oozleUnitsAtStake * toNumber(oozleConfig?.value, 0)
+  )
 
   useEffect(() => {
     if (!hasActiveMatch || matchFinished) return undefined
@@ -422,6 +445,34 @@ export default function LiveScoringScreen() {
 
   function handleGoHome() {
     navigate("/")
+  }
+
+  function handleSelectOozlePlayer(playerName) {
+    setOozleSetup({
+      hole: safeHole,
+      playerName,
+      putts: null,
+      noGreen: false,
+    })
+  }
+
+  function handleSelectOozlePutts(putts) {
+    if (!oozlePlayerName) return
+    setOozleSetup({
+      hole: safeHole,
+      playerName: oozlePlayerName,
+      putts,
+      noGreen: false,
+    })
+  }
+
+  function handleOozleNoGreen() {
+    setOozleSetup({
+      hole: safeHole,
+      playerName: null,
+      putts: null,
+      noGreen: true,
+    })
   }
 
   function handleAskPartner(playerName) {
@@ -465,12 +516,25 @@ export default function LiveScoringScreen() {
   }
 
   function handleFinishHole() {
-    if (!wolffnSetupComplete) return
+    if (!holeSetupComplete) return
 
     setShowSavedFeedback(true)
 
-    if (isWolffnMode) finishHole(wolffnTeams)
-    else finishHole()
+    if (isWolffnMode) {
+      finishHole(wolffnTeams)
+    } else if (oozleRequired) {
+      const oozleInput = oozleNoGreen
+        ? { outcome: "carryover" }
+        : {
+            outcome: oozlePutts >= 3 ? "foozle" : "oozle",
+            playerName: oozlePlayerName,
+            putts: oozlePutts,
+          }
+
+      finishHole(null, oozleInput)
+    } else {
+      finishHole()
+    }
 
     window.setTimeout(() => setShowSavedFeedback(false), 650)
   }
@@ -680,6 +744,129 @@ export default function LiveScoringScreen() {
             </motion.div>
           )}
 
+          {oozleRequired && (
+            <motion.div
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.06, duration: 0.3, ease: "easeOut" }}
+              className="mt-5 overflow-hidden rounded-[32px] border border-amber-200/70 bg-white/[0.56] shadow-[0_22px_55px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
+            >
+              <div className="p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[11px] font-black uppercase tracking-[0.22em] text-amber-600">
+                      Par-3 Side Bet
+                    </div>
+                    <div className="mt-2 text-3xl font-black tracking-[-0.05em] text-slate-950">
+                      Oozle
+                    </div>
+                    <div className="mt-2 text-sm font-semibold leading-relaxed text-slate-500">
+                      Wer liegt nach dem Abschlag auf dem Grün am nächsten zur Fahne?
+                    </div>
+                  </div>
+                  <div className="shrink-0 rounded-[22px] bg-slate-950 px-4 py-3 text-right text-white shadow-sm">
+                    <div className="text-[9px] font-black uppercase tracking-widest text-white/50">
+                      Wert je Gegner
+                    </div>
+                    <div className="mt-1 text-2xl font-black tracking-[-0.04em] text-amber-300">
+                      {formatPlainMoney(oozleAmountPerOpponent)}
+                    </div>
+                  </div>
+                </div>
+
+                {oozleCarryover > 0 && (
+                  <div className="mt-4 rounded-[20px] border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black uppercase tracking-widest text-amber-700">
+                    Carryover: {oozleCarryover} + aktuelles Par 3 = {oozleUnitsAtStake} Einheiten
+                  </div>
+                )}
+
+                <div className="mt-5 grid grid-cols-2 gap-2">
+                  {safePlayers.map((player) => {
+                    const isSelected = oozlePlayerName === player.name && !oozleNoGreen
+                    return (
+                      <button
+                        key={`oozle-${player.name}`}
+                        type="button"
+                        onClick={() => handleSelectOozlePlayer(player.name)}
+                        className={`rounded-[22px] border px-4 py-4 text-left transition ${
+                          isSelected
+                            ? "border-amber-400 bg-amber-300 text-slate-950 shadow-sm"
+                            : "border-white/70 bg-white/70 text-slate-950"
+                        }`}
+                      >
+                        <div className="truncate text-base font-black">{player.name}</div>
+                        <div className={`mt-1 text-[9px] font-black uppercase tracking-widest ${isSelected ? "text-slate-700" : "text-slate-400"}`}>
+                          Nächster Ball
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleOozleNoGreen}
+                  className={`mt-2 w-full rounded-[22px] border px-4 py-4 text-sm font-black transition ${
+                    oozleNoGreen
+                      ? "border-slate-950 bg-slate-950 text-white"
+                      : "border-white/70 bg-white/70 text-slate-600"
+                  }`}
+                >
+                  Niemand auf dem Grün
+                </button>
+
+                {oozlePlayerName && !oozleNoGreen && (
+                  <div className="mt-5 rounded-[24px] border border-white/70 bg-white/70 p-4">
+                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                      Wie viele Putts benötigt {oozlePlayerName}?
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      {[
+                        { value: 1, label: "1 Putt" },
+                        { value: 2, label: "2 Putts" },
+                        { value: 3, label: "3+ Putts" },
+                      ].map((option) => {
+                        const isSelected = oozlePutts === option.value
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => handleSelectOozlePutts(option.value)}
+                            className={`rounded-[18px] px-3 py-3 text-xs font-black transition ${
+                              isSelected
+                                ? option.value >= 3
+                                  ? "bg-red-500 text-white"
+                                  : "bg-amber-300 text-slate-950"
+                                : "bg-slate-100 text-slate-500"
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {oozleSetupComplete && (
+                  <div className={`mt-4 rounded-[20px] px-4 py-3 text-xs font-black uppercase tracking-widest ${
+                    oozleNoGreen
+                      ? "bg-slate-100 text-slate-600"
+                      : oozlePutts >= 3
+                        ? "bg-red-50 text-red-600"
+                        : "bg-amber-100 text-amber-700"
+                  }`}>
+                    {oozleNoGreen
+                      ? "Carryover zum nächsten Par 3"
+                      : oozlePutts >= 3
+                        ? `Foozle · ${oozlePlayerName} zahlt`
+                        : `Oozle · ${oozlePlayerName} gewinnt`}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
           <div ref={scoreEntryRef} className="mt-5 space-y-4 scroll-mt-5">
             {safePlayers.map((player, index) => {
               const playerScore = toNumber(player.score, currentPar)
@@ -774,6 +961,23 @@ export default function LiveScoringScreen() {
                           {historyResultSummary}
                         </div>
 
+                        {item?.oozle?.enabled && (
+                          <div className={`mt-2 inline-flex w-fit max-w-full rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest shadow-sm ${
+                            item.oozle.outcome === "oozle"
+                              ? "bg-amber-300 text-slate-950"
+                              : item.oozle.outcome === "foozle"
+                                ? "bg-red-500 text-white"
+                                : "bg-slate-950 text-white"
+                          }`}>
+                            {item.oozle.outcome === "oozle"
+                              ? `Oozle · ${item.oozle.playerName}`
+                              : item.oozle.outcome === "foozle"
+                                ? `Foozle · ${item.oozle.playerName}`
+                                : item.oozle.expired
+                                  ? "Oozle Carryover verfallen"
+                                  : "Oozle Carryover"}
+                          </div>
+                        )}
                         {!item.hasTie && wonHolesLabel && (
                           <div className="mt-2">
                             <div className="inline-flex w-fit max-w-full rounded-full bg-slate-950 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-white shadow-sm">
@@ -831,12 +1035,18 @@ export default function LiveScoringScreen() {
 
             <motion.button
               type="button"
-              whileTap={{ scale: wolffnSetupComplete ? 0.98 : 1 }}
-              disabled={!wolffnSetupComplete}
+              whileTap={{ scale: holeSetupComplete ? 0.98 : 1 }}
+              disabled={!holeSetupComplete}
               onClick={handleFinishHole}
               className={`flex w-full items-center justify-between rounded-[32px] px-6 py-5 text-xl font-black text-white shadow-[0_20px_55px_rgba(15,23,42,0.22)] transition disabled:cursor-not-allowed disabled:opacity-45 ${modeTheme.button} ${modeTheme.buttonHover}`}
             >
-              <span>{!wolffnSetupComplete ? "Wolffn Setup wählen" : "Loch abschließen"}</span>
+              <span>
+                {!wolffnSetupComplete
+                  ? "Wolffn Setup wählen"
+                  : !oozleSetupComplete
+                    ? "Oozle vervollständigen"
+                    : "Loch abschließen"}
+              </span>
 
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
                 <ChevronRight size={23} />
