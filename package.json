@@ -13,11 +13,13 @@
     "check": "npm run lint && npm run build",
     "db:check": "node --env-file=.env.local scripts/check-database.js",
     "db:migrate": "node --env-file=.env.local scripts/migrate-database.js",
+    "db:create-admin": "node --env-file=.env.local scripts/create-admin.js",
     "preview": "vite preview",
     "icons": "node scripts/generate-icons.js"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.1",
+    "bcryptjs": "^3.0.3",
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.17.0",
     "react": "^19.2.6",
