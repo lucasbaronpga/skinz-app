@@ -31,17 +31,35 @@ export const GAME_MODES = {
 const DEFAULT_COURSES = [
   {
     id: "westpfalz",
+    clubName: "Erster Golfclub Westpfalz",
     name: "Erster Golfclub Westpfalz",
     location: "Westpfalz",
+    state: "Rheinland-Pfalz",
+    country: "Deutschland",
+    holeCount: HOLE_COUNT,
     par: 72,
     pars: [4, 4, 3, 5, 4, 5, 4, 3, 4, 4, 3, 5, 4, 4, 3, 5, 4, 4],
+    handicapIndexes: [],
+    tees: [],
+    createdAt: 0,
+    updatedAt: 0,
+    isDefault: true,
   },
   {
     id: "kronberg",
+    clubName: "Golf- & Landclub Kronberg",
     name: "Golf- & Landclub Kronberg",
     location: "Kronberg",
+    state: "Hessen",
+    country: "Deutschland",
+    holeCount: HOLE_COUNT,
     par: 68,
     pars: [4, 3, 4, 4, 4, 3, 4, 4, 4, 4, 3, 4, 4, 3, 4, 3, 5, 4],
+    handicapIndexes: [],
+    tees: [],
+    createdAt: 0,
+    updatedAt: 0,
+    isDefault: true,
   },
 ]
 
@@ -73,17 +91,54 @@ function normalizeOozleConfig(config, gameMode = GAME_MODES.CLASSIC) {
   }
 }
 
+function normalizeFixedLengthList(values, fallbackValues, normalizer, emptyValue = null) {
+  const sourceValues = Array.isArray(values) ? values : []
+  const safeFallbackValues = Array.isArray(fallbackValues) ? fallbackValues : []
+
+  return Array.from({ length: HOLE_COUNT }, (_, index) => {
+    const value = sourceValues[index] ?? safeFallbackValues[index] ?? emptyValue
+    return normalizer(value, index)
+  })
+}
+
 function normalizePars(pars, fallbackPars = DEFAULT_COURSES[0].pars) {
-  const sourcePars = Array.isArray(pars) && pars.length > 0 ? pars : fallbackPars
-  const normalizedPars = sourcePars
-    .slice(0, HOLE_COUNT)
-    .map((par) => Math.max(toNumber(par, DEFAULT_SCORE), 1))
+  return normalizeFixedLengthList(
+    pars,
+    fallbackPars,
+    (par) => Math.max(toNumber(par, DEFAULT_SCORE), 1),
+    DEFAULT_SCORE
+  )
+}
 
-  while (normalizedPars.length < HOLE_COUNT) {
-    normalizedPars.push(toNumber(fallbackPars[normalizedPars.length], DEFAULT_SCORE))
-  }
+function normalizeHandicapIndexes(handicapIndexes, fallbackIndexes = []) {
+  return normalizeFixedLengthList(
+    handicapIndexes,
+    fallbackIndexes,
+    (handicapIndex) => {
+      if (handicapIndex === null || handicapIndex === undefined || handicapIndex === "") return null
+      const normalizedIndex = Math.trunc(toNumber(handicapIndex, 0))
+      return normalizedIndex >= 1 && normalizedIndex <= HOLE_COUNT ? normalizedIndex : null
+    }
+  )
+}
 
-  return normalizedPars
+function normalizeLengths(lengths, fallbackLengths = []) {
+  return normalizeFixedLengthList(
+    lengths,
+    fallbackLengths,
+    (length) => {
+      if (length === null || length === undefined || length === "") return null
+      const normalizedLength = Math.round(toNumber(length, 0))
+      return normalizedLength > 0 ? normalizedLength : null
+    }
+  )
+}
+
+function normalizeNullableRating(value, fallback = null) {
+  const candidate = value ?? fallback
+  if (candidate === null || candidate === undefined || candidate === "") return null
+  const normalizedRating = Number(candidate)
+  return Number.isFinite(normalizedRating) && normalizedRating > 0 ? normalizedRating : null
 }
 
 function createCourseId(value, fallback = "course") {
@@ -99,24 +154,85 @@ function createCourseId(value, fallback = "course") {
   return slug || fallback
 }
 
+function normalizeTee(tee, fallbackTee = {}, fallbackId = "tee") {
+  const fallbackName = String(fallbackTee?.name || "Abschlag").trim() || "Abschlag"
+  const name = String(tee?.name || fallbackName).trim() || fallbackName
+  const id = createCourseId(tee?.id || name, fallbackTee?.id || fallbackId)
+  const color = String(tee?.color || fallbackTee?.color || "").trim()
+
+  return {
+    id,
+    name,
+    color,
+    courseRating: normalizeNullableRating(tee?.courseRating, fallbackTee?.courseRating),
+    slopeRating: normalizeNullableRating(tee?.slopeRating, fallbackTee?.slopeRating),
+    lengths: normalizeLengths(tee?.lengths, fallbackTee?.lengths),
+  }
+}
+
+function normalizeTees(tees, fallbackTees = []) {
+  const sourceTees = Array.isArray(tees) ? tees : []
+  const safeFallbackTees = Array.isArray(fallbackTees) ? fallbackTees : []
+  const teeMap = new Map()
+
+  sourceTees.forEach((tee, index) => {
+    const fallbackTee = safeFallbackTees[index] || {}
+    const normalizedTee = normalizeTee(tee, fallbackTee, `tee-${index + 1}`)
+    let uniqueId = normalizedTee.id
+    let suffix = 2
+
+    while (teeMap.has(uniqueId)) {
+      uniqueId = `${normalizedTee.id}-${suffix}`
+      suffix += 1
+    }
+
+    teeMap.set(uniqueId, { ...normalizedTee, id: uniqueId })
+  })
+
+  return Array.from(teeMap.values())
+}
+
+function normalizeTimestamp(value, fallback = 0) {
+  const timestamp = Math.trunc(toNumber(value, fallback))
+  return timestamp >= 0 ? timestamp : fallback
+}
+
 function normalizeCourse(course, fallbackCourse = DEFAULT_COURSES[0]) {
   const fallbackPars = normalizePars(fallbackCourse?.pars)
   const pars = normalizePars(course?.pars, fallbackPars)
   const fallbackName = fallbackCourse?.name || "Golf Course"
   const name = String(course?.name || fallbackName).trim() || fallbackName
+  const clubName = String(
+    course?.clubName || fallbackCourse?.clubName || course?.name || fallbackName
+  ).trim() || name
   const location = String(course?.location || fallbackCourse?.location || "").trim()
+  const state = String(course?.state || fallbackCourse?.state || "").trim()
+  const country = String(course?.country || fallbackCourse?.country || "Deutschland").trim()
   const id = createCourseId(course?.id || name, fallbackCourse?.id || DEFAULT_COURSE_ID)
   const calculatedPar = pars.reduce((total, par) => total + toNumber(par, DEFAULT_SCORE), 0)
+  const createdAt = normalizeTimestamp(course?.createdAt, fallbackCourse?.createdAt || 0)
+  const updatedAt = normalizeTimestamp(course?.updatedAt, fallbackCourse?.updatedAt || createdAt)
 
   return {
     id,
+    clubName,
     name,
     location,
-    par: toNumber(course?.par, calculatedPar),
+    state,
+    country,
+    holeCount: HOLE_COUNT,
+    par: calculatedPar,
     pars,
+    handicapIndexes: normalizeHandicapIndexes(
+      course?.handicapIndexes,
+      fallbackCourse?.handicapIndexes
+    ),
+    tees: normalizeTees(course?.tees, fallbackCourse?.tees),
+    createdAt,
+    updatedAt,
+    isDefault: Boolean(course?.isDefault ?? fallbackCourse?.isDefault),
   }
 }
-
 function getCourseById(courseId, courseList = DEFAULT_COURSES) {
   const safeCourseList = Array.isArray(courseList) && courseList.length > 0 ? courseList : DEFAULT_COURSES
   const normalizedCourseId = String(courseId || "").trim().toLowerCase()
@@ -173,10 +289,19 @@ function createCourseSnapshot(course) {
 
   return {
     id: safeCourse.id,
+    clubName: safeCourse.clubName,
     name: safeCourse.name,
     location: safeCourse.location,
+    state: safeCourse.state,
+    country: safeCourse.country,
+    holeCount: safeCourse.holeCount,
     par: safeCourse.par,
     pars: [...safeCourse.pars],
+    handicapIndexes: [...safeCourse.handicapIndexes],
+    tees: safeCourse.tees.map((tee) => ({
+      ...tee,
+      lengths: [...tee.lengths],
+    })),
   }
 }
 
@@ -781,7 +906,14 @@ export function GameProvider({ children }) {
         suffix += 1
       }
 
-      createdCourse = { ...baseCourse, id: nextCourseId }
+      const timestamp = Date.now()
+      createdCourse = {
+        ...baseCourse,
+        id: nextCourseId,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        isDefault: false,
+      }
       return [...normalizedCourses, createdCourse]
     })
     return createdCourse
@@ -797,7 +929,17 @@ export function GameProvider({ children }) {
       const normalizedCourses = normalizeCourseList(currentCourses)
       return normalizedCourses.map((course) => {
         if (course.id !== normalizedCourseId) return course
-        updatedCourse = normalizeCourse({ ...course, ...updates, id: course.id }, course)
+        updatedCourse = normalizeCourse(
+          {
+            ...course,
+            ...updates,
+            id: course.id,
+            createdAt: course.createdAt,
+            updatedAt: Date.now(),
+            isDefault: course.isDefault,
+          },
+          course
+        )
         return updatedCourse
       })
     })
