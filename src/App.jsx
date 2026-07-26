@@ -254,6 +254,8 @@ function PageTransition({ children }) {
 }
 
 function SplashScreen() {
+  const loadingDots = [0, 1, 2]
+
   return (
     <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#e8ebe5] px-6 text-slate-950">
       <AppBackground />
@@ -273,7 +275,7 @@ function SplashScreen() {
           duration: 0.35,
           ease: "easeOut",
         }}
-        className="relative w-full max-w-sm overflow-hidden rounded-[44px] border border-white/20 bg-[#071819] p-10 text-center text-white shadow-[0_28px_70px_rgba(7,24,25,0.42)]"
+        className="relative w-full max-w-sm overflow-hidden rounded-[44px] border border-white/20 bg-[#071819] px-8 py-12 text-center text-white shadow-[0_28px_70px_rgba(7,24,25,0.42)]"
       >
         <div
           aria-hidden="true"
@@ -285,16 +287,37 @@ function SplashScreen() {
           className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/8 blur-3xl"
         />
 
-        <div className="relative">
-          <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[32px] border border-white/15 bg-white/10 text-4xl font-black text-white shadow-2xl backdrop-blur-xl">
-            S
-          </div>
-
-          <div className="mt-8 text-[12px] font-black uppercase tracking-[0.28em] text-emerald-200/85">
+        <div className="relative flex flex-col items-center justify-center">
+          <div className="text-[15px] font-black uppercase leading-none tracking-[0.3em] text-emerald-200">
             Loading
           </div>
 
-          <div className="mt-3 text-6xl font-black tracking-[-0.07em] text-white">
+          <div
+            className="mt-5 flex h-5 items-center justify-center gap-2"
+            role="status"
+            aria-label="Skinz wird geladen"
+          >
+            {loadingDots.map((dot) => (
+              <motion.span
+                key={dot}
+                aria-hidden="true"
+                className="h-2.5 w-2.5 rounded-full bg-emerald-300"
+                animate={{
+                  opacity: [0.3, 1, 0.3],
+                  scale: [0.75, 1.2, 0.75],
+                  y: [0, -3, 0],
+                }}
+                transition={{
+                  duration: 1,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: dot * 0.18,
+                }}
+              />
+            ))}
+          </div>
+
+          <div className="mt-7 text-6xl font-black leading-none tracking-[-0.07em] text-white">
             Skinz
           </div>
         </div>

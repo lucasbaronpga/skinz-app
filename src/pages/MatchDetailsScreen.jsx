@@ -890,38 +890,20 @@ export default function MatchDetailsScreen() {
                     whileTap={{ scale: 0.985 }}
                     onClick={() => setExpandedPlayer(isExpanded ? null : player.name)}
                     aria-expanded={isExpanded}
-                    className={`w-full rounded-[32px] border px-4 py-5 text-left shadow-sm transition-all duration-300 sm:px-5 ${
-                      isWinner ? "border-amber-300/70 bg-amber-100/80" : "border-white/70 bg-white/[0.74]"
-                    }`}
+                    className={`w-full rounded-[30px] border p-4 text-left shadow-sm transition-all duration-300 ${isWinner ? "border-amber-300/70 bg-amber-100/80" : "border-white/70 bg-white/[0.74]"}`}
                   >
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
-                        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-black ${getRankStyle(index)}`}>
-                          {index + 1}
+                    <div className="grid grid-cols-[3rem_minmax(0,1fr)] gap-3">
+                      <div className={`flex h-12 w-12 items-center justify-center self-start rounded-full text-sm font-black leading-none ${getRankStyle(index)}`}>{index + 1}</div>
+                      <div className="min-w-0">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0"><div className="break-words text-2xl font-black leading-tight tracking-tight text-slate-950">{player.name}</div>{isWinner && <div className="mt-2 inline-flex min-h-7 items-center justify-center rounded-full bg-amber-300 px-2.5 py-1 text-[10px] font-black uppercase leading-none tracking-widest text-black">Winner</div>}</div>
+                          <motion.div className="mt-1 shrink-0" animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.2, ease: "easeOut" }}><ChevronDown size={22} className="text-slate-400" /></motion.div>
                         </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="break-words text-2xl font-black leading-[0.95] tracking-tight text-slate-950 sm:text-3xl">{player.name}</div>
-                          <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <div className="rounded-full bg-slate-950 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-white">
-                              {formatWonSkinz(playerSkinz)}
-                            </div>
-                            <div className={`rounded-full bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-widest shadow-sm ${getMoneyColor(player.winnings)}`}>
-                              {formatMoney(player.winnings)}
-                            </div>
-                          </div>
+                        <div className="mt-4 grid grid-cols-3 gap-2">
+                          <div className="flex min-h-16 flex-col items-center justify-center rounded-[18px] bg-white/75 px-1.5 py-2 text-center"><div className="text-[8px] font-black uppercase leading-none tracking-widest text-slate-400">Skinz</div><div className="mt-2 text-lg font-black leading-none text-slate-950 tabular-nums">{playerSkinz}</div></div>
+                          <div className="flex min-h-16 flex-col items-center justify-center rounded-[18px] bg-white/75 px-1.5 py-2 text-center"><div className="text-[8px] font-black uppercase leading-none tracking-widest text-slate-400">Gesamt</div><div className={`mt-2 whitespace-nowrap text-lg font-black leading-none tabular-nums ${getMoneyColor(player.winnings)}`}>{formatMoney(player.winnings)}</div></div>
+                          <div className="flex min-h-16 flex-col items-center justify-center rounded-[18px] bg-white/75 px-1.5 py-2 text-center"><div className="text-[8px] font-black uppercase leading-none tracking-widest text-slate-400">To Par</div><div className={`mt-2 text-lg font-black leading-none tabular-nums ${getToParColor(totalToPar)}`}>{formatToPar(totalToPar)}</div></div>
                         </div>
-                      </div>
-
-                      <div className="flex shrink-0 items-center gap-3">
-                        <div className="text-right">
-                          <div className={`text-5xl font-black leading-none ${getToParColor(totalToPar)}`}>{formatToPar(totalToPar)}</div>
-                          <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">To Par</div>
-                        </div>
-
-                        <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.2, ease: "easeOut" }}>
-                          <ChevronDown size={24} className="text-slate-400" />
-                        </motion.div>
                       </div>
                     </div>
                   </motion.button>

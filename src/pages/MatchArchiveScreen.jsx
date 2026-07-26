@@ -113,12 +113,6 @@ function getPlayerOozleWinnings(player) {
   return roundMoney(player?.oozleWinnings)
 }
 
-function formatWonSkinz(value) {
-  const amount = Math.max(toNumber(value, 0), 0)
-
-  return amount === 1 ? "1 Skin" : `${amount} Skinz`
-}
-
 function getWonSkinzColor(value) {
   const amount = Math.max(toNumber(value, 0), 0)
 
@@ -622,43 +616,9 @@ export default function MatchArchiveScreen() {
                     </div>
 
                     <div className="mt-8 grid grid-cols-[0.82fr_1.36fr_0.82fr] gap-3">
-                      <div className="min-w-0 rounded-[24px] bg-black/[0.24] p-4">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                          Skinz
-                        </div>
-
-                        <div className="mt-2 truncate text-4xl font-black leading-none tracking-[-0.055em] text-white tabular-nums">
-                          {displayWinnerSkinz}
-                        </div>
-                      </div>
-
-                      <div className="min-w-0 rounded-[24px] bg-black/[0.24] p-4">
-                        <div className="text-center text-[10px] font-black uppercase tracking-widest text-slate-500">
-                          Earnings
-                        </div>
-
-                        <div
-                          className={`mt-2 max-w-full overflow-hidden whitespace-nowrap text-center font-black leading-none tracking-[-0.035em] tabular-nums ${getArchiveMoneyTextSize(
-                            displayEarnings
-                          )} ${getMoneyColorDark(displayEarnings)}`}
-                        >
-                          {formatMoney(displayEarnings)}
-                        </div>
-                      </div>
-
-                      <div className="min-w-0 rounded-[24px] bg-black/[0.24] p-4 text-right">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                          To Par
-                        </div>
-
-                        <div
-                          className={`mt-2 text-4xl font-black tracking-[-0.055em] ${getToParColorDark(
-                            winner?.totalToPar
-                          )}`}
-                        >
-                          {formatToPar(winner?.totalToPar)}
-                        </div>
-                      </div>
+                      <div className="grid min-h-28 min-w-0 grid-rows-[1rem_2.5rem] place-items-center content-center rounded-[24px] bg-black/[0.24] px-2 py-4 text-center"><div className="flex h-4 items-center justify-center text-[10px] font-black uppercase leading-none tracking-widest text-slate-500">Skinz</div><div className="flex h-10 items-center justify-center text-4xl font-black leading-none tracking-[-0.055em] text-white tabular-nums">{displayWinnerSkinz}</div></div>
+                      <div className="grid min-h-28 min-w-0 grid-rows-[1rem_2.5rem] place-items-center content-center rounded-[24px] bg-black/[0.24] px-2 py-4 text-center"><div className="flex h-4 items-center justify-center text-[10px] font-black uppercase leading-none tracking-widest text-slate-500">Earnings</div><div className={`flex h-10 max-w-full items-center justify-center overflow-hidden whitespace-nowrap text-center font-black leading-none tracking-[-0.035em] tabular-nums ${getArchiveMoneyTextSize(displayEarnings)} ${getMoneyColorDark(displayEarnings)}`}>{formatMoney(displayEarnings)}</div></div>
+                      <div className="grid min-h-28 min-w-0 grid-rows-[1rem_2.5rem] place-items-center content-center rounded-[24px] bg-black/[0.24] px-2 py-4 text-center"><div className="flex h-4 items-center justify-center text-[10px] font-black uppercase leading-none tracking-widest text-slate-500">To Par</div><div className={`flex h-10 items-center justify-center text-4xl font-black leading-none tracking-[-0.055em] tabular-nums ${getToParColorDark(winner?.totalToPar)}`}>{formatToPar(winner?.totalToPar)}</div></div>
                     </div>
                   </div>
                 </div>
@@ -703,79 +663,17 @@ export default function MatchArchiveScreen() {
                       const playerSkinzWinnings = getPlayerSkinzWinnings(player)
                       const playerOozleWinnings = getPlayerOozleWinnings(player)
                       return (
-                        <div
-                          key={`${roundId}-${player?.name || playerIndex}`}
-                          className={`flex items-center justify-between rounded-[24px] border px-5 py-4 shadow-sm ${
-                            isWinner
-                              ? "border-emerald-200/80 bg-emerald-50/85"
-                              : "border-white/70 bg-white/[0.50]"
-                          }`}
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-black ${getRankStyle(
-                                  playerIndex
-                                )}`}
-                              >
-                                {playerIndex + 1}
+                        <div key={`${roundId}-${player?.name || playerIndex}`} className={`rounded-[26px] border p-4 shadow-sm ${isWinner ? "border-emerald-200/80 bg-emerald-50/85" : "border-white/70 bg-white/[0.50]"}`}>
+                          <div className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3">
+                            <div className={`flex h-10 w-10 items-center justify-center self-start rounded-full text-sm font-black leading-none ${getRankStyle(playerIndex)}`}>{playerIndex + 1}</div>
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-x-2 gap-y-1"><div className="min-w-0 break-words text-xl font-black leading-tight tracking-tight text-slate-950">{player?.name || "Spieler"}</div>{isWinner && <div className="inline-flex min-h-7 shrink-0 items-center justify-center gap-1 rounded-full bg-amber-400 px-2 py-1 text-[10px] font-black uppercase leading-none tracking-widest text-black"><Crown size={10} />Winner</div>}</div>
+                              <div className="mt-3 grid grid-cols-3 gap-2">
+                                <div className="flex min-h-16 flex-col items-center justify-center rounded-[18px] bg-white/75 px-1.5 py-2 text-center"><div className="text-[8px] font-black uppercase leading-none tracking-widest text-slate-400">Skinz</div><div className={`mt-2 text-lg font-black leading-none tabular-nums ${getWonSkinzColor(playerWonSkinz)}`}>{playerWonSkinz}</div></div>
+                                <div className="flex min-h-16 flex-col items-center justify-center rounded-[18px] bg-white/75 px-1.5 py-2 text-center"><div className="text-[8px] font-black uppercase leading-none tracking-widest text-slate-400">Gesamt</div><div className={`mt-2 whitespace-nowrap text-lg font-black leading-none tabular-nums ${getMoneyColor(player?.winnings)}`}>{formatMoney(player?.winnings)}</div></div>
+                                <div className="flex min-h-16 flex-col items-center justify-center rounded-[18px] bg-white/75 px-1.5 py-2 text-center"><div className="text-[8px] font-black uppercase leading-none tracking-widest text-slate-400">To Par</div><div className={`mt-2 text-lg font-black leading-none tabular-nums ${getToParColor(player?.totalToPar)}`}>{formatToPar(player?.totalToPar)}</div></div>
                               </div>
-
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <div className="min-w-0 break-words text-xl font-black leading-tight tracking-tight text-slate-950">
-                                    {player?.name || "Spieler"}
-                                  </div>
-
-                                  {isWinner && (
-                                    <div className="flex shrink-0 items-center gap-1 rounded-full bg-amber-400 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-black">
-                                      <Crown size={10} />
-                                      Winner
-                                    </div>
-                                  )}
-                                </div>
-
-                                <div className="mt-1 flex flex-wrap gap-2">
-                                  <div
-                                    className={`text-xs font-black uppercase tracking-widest ${getWonSkinzColor(
-                                      playerWonSkinz
-                                    )}`}
-                                  >
-                                    {formatWonSkinz(playerWonSkinz)}
-                                  </div>
-                                  <div
-                                    className={`text-xs font-black uppercase tracking-widest ${getMoneyColor(
-                                      player?.winnings
-                                    )}`}
-                                  >
-                                    Gesamt {formatMoney(player?.winnings)}
-                                  </div>
-                                </div>
-                                {hasOozle && (
-                                  <div className="mt-2 flex flex-wrap gap-2">
-                                    <div className={`rounded-full bg-white/80 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest shadow-sm ${getMoneyColor(playerSkinzWinnings)}`}>
-                                      Skinz {formatMoney(playerSkinzWinnings)}
-                                    </div>
-                                    <div className={`rounded-full bg-amber-100 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest shadow-sm ${getMoneyColor(playerOozleWinnings)}`}>
-                                      Oozle {formatMoney(playerOozleWinnings)}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="shrink-0 pl-3 text-right">
-                            <div
-                              className={`text-3xl font-black tracking-tight ${getToParColor(
-                                player?.totalToPar
-                              )}`}
-                            >
-                              {formatToPar(player?.totalToPar)}
-                            </div>
-
-                            <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">
-                              To Par
+                              {hasOozle && <div className="mt-3 space-y-2 border-t border-slate-200/70 pt-3"><div className="flex min-h-8 items-center justify-between gap-3 rounded-[14px] bg-white/70 px-3 py-2"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Skinz-Abrechnung</span><span className={`shrink-0 text-sm font-black tabular-nums ${getMoneyColor(playerSkinzWinnings)}`}>{formatMoney(playerSkinzWinnings)}</span></div><div className="flex min-h-8 items-center justify-between gap-3 rounded-[14px] bg-amber-50 px-3 py-2"><span className="text-[10px] font-black uppercase tracking-widest text-amber-700">Oozle-Abrechnung</span><span className={`shrink-0 text-sm font-black tabular-nums ${getMoneyColor(playerOozleWinnings)}`}>{formatMoney(playerOozleWinnings)}</span></div></div>}
                             </div>
                           </div>
                         </div>

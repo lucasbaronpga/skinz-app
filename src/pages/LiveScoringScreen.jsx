@@ -361,7 +361,7 @@ function ScoreInputTile({ disabled, golfResultLabel, onSwipe, onKeyDown, playerN
         disabled ? "cursor-default" : "cursor-grab active:cursor-grabbing"
       } ${getScoreTileStyle(golfResultLabel)}`}
     >
-      <span className="flex h-full w-full items-center justify-center tabular-nums text-[4.8rem] font-black leading-none tracking-[-0.015em]">
+      <span className="flex h-full w-full -translate-y-[0.035em] items-center justify-center tabular-nums text-[4.8rem] font-black leading-none tracking-[-0.015em]">
         {playerScore}
       </span>
     </motion.div>
@@ -1189,25 +1189,17 @@ export default function LiveScoringScreen() {
               </div>
 
               <div className="mt-8 grid grid-cols-3 gap-2">
-                <div className="flex min-h-28 flex-col items-center justify-center rounded-[24px] border border-white/70 bg-white/[0.48] p-4 text-center shadow-sm backdrop-blur-xl">
-                  <div className="text-sm font-bold text-slate-500">Skinz</div>
-                  <div className="mt-2 whitespace-nowrap text-[2rem] font-black leading-none tracking-[-0.045em] text-slate-950">
-                    {championWonSkinz}
-                  </div>
+                <div className="grid min-h-28 grid-rows-[1.25rem_2.5rem] place-items-center content-center rounded-[24px] border border-white/70 bg-white/[0.48] px-2 py-4 text-center shadow-sm backdrop-blur-xl">
+                  <div className="flex h-5 items-center justify-center text-sm font-bold leading-none text-slate-500">Skinz</div>
+                  <div className="flex h-10 items-center justify-center whitespace-nowrap text-[2rem] font-black leading-none tracking-[-0.045em] text-slate-950 tabular-nums">{championWonSkinz}</div>
                 </div>
-
-                <div className="flex min-h-28 flex-col items-center justify-center rounded-[24px] border border-white/70 bg-white/[0.48] p-4 text-center shadow-sm backdrop-blur-xl">
-                  <div className="text-sm font-bold text-slate-500">Gesamt</div>
-                  <div className={`mt-2 whitespace-nowrap text-[1.85rem] font-black leading-none tracking-[-0.045em] ${getMoneyColor(champion?.winnings)}`}>
-                    {formatMoney(champion?.winnings)}
-                  </div>
+                <div className="grid min-h-28 grid-rows-[1.25rem_2.5rem] place-items-center content-center rounded-[24px] border border-white/70 bg-white/[0.48] px-2 py-4 text-center shadow-sm backdrop-blur-xl">
+                  <div className="flex h-5 items-center justify-center text-sm font-bold leading-none text-slate-500">Gesamt</div>
+                  <div className={`flex h-10 items-center justify-center whitespace-nowrap text-[1.85rem] font-black leading-none tracking-[-0.045em] tabular-nums ${getMoneyColor(champion?.winnings)}`}>{formatMoney(champion?.winnings)}</div>
                 </div>
-
-                <div className="flex min-h-28 flex-col items-center justify-center rounded-[24px] border border-white/70 bg-white/[0.48] p-4 text-center shadow-sm backdrop-blur-xl">
-                  <div className="text-sm font-bold text-slate-500">To Par</div>
-                  <div className={`mt-2 whitespace-nowrap text-[2rem] font-black leading-none tracking-[-0.045em] ${getToParColor(champion?.totalToPar)}`}>
-                    {formatToPar(champion?.totalToPar)}
-                  </div>
+                <div className="grid min-h-28 grid-rows-[1.25rem_2.5rem] place-items-center content-center rounded-[24px] border border-white/70 bg-white/[0.48] px-2 py-4 text-center shadow-sm backdrop-blur-xl">
+                  <div className="flex h-5 items-center justify-center text-sm font-bold leading-none text-slate-500">To Par</div>
+                  <div className={`flex h-10 items-center justify-center whitespace-nowrap text-[2rem] font-black leading-none tracking-[-0.045em] tabular-nums ${getToParColor(champion?.totalToPar)}`}>{formatToPar(champion?.totalToPar)}</div>
                 </div>
               </div>
 
@@ -1230,58 +1222,28 @@ export default function LiveScoringScreen() {
                         key={player.name}
                         type="button"
                         onClick={() => setSelectedSettlementPlayer(player)}
-                        className={`flex w-full items-center justify-between rounded-[24px] border px-4 py-4 text-left shadow-sm transition active:scale-[0.99] ${
-                          isChampion ? `${modeTheme.activeBorder} ${modeTheme.activeSoftBg}` : "border-white/70 bg-white/[0.54]"
-                        }`}
+                        className={`w-full rounded-[26px] border p-4 text-left shadow-sm transition active:scale-[0.99] ${isChampion ? `${modeTheme.activeBorder} ${modeTheme.activeSoftBg}` : "border-white/70 bg-white/[0.54]"}`}
                       >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <div
-                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-black ${
-                              index === 0
-                                ? "bg-amber-300 text-black"
-                                : index === 1
-                                  ? "border border-slate-200 bg-white text-slate-900"
-                                  : index === 2
-                                    ? "bg-orange-400 text-white"
-                                    : "border border-slate-200 bg-white text-slate-900"
-                            }`}
-                          >
+                        <div className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3">
+                          <div className={`flex h-10 w-10 items-center justify-center self-start rounded-full text-sm font-black leading-none ${index === 0 ? "bg-amber-300 text-black" : index === 1 ? "border border-slate-200 bg-white text-slate-900" : index === 2 ? "bg-orange-400 text-white" : "border border-slate-200 bg-white text-slate-900"}`}>
                             {index + 1}
                           </div>
-
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <div className="truncate text-lg font-black text-slate-950">{player.name}</div>
-                              {isChampion && (
-                                <div className="inline-flex min-h-7 shrink-0 items-center justify-center gap-1 rounded-full bg-amber-300 px-2 py-1 text-center text-[10px] font-black uppercase leading-none tracking-widest text-black">
-                                  <Crown size={10} />
-                                  Winner
-                                </div>
-                              )}
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              <div className="min-w-0 break-words text-xl font-black leading-tight text-slate-950">{player.name}</div>
+                              {isChampion && <div className="inline-flex min-h-7 shrink-0 items-center justify-center gap-1 rounded-full bg-amber-300 px-2 py-1 text-center text-[10px] font-black uppercase leading-none tracking-widest text-black"><Crown size={10} />Winner</div>}
                             </div>
-                            <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-950">{playerWonSkinz} Skinz</div>
-                            <div className="mt-3 space-y-1.5 border-t border-slate-200/80 pt-3">
-                              <div className="flex items-center justify-between gap-4 text-xs font-black">
-                                <span className="text-slate-500">Skinz-Abrechnung</span>
-                                <span className={getMoneyColor(player.skinzWinnings)}>{formatMoney(player.skinzWinnings)}</span>
-                              </div>
-                              {showOozleSettlement && (
-                                <div className="flex items-center justify-between gap-4 text-xs font-black">
-                                  <span className="text-slate-500">Oozle-Abrechnung</span>
-                                  <span className={getMoneyColor(player.oozleWinnings)}>{formatMoney(player.oozleWinnings)}</span>
-                                </div>
-                              )}
+                            <div className="mt-3 grid grid-cols-3 gap-2">
+                              <div className="flex min-h-16 flex-col items-center justify-center rounded-[18px] bg-white/70 px-1.5 py-2 text-center"><div className="text-[8px] font-black uppercase leading-none tracking-widest text-slate-400">Skinz</div><div className="mt-2 text-lg font-black leading-none text-slate-950 tabular-nums">{playerWonSkinz}</div></div>
+                              <div className="flex min-h-16 flex-col items-center justify-center rounded-[18px] bg-white/70 px-1.5 py-2 text-center"><div className="text-[8px] font-black uppercase leading-none tracking-widest text-slate-400">Gesamt</div><div className={`mt-2 whitespace-nowrap text-lg font-black leading-none tabular-nums ${getMoneyColor(player.winnings)}`}>{formatMoney(player.winnings)}</div></div>
+                              <div className="flex min-h-16 flex-col items-center justify-center rounded-[18px] bg-white/70 px-1.5 py-2 text-center"><div className="text-[8px] font-black uppercase leading-none tracking-widest text-slate-400">To Par</div><div className={`mt-2 text-lg font-black leading-none tabular-nums ${getToParColor(player.totalToPar)}`}>{formatToPar(player.totalToPar)}</div></div>
                             </div>
+                            <div className="mt-3 space-y-2 border-t border-slate-200/80 pt-3">
+                              <div className="flex min-h-8 items-center justify-between gap-3 rounded-[14px] bg-white/55 px-3 py-2"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Skinz-Abrechnung</span><span className={`shrink-0 text-sm font-black tabular-nums ${getMoneyColor(player.skinzWinnings)}`}>{formatMoney(player.skinzWinnings)}</span></div>
+                              {showOozleSettlement && <div className="flex min-h-8 items-center justify-between gap-3 rounded-[14px] bg-amber-50/80 px-3 py-2"><span className="text-[10px] font-black uppercase tracking-widest text-amber-700">Oozle-Abrechnung</span><span className={`shrink-0 text-sm font-black tabular-nums ${getMoneyColor(player.oozleWinnings)}`}>{formatMoney(player.oozleWinnings)}</span></div>}
+                            </div>
+                            <div className="mt-3 flex items-center justify-end gap-1 text-[10px] font-black uppercase tracking-widest text-slate-500">Abrechnung anzeigen<ChevronRight size={13} strokeWidth={3} /></div>
                           </div>
-                        </div>
-                        <div className="shrink-0 pl-3 text-right">
-                          <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">Gesamt</div>
-                          <div className={`mt-1 text-2xl font-black ${getMoneyColor(player.winnings)}`}>{formatMoney(player.winnings)}</div>
-                          <div className="mt-1 flex items-center justify-end gap-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            Details
-                            <ChevronRight size={12} strokeWidth={3} />
-                          </div>
-                          <div className={`mt-1 text-xs font-black uppercase tracking-widest ${getToParColor(player.totalToPar)}`}>{formatToPar(player.totalToPar)}</div>
                         </div>
                       </button>
                     )

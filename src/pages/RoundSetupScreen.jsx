@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 
 import { AnimatePresence, motion } from "framer-motion"
 import { useNavigate } from "react-router-dom"
+import { Minus, Plus } from "lucide-react"
 
 import AppBackground from "../components/AppBackground"
 import GameModeBadge from "../components/GameModeBadge"
@@ -412,7 +413,7 @@ export default function RoundSetupScreen() {
                     aria-label="Einsatz verringern"
                     className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/10 text-2xl font-black text-white backdrop-blur-xl transition disabled:opacity-30"
                   >
-                    −
+                    <Minus size={22} strokeWidth={3} aria-hidden="true" />
                   </motion.button>
 
                   <motion.button
@@ -423,7 +424,7 @@ export default function RoundSetupScreen() {
                     aria-label="Einsatz erhöhen"
                     className="flex h-11 w-11 items-center justify-center rounded-full border border-white/80 bg-white text-2xl font-black text-slate-950 shadow-sm transition disabled:opacity-40"
                   >
-                    +
+                    <Plus size={22} strokeWidth={3} aria-hidden="true" />
                   </motion.button>
                 </div>
               </div>
@@ -642,7 +643,7 @@ export default function RoundSetupScreen() {
                       aria-label="Oozle-Einsatz verringern"
                       className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-2xl font-black text-slate-950 shadow-sm transition disabled:opacity-30"
                     >
-                      −
+                      <Minus size={22} strokeWidth={3} aria-hidden="true" />
                     </motion.button>
                     <motion.button
                       type="button"
@@ -652,7 +653,7 @@ export default function RoundSetupScreen() {
                       aria-label="Oozle-Einsatz erhöhen"
                       className={`flex h-11 w-11 items-center justify-center rounded-full text-2xl font-black text-white shadow-sm transition disabled:opacity-30 ${modeTheme.button}`}
                     >
-                      +
+                      <Plus size={22} strokeWidth={3} aria-hidden="true" />
                     </motion.button>
                   </div>
                 </div>
