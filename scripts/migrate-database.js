@@ -12,6 +12,117 @@ function createChecksum(content) {
   return createHash("sha256").update(content, "utf8").digest("hex")
 }
 
+function splitSqlStatements(content) {
+  const statements = []
+  let statement = ""
+  let singleQuoted = false
+  let doubleQuoted = false
+  let lineComment = false
+  let blockComment = false
+  let dollarQuoteTag = null
+
+  for (let index = 0; index < content.length; index += 1) {
+    const character = content[index]
+    const nextCharacter = content[index + 1]
+
+    if (lineComment) {
+      statement += character
+      if (character === "\n") lineComment = false
+      continue
+    }
+
+    if (blockComment) {
+      statement += character
+      if (character === "*" && nextCharacter === "/") {
+        statement += nextCharacter
+        index += 1
+        blockComment = false
+      }
+      continue
+    }
+
+    if (!singleQuoted && !doubleQuoted && !dollarQuoteTag) {
+      if (character === "-" && nextCharacter === "-") {
+        statement += character + nextCharacter
+        index += 1
+        lineComment = true
+        continue
+      }
+
+      if (character === "/" && nextCharacter === "*") {
+        statement += character + nextCharacter
+        index += 1
+        blockComment = true
+        continue
+      }
+
+      if (character === "$") {
+        const remainingContent = content.slice(index)
+        const dollarQuoteMatch = remainingContent.match(/^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/)
+
+        if (dollarQuoteMatch) {
+          dollarQuoteTag = dollarQuoteMatch[0]
+          statement += dollarQuoteTag
+          index += dollarQuoteTag.length - 1
+          continue
+        }
+      }
+    } else if (dollarQuoteTag && content.startsWith(dollarQuoteTag, index)) {
+      statement += dollarQuoteTag
+      index += dollarQuoteTag.length - 1
+      dollarQuoteTag = null
+      continue
+    }
+
+    if (!doubleQuoted && !dollarQuoteTag && character === "'") {
+      statement += character
+
+      if (singleQuoted && nextCharacter === "'") {
+        statement += nextCharacter
+        index += 1
+      } else {
+        singleQuoted = !singleQuoted
+      }
+      continue
+    }
+
+    if (!singleQuoted && !dollarQuoteTag && character === '"') {
+      statement += character
+
+      if (doubleQuoted && nextCharacter === '"') {
+        statement += nextCharacter
+        index += 1
+      } else {
+        doubleQuoted = !doubleQuoted
+      }
+      continue
+    }
+
+    if (
+      character === ";" &&
+      !singleQuoted &&
+      !doubleQuoted &&
+      !dollarQuoteTag
+    ) {
+      const normalizedStatement = statement.trim()
+      if (normalizedStatement) statements.push(normalizedStatement)
+      statement = ""
+      continue
+    }
+
+    statement += character
+  }
+
+  const finalStatement = statement.trim()
+  if (finalStatement) statements.push(finalStatement)
+
+  if (singleQuoted || doubleQuoted || blockComment || dollarQuoteTag) {
+    throw new Error("Die SQL-Migration enthaelt einen nicht abgeschlossenen Ausdruck.")
+  }
+
+  return statements
+}
+
 async function getMigrationFiles() {
   const entries = await readdir(migrationsDirectory, { withFileTypes: true })
 
@@ -43,13 +154,21 @@ async function getAppliedMigrations(sql) {
 }
 
 async function applyMigration(sql, migrationName, migrationSql, checksum) {
-  await sql.transaction([
-    sql.query(migrationSql),
+  const statements = splitSqlStatements(migrationSql)
+
+  if (statements.length === 0) {
+    throw new Error(`Migration ${migrationName} enthaelt keine SQL-Anweisungen.`)
+  }
+
+  const transactionQueries = statements.map((statement) => sql.query(statement))
+  transactionQueries.push(
     sql`
       INSERT INTO schema_migrations (migration_name, checksum)
       VALUES (${migrationName}, ${checksum})
-    `,
-  ])
+    `
+  )
+
+  await sql.transaction(transactionQueries)
 }
 
 async function migrateDatabase() {
