@@ -8,6 +8,11 @@ import {
 
 import { AnimatePresence, motion } from "framer-motion"
 
+import AdminCoursesScreen from "./admin/AdminCoursesScreen"
+import AdminGolfClubScreen from "./admin/AdminGolfClubScreen"
+import AdminGolfCourseScreen from "./admin/AdminGolfCourseScreen"
+import AdminDashboard from "./admin/AdminDashboard"
+import AdminRoute from "./components/AdminRoute"
 import AppBackground from "./components/AppBackground"
 import BottomNav from "./components/BottomNav"
 
@@ -32,11 +37,12 @@ export default function App() {
 
 function AppShell() {
   const location = useLocation()
-
   const { isAuthenticated, isLoading } = useAuth()
 
   const hideBottomNav =
-    location.pathname === "/login" || location.pathname.startsWith("/live")
+    location.pathname === "/login" ||
+    location.pathname.startsWith("/live") ||
+    location.pathname.startsWith("/admin")
 
   if (isLoading) {
     return <SplashScreen />
@@ -53,7 +59,6 @@ function AppShell() {
 
 function AnimatedRoutes({ isAuthenticated }) {
   const location = useLocation()
-
   const routeKey = `${location.pathname}${location.search}`
 
   return (
@@ -150,12 +155,53 @@ function AnimatedRoutes({ isAuthenticated }) {
         />
 
         <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <PageTransition>
+                <AdminDashboard />
+              </PageTransition>
+            </AdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/courses"
+          element={
+            <AdminRoute>
+              <PageTransition>
+                <AdminCoursesScreen />
+              </PageTransition>
+            </AdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/courses/:clubId"
+          element={
+            <AdminRoute>
+              <PageTransition>
+                <AdminGolfClubScreen />
+              </PageTransition>
+            </AdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/courses/:clubId/:courseId"
+          element={
+            <AdminRoute>
+              <PageTransition>
+                <AdminGolfCourseScreen />
+              </PageTransition>
+            </AdminRoute>
+          }
+        />
+
+        <Route
           path="*"
           element={
-            <Navigate
-              to={isAuthenticated ? "/" : "/login"}
-              replace
-            />
+            <Navigate to={isAuthenticated ? "/" : "/login"} replace />
           }
         />
       </Routes>

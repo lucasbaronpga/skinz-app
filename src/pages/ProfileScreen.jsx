@@ -5,6 +5,7 @@ import {
   Flag,
   LogOut,
   MapPin,
+  ShieldCheck,
   Trophy,
   User,
 } from "lucide-react"
@@ -389,6 +390,7 @@ export default function ProfileScreen() {
   const { playerStats, completedRounds } = useGame()
 
   const userName = user?.name || "Player"
+  const isAdmin = user?.role === "admin" && user?.status === "active"
 
   const safePlayerStats = Array.isArray(playerStats) ? playerStats : []
   const safeCompletedRounds = Array.isArray(completedRounds)
@@ -768,6 +770,43 @@ export default function ProfileScreen() {
           </div>
         </motion.div>
 
+        {isAdmin && (
+          <motion.button
+            type="button"
+            whileTap={{
+              scale: 0.985,
+            }}
+            initial={{
+              opacity: 0,
+              y: 18,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            transition={{
+              delay: 0.16,
+              duration: 0.35,
+              ease: "easeOut",
+            }}
+            onClick={() => navigate("/admin")}
+            className="mt-8 flex w-full items-center justify-between rounded-[30px] border border-emerald-200/80 bg-emerald-50/80 px-5 py-4 text-left text-emerald-950 shadow-sm backdrop-blur-xl"
+          >
+            <div className="min-w-0 pr-4">
+              <div className="text-xs font-black uppercase tracking-[0.2em] text-emerald-600">
+                Nur für Administratoren
+              </div>
+              <div className="mt-1 text-xl font-black">Administration</div>
+              <div className="mt-1 text-sm font-bold leading-5 text-emerald-700/70">
+                Golfclubs, Plätze und weitere Bereiche verwalten
+              </div>
+            </div>
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#071819] text-emerald-300 shadow-sm">
+              <ShieldCheck size={22} />
+            </div>
+          </motion.button>
+        )}
+
         <motion.button
           type="button"
           whileTap={{
@@ -782,7 +821,7 @@ export default function ProfileScreen() {
             y: 0,
           }}
           transition={{
-            delay: 0.16,
+            delay: isAdmin ? 0.2 : 0.16,
             duration: 0.35,
             ease: "easeOut",
           }}
