@@ -13,7 +13,8 @@ const STORAGE_KEY = "skinz-game"
 const DEFAULT_COURSE_ID = "westpfalz"
 const DEFAULT_STAKE = 2
 const DEFAULT_SCORE = 4
-const HOLE_COUNT = 18
+const DEFAULT_HOLE_COUNT = 18
+const SUPPORTED_HOLE_COUNTS = [9, 18]
 const DEFAULT_OOZLE_VALUE = 1
 const DEFAULT_OOZLE_CONFIG = {
   enabled: false,
@@ -36,7 +37,7 @@ const DEFAULT_COURSES = [
     location: "Westpfalz",
     state: "Rheinland-Pfalz",
     country: "Deutschland",
-    holeCount: HOLE_COUNT,
+    holeCount: DEFAULT_HOLE_COUNT,
     par: 72,
     pars: [4, 4, 3, 5, 4, 5, 4, 3, 4, 4, 3, 5, 4, 4, 3, 5, 4, 4],
     handicapIndexes: [],
@@ -52,7 +53,7 @@ const DEFAULT_COURSES = [
     location: "Kronberg",
     state: "Hessen",
     country: "Deutschland",
-    holeCount: HOLE_COUNT,
+    holeCount: DEFAULT_HOLE_COUNT,
     par: 68,
     pars: [4, 3, 4, 4, 4, 3, 4, 4, 4, 4, 3, 4, 4, 3, 4, 3, 5, 4],
     handicapIndexes: [],
@@ -91,38 +92,66 @@ function normalizeOozleConfig(config, gameMode = GAME_MODES.CLASSIC) {
   }
 }
 
-function normalizeFixedLengthList(values, fallbackValues, normalizer, emptyValue = null) {
+function normalizeHoleCount(value, fallback = DEFAULT_HOLE_COUNT) {
+  const holeCount = Math.trunc(toNumber(value, fallback))
+  return SUPPORTED_HOLE_COUNTS.includes(holeCount) ? holeCount : fallback
+}
+
+function normalizeFixedLengthList(
+  values,
+  fallbackValues,
+  normalizer,
+  emptyValue = null,
+  expectedLength = DEFAULT_HOLE_COUNT
+) {
   const sourceValues = Array.isArray(values) ? values : []
   const safeFallbackValues = Array.isArray(fallbackValues) ? fallbackValues : []
 
-  return Array.from({ length: HOLE_COUNT }, (_, index) => {
+  return Array.from({ length: expectedLength }, (_, index) => {
     const value = sourceValues[index] ?? safeFallbackValues[index] ?? emptyValue
     return normalizer(value, index)
   })
 }
 
-function normalizePars(pars, fallbackPars = DEFAULT_COURSES[0].pars) {
+function normalizePars(
+  pars,
+  fallbackPars = DEFAULT_COURSES[0].pars,
+  expectedLength = DEFAULT_HOLE_COUNT
+) {
   return normalizeFixedLengthList(
     pars,
     fallbackPars,
     (par) => Math.max(toNumber(par, DEFAULT_SCORE), 1),
-    DEFAULT_SCORE
+    DEFAULT_SCORE,
+    expectedLength
   )
 }
 
-function normalizeHandicapIndexes(handicapIndexes, fallbackIndexes = []) {
+function normalizeHandicapIndexes(
+  handicapIndexes,
+  fallbackIndexes = [],
+  expectedLength = DEFAULT_HOLE_COUNT
+) {
   return normalizeFixedLengthList(
     handicapIndexes,
     fallbackIndexes,
     (handicapIndex) => {
       if (handicapIndex === null || handicapIndex === undefined || handicapIndex === "") return null
       const normalizedIndex = Math.trunc(toNumber(handicapIndex, 0))
-      return normalizedIndex >= 1 && normalizedIndex <= HOLE_COUNT ? normalizedIndex : null
-    }
+      return normalizedIndex >= 1 && normalizedIndex <= DEFAULT_HOLE_COUNT
+        ? normalizedIndex
+        : null
+    },
+    null,
+    expectedLength
   )
 }
 
-function normalizeLengths(lengths, fallbackLengths = []) {
+function normalizeLengths(
+  lengths,
+  fallbackLengths = [],
+  expectedLength = DEFAULT_HOLE_COUNT
+) {
   return normalizeFixedLengthList(
     lengths,
     fallbackLengths,
@@ -130,7 +159,9 @@ function normalizeLengths(lengths, fallbackLengths = []) {
       if (length === null || length === undefined || length === "") return null
       const normalizedLength = Math.round(toNumber(length, 0))
       return normalizedLength > 0 ? normalizedLength : null
-    }
+    },
+    null,
+    expectedLength
   )
 }
 
@@ -154,7 +185,7 @@ function createCourseId(value, fallback = "course") {
   return slug || fallback
 }
 
-function normalizeTee(tee, fallbackTee = {}, fallbackId = "tee") {
+function normalizeTee(tee, fallbackTee = {}, fallbackId = "tee", expectedLength = DEFAULT_HOLE_COUNT) {
   const fallbackName = String(fallbackTee?.name || "Abschlag").trim() || "Abschlag"
   const name = String(tee?.name || fallbackName).trim() || fallbackName
   const id = createCourseId(tee?.id || name, fallbackTee?.id || fallbackId)
@@ -166,18 +197,18 @@ function normalizeTee(tee, fallbackTee = {}, fallbackId = "tee") {
     color,
     courseRating: normalizeNullableRating(tee?.courseRating, fallbackTee?.courseRating),
     slopeRating: normalizeNullableRating(tee?.slopeRating, fallbackTee?.slopeRating),
-    lengths: normalizeLengths(tee?.lengths, fallbackTee?.lengths),
+    lengths: normalizeLengths(tee?.lengths, fallbackTee?.lengths, expectedLength),
   }
 }
 
-function normalizeTees(tees, fallbackTees = []) {
+function normalizeTees(tees, fallbackTees = [], expectedLength = DEFAULT_HOLE_COUNT) {
   const sourceTees = Array.isArray(tees) ? tees : []
   const safeFallbackTees = Array.isArray(fallbackTees) ? fallbackTees : []
   const teeMap = new Map()
 
   sourceTees.forEach((tee, index) => {
     const fallbackTee = safeFallbackTees[index] || {}
-    const normalizedTee = normalizeTee(tee, fallbackTee, `tee-${index + 1}`)
+    const normalizedTee = normalizeTee(tee, fallbackTee, `tee-${index + 1}`, expectedLength)
     let uniqueId = normalizedTee.id
     let suffix = 2
 
@@ -198,8 +229,21 @@ function normalizeTimestamp(value, fallback = 0) {
 }
 
 function normalizeCourse(course, fallbackCourse = DEFAULT_COURSES[0]) {
-  const fallbackPars = normalizePars(fallbackCourse?.pars)
-  const pars = normalizePars(course?.pars, fallbackPars)
+  const inferredHoleCount = Array.isArray(course?.pars) ? course.pars.length : null
+  const fallbackHoleCount = normalizeHoleCount(
+    fallbackCourse?.holeCount ?? fallbackCourse?.pars?.length,
+    DEFAULT_HOLE_COUNT
+  )
+  const holeCount = normalizeHoleCount(
+    course?.holeCount ?? inferredHoleCount,
+    fallbackHoleCount
+  )
+  const fallbackPars = normalizePars(
+    fallbackCourse?.pars,
+    DEFAULT_COURSES[0].pars,
+    holeCount
+  )
+  const pars = normalizePars(course?.pars, fallbackPars, holeCount)
   const fallbackName = fallbackCourse?.name || "Golf Course"
   const name = String(course?.name || fallbackName).trim() || fallbackName
   const clubName = String(
@@ -220,14 +264,15 @@ function normalizeCourse(course, fallbackCourse = DEFAULT_COURSES[0]) {
     location,
     state,
     country,
-    holeCount: HOLE_COUNT,
+    holeCount,
     par: calculatedPar,
     pars,
     handicapIndexes: normalizeHandicapIndexes(
       course?.handicapIndexes,
-      fallbackCourse?.handicapIndexes
+      fallbackCourse?.handicapIndexes,
+      holeCount
     ),
-    tees: normalizeTees(course?.tees, fallbackCourse?.tees),
+    tees: normalizeTees(course?.tees, fallbackCourse?.tees, holeCount),
     createdAt,
     updatedAt,
     isDefault: Boolean(course?.isDefault ?? fallbackCourse?.isDefault),
@@ -261,6 +306,27 @@ function normalizeCourseList(savedCourses) {
   }
 
   return Array.from(courseMap.values())
+}
+
+function normalizeApiCourseList(payload) {
+  const golfClubs = Array.isArray(payload?.golfClubs) ? payload.golfClubs : []
+
+  return golfClubs.flatMap((club) => {
+    const golfCourses = Array.isArray(club?.golfCourses) ? club.golfCourses : []
+    return golfCourses.map((course) =>
+      normalizeCourse(
+        {
+          ...course,
+          clubName: course?.clubName || club?.name,
+          location: course?.location || club?.location,
+          state: course?.state || club?.state,
+          country: course?.country || club?.country,
+          isDefault: false,
+        },
+        course
+      )
+    )
+  })
 }
 
 export function getGameModeLabel(gameMode) {
@@ -808,7 +874,10 @@ function createInitialGameState() {
   return {
     courses: normalizedCourses,
     selectedCourseId,
-    hole: Math.min(Math.max(toNumber(savedGame?.hole, 1), 1), HOLE_COUNT),
+    hole: Math.min(
+      Math.max(toNumber(savedGame?.hole, 1), 1),
+      normalizeHoleCount(currentCourse?.holeCount, DEFAULT_HOLE_COUNT)
+    ),
     carryover: toNumber(savedGame?.carryover, 0),
     oozleCarryover: oozleConfig.enabled ? Math.max(toNumber(savedGame?.oozleCarryover, 0), 0) : 0,
     oozleConfig,
@@ -863,6 +932,8 @@ export function GameProvider({ children }) {
   const initialState = useMemo(() => createInitialGameState(), [])
 
   const [courses, setCourses] = useState(initialState.courses)
+  const [coursesLoading, setCoursesLoading] = useState(true)
+  const [coursesError, setCoursesError] = useState("")
   const [selectedCourseId, setSelectedCourseIdState] = useState(initialState.selectedCourseId)
   const [hole, setHole] = useState(initialState.hole)
   const [carryover, setCarryover] = useState(initialState.carryover)
@@ -882,10 +953,57 @@ export function GameProvider({ children }) {
 
   const currentCourse = getCourseById(selectedCourseId, courses)
   const currentPars = currentCourse?.pars || DEFAULT_COURSES[0].pars
+  const currentHoleCount = normalizeHoleCount(
+    currentCourse?.holeCount ?? currentPars.length,
+    DEFAULT_HOLE_COUNT
+  )
   const currentPar = currentPars[hole - 1] || DEFAULT_SCORE
   const isWolffnMode = isWolffnGameMode(gameMode)
   const isProfessionalMode = isProfessionalGameMode(gameMode)
   const gameModeLabel = getGameModeLabel(gameMode)
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function loadCourses() {
+      setCoursesLoading(true)
+      setCoursesError("")
+
+      try {
+        const response = await fetch("/api/golf-courses", {
+          method: "GET",
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+        })
+        const payload = await response.json().catch(() => ({}))
+
+        if (!response.ok) {
+          throw new Error(payload?.error || "Golfplätze konnten nicht geladen werden.")
+        }
+
+        const apiCourses = normalizeApiCourseList(payload)
+        if (apiCourses.length === 0) {
+          throw new Error("Keine spielbaren Golfplätze verfügbar.")
+        }
+
+        setCourses(apiCourses)
+        setSelectedCourseIdState((currentCourseId) =>
+          apiCourses.some((course) => course.id === currentCourseId)
+            ? currentCourseId
+            : apiCourses[0].id
+        )
+      } catch (error) {
+        if (error?.name === "AbortError") return
+        setCoursesError(error?.message || "Golfplätze konnten nicht geladen werden.")
+      } finally {
+        if (!controller.signal.aborted) setCoursesLoading(false)
+      }
+    }
+
+    loadCourses()
+    return () => controller.abort()
+  }, [])
 
   const setSelectedCourseId = useCallback((courseId) => {
     const selectedCourse = getCourseById(courseId, courses)
@@ -1208,7 +1326,7 @@ export function GameProvider({ children }) {
         window.setTimeout(() => setCelebration(null), 2200)
       }
 
-      if (hole >= HOLE_COUNT) {
+      if (hole >= currentHoleCount) {
         const finalPlayers = updatedPlayers.map((player) => ({ ...player, holes: Array.isArray(player.holes) ? player.holes.map((playedHole) => ({ ...playedHole })) : [] }))
         const completedRound = createCompletedRound({ activeMatchId, courseSnapshot, gameMode, gameModeLabel, finalPlayers, history: updatedHistory, stake, specialScoringEnabled: false, oozleConfig: DEFAULT_OOZLE_CONFIG })
         setCompletedRounds((previousRounds) => [completedRound, ...previousRounds])
@@ -1348,7 +1466,7 @@ export function GameProvider({ children }) {
       }
     }
 
-    if (hole >= HOLE_COUNT) {
+    if (hole >= currentHoleCount) {
       const finalPlayers = updatedPlayers.map((player) => ({ ...player, holes: Array.isArray(player.holes) ? player.holes.map((playedHole) => ({ ...playedHole })) : [] }))
       const completedRound = createCompletedRound({ activeMatchId, courseSnapshot, gameMode, gameModeLabel, finalPlayers, history: updatedHistory, stake, specialScoringEnabled, oozleConfig })
       setCompletedRounds((previousRounds) => [completedRound, ...previousRounds])
@@ -1359,7 +1477,7 @@ export function GameProvider({ children }) {
     }
 
     setHole(hole + 1)
-  }, [matchFinished, hasActiveMatch, currentCourse, isWolffnMode, players, currentPar, carryover, stake, hole, gameMode, gameModeLabel, history, currentPars, activeMatchId, matchCounter, hasTie, winners, specialScoringEnabled, lowestScore, oozleConfig, oozleCarryover])
+  }, [matchFinished, hasActiveMatch, currentCourse, isWolffnMode, players, currentPar, carryover, stake, hole, gameMode, gameModeLabel, history, currentPars, currentHoleCount, activeMatchId, matchCounter, hasTie, winners, specialScoringEnabled, lowestScore, oozleConfig, oozleCarryover])
 
   const resetGame = useCallback(() => {
     setHole(1)
@@ -1434,6 +1552,8 @@ export function GameProvider({ children }) {
 
   const value = useMemo(() => ({
     courses,
+    coursesLoading,
+    coursesError,
     addCourse,
     updateCourse,
     deleteCourse,
@@ -1486,7 +1606,7 @@ export function GameProvider({ children }) {
     startMatch,
     resetGame,
     getGolfResult,
-  }), [courses, addCourse, updateCourse, deleteCourse, gameMode, setGameMode, gameModeLabel, isWolffnMode, isProfessionalMode, selectedCourseId, setSelectedCourseId, currentCourse, hole, currentPar, carryover, oozleCarryover, oozleConfig, setOozleConfig, currentBaseSkins, currentBonusSkins, currentSkinsAtStake, currentPot, players, stake, setStake, history, celebration, completedRounds, deleteCompletedRound, playerStats, activeMatchId, hasActiveMatch, matchFinished, lowestScore, winners, hasTie, specialScoringEnabled, setSpecialScoringEnabled, updateScore, finishHole, startMatch, resetGame])
+  }), [courses, coursesLoading, coursesError, addCourse, updateCourse, deleteCourse, gameMode, setGameMode, gameModeLabel, isWolffnMode, isProfessionalMode, selectedCourseId, setSelectedCourseId, currentCourse, hole, currentPar, carryover, oozleCarryover, oozleConfig, setOozleConfig, currentBaseSkins, currentBonusSkins, currentSkinsAtStake, currentPot, players, stake, setStake, history, celebration, completedRounds, deleteCompletedRound, playerStats, activeMatchId, hasActiveMatch, matchFinished, lowestScore, winners, hasTie, specialScoringEnabled, setSpecialScoringEnabled, updateScore, finishHole, startMatch, resetGame])
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>
 }
