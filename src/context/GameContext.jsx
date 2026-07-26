@@ -397,9 +397,28 @@ function createMatchId(number) {
   return `SKZ-${String(number).padStart(4, "0")}`
 }
 
-function createPlayer(name, initialScore = DEFAULT_SCORE) {
+function createPlayer(player, initialScore = DEFAULT_SCORE) {
+  const playerData =
+    player && typeof player === "object"
+      ? player
+      : { name: player }
+
+  const userId = String(playerData.userId || playerData.id || "").trim() || null
+  const name =
+    String(playerData.name || playerData.displayName || "Player").trim() || "Player"
+  const handicapIndex =
+    playerData.handicapIndex === null ||
+    playerData.handicapIndex === undefined ||
+    playerData.handicapIndex === ""
+      ? null
+      : toNumber(playerData.handicapIndex, null)
+
   return {
-    name: String(name || "Player").trim() || "Player",
+    userId,
+    name,
+    handicapIndex,
+    homeClubId: String(playerData.homeClubId || "").trim() || null,
+    homeClubName: String(playerData.homeClubName || "").trim() || null,
     score: toNumber(initialScore, DEFAULT_SCORE),
     total: 0,
     totalToPar: 0,
@@ -441,8 +460,20 @@ function getNormalizedPlayerSkins(player) {
 }
 
 function normalizePlayer(player, fallbackScore = DEFAULT_SCORE) {
+  const handicapIndex =
+    player?.handicapIndex === null ||
+    player?.handicapIndex === undefined ||
+    player?.handicapIndex === ""
+      ? null
+      : toNumber(player.handicapIndex, null)
+
   return {
-    name: String(player?.name || "Player").trim() || "Player",
+    userId: String(player?.userId || player?.id || "").trim() || null,
+    name:
+      String(player?.name || player?.displayName || "Player").trim() || "Player",
+    handicapIndex,
+    homeClubId: String(player?.homeClubId || "").trim() || null,
+    homeClubName: String(player?.homeClubName || "").trim() || null,
     score: toNumber(player?.score, fallbackScore),
     total: toNumber(player?.total, 0),
     totalToPar: toNumber(player?.totalToPar, 0),
@@ -1145,16 +1176,49 @@ export function GameProvider({ children }) {
     setPlayers((currentPlayers) => currentPlayers.map((player, playerIndex) => playerIndex !== index ? player : { ...player, score: toNumber(value, currentPar) }))
   }, [matchFinished, hasActiveMatch, currentPar])
 
-  const startMatch = useCallback((playerNames, selectedStake = DEFAULT_STAKE, courseId = selectedCourseId, selectedSpecialScoringEnabledOrGameMode = false, selectedGameMode, selectedOozleConfig) => {
-    const cleanedNames = Array.isArray(playerNames) ? playerNames.map((name) => String(name || "").trim()).filter(Boolean) : []
-    const uniqueNameMap = new Map()
-    cleanedNames.forEach((name) => {
-      const key = normalizeName(name)
-      if (!uniqueNameMap.has(key)) uniqueNameMap.set(key, name)
-    })
-    const uniqueNames = Array.from(uniqueNameMap.values())
+  const startMatch = useCallback((playerEntries, selectedStake = DEFAULT_STAKE, courseId = selectedCourseId, selectedSpecialScoringEnabledOrGameMode = false, selectedGameMode, selectedOozleConfig) => {
+    const normalizedEntries = Array.isArray(playerEntries)
+      ? playerEntries
+          .map((entry) => {
+            const playerData =
+              entry && typeof entry === "object" ? entry : { name: entry }
+            const name = String(
+              playerData.name || playerData.displayName || ""
+            ).trim()
 
-    if (uniqueNames.length < 2) return false
+            if (!name) return null
+
+            return {
+              ...playerData,
+              userId:
+                String(playerData.userId || playerData.id || "").trim() ||
+                null,
+              name,
+            }
+          })
+          .filter(Boolean)
+      : []
+
+    const usedUserIds = new Set()
+    const usedNames = new Set()
+    const uniquePlayers = []
+
+    normalizedEntries.forEach((player) => {
+      const userIdKey = player.userId
+        ? String(player.userId).trim().toLowerCase()
+        : null
+      const nameKey = normalizeName(player.name)
+
+      if (!nameKey) return
+      if (userIdKey && usedUserIds.has(userIdKey)) return
+      if (usedNames.has(nameKey)) return
+
+      if (userIdKey) usedUserIds.add(userIdKey)
+      usedNames.add(nameKey)
+      uniquePlayers.push(player)
+    })
+
+    if (uniquePlayers.length < 2) return false
 
     const requestedGameMode = selectedGameMode !== undefined
       ? selectedGameMode
@@ -1164,13 +1228,15 @@ export function GameProvider({ children }) {
     const requestedSpecialScoringEnabled = typeof selectedSpecialScoringEnabledOrGameMode === "boolean" ? selectedSpecialScoringEnabledOrGameMode : false
     const nextGameMode = normalizeGameMode(requestedGameMode, requestedSpecialScoringEnabled)
 
-    if (isWolffnGameMode(nextGameMode) && uniqueNames.length !== 4) return false
+    if (isWolffnGameMode(nextGameMode) && uniquePlayers.length !== 4) return false
 
     const matchCourse = getCourseById(courseId, courses)
     const matchPars = matchCourse?.pars || DEFAULT_COURSES[0].pars
     const nextCounter = matchCounter + 1
     const newMatchId = createMatchId(nextCounter)
-    const formattedPlayers = uniqueNames.map((name) => createPlayer(name, matchPars[0] || DEFAULT_SCORE))
+    const formattedPlayers = uniquePlayers.map((player) =>
+      createPlayer(player, matchPars[0] || DEFAULT_SCORE)
+    )
 
     setSelectedCourseIdState(matchCourse.id)
     setPlayers(formattedPlayers)

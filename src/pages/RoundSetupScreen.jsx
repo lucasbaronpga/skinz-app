@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { AnimatePresence, motion } from "framer-motion"
 import { useNavigate } from "react-router-dom"
@@ -86,16 +86,56 @@ function getNextStakePreset(currentStake) {
   return nextPreset || MAX_STAKE
 }
 
-function buildInitialPlayers(userName) {
-  const cleanedUserName = userName?.trim()
+function normalizeAvailablePlayer(player) {
+  if (!player || typeof player !== "object") return null
 
-  if (!cleanedUserName) {
-    return ["Lucas", "Ben"]
+  const userId = String(player.id || player.userId || "").trim()
+  const name = String(
+    player.displayName || player.name || ""
+  ).trim()
+
+  if (!userId || !name) return null
+
+  return {
+    userId,
+    name,
+    handicapIndex:
+      player.handicapIndex === null ||
+      player.handicapIndex === undefined ||
+      player.handicapIndex === ""
+        ? null
+        : toNumber(player.handicapIndex, null),
+    homeClubId: String(player.homeClubId || "").trim() || null,
+    homeClubName: String(player.homeClubName || "").trim() || null,
+    isCurrentUser: Boolean(player.isCurrentUser),
+  }
+}
+
+function getPlayerKey(player) {
+  const userId = String(player?.userId || player?.id || "").trim()
+
+  if (userId) {
+    return `user:${userId.toLowerCase()}`
   }
 
-  const defaultOpponent = normalizeName(cleanedUserName) === "ben" ? "Lucas" : "Ben"
+  return `name:${normalizeName(player?.name || player?.displayName)}`
+}
 
-  return [cleanedUserName, defaultOpponent]
+function formatHandicapIndex(value) {
+  if (value === null || value === undefined || value === "") {
+    return null
+  }
+
+  const handicapIndex = Number(value)
+
+  if (!Number.isFinite(handicapIndex)) {
+    return null
+  }
+
+  return handicapIndex.toLocaleString("de-DE", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })
 }
 
 function getGameModeDescription(gameMode) {
@@ -144,13 +184,88 @@ export default function RoundSetupScreen() {
     return Array.isArray(courses) ? courses.filter(Boolean) : []
   }, [courses])
 
-  const [players, setPlayers] = useState(() => buildInitialPlayers(user?.name))
-  const [newPlayer, setNewPlayer] = useState("")
+  const [availablePlayers, setAvailablePlayers] = useState([])
+  const [players, setPlayers] = useState([])
+  const [playerSearch, setPlayerSearch] = useState("")
+  const [playersLoading, setPlayersLoading] = useState(true)
+  const [playersError, setPlayersError] = useState("")
   const [stake, setStake] = useState(2)
   const [selectedGameMode, setSelectedGameMode] = useState(GAME_MODES.CLASSIC)
   const [oozleEnabled, setOozleEnabled] = useState(false)
   const [oozleValue, setOozleValue] = useState(1)
   const [showWolffnModal, setShowWolffnModal] = useState(false)
+
+  useEffect(() => {
+    let isCancelled = false
+
+    async function loadPlayers() {
+      setPlayersLoading(true)
+      setPlayersError("")
+
+      try {
+        const response = await fetch("/api/players", {
+          credentials: "same-origin",
+          headers: {
+            Accept: "application/json",
+          },
+        })
+
+        let data = {}
+
+        try {
+          data = await response.json()
+        } catch {
+          data = {}
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            typeof data.error === "string" && data.error.trim()
+              ? data.error
+              : "Spieler konnten nicht geladen werden."
+          )
+        }
+
+        if (isCancelled) return
+
+        const loadedPlayers = Array.isArray(data.players)
+          ? data.players.map(normalizeAvailablePlayer).filter(Boolean)
+          : []
+
+        const currentPlayer =
+          loadedPlayers.find((player) => player.isCurrentUser) ||
+          loadedPlayers.find(
+            (player) =>
+              String(player.userId) === String(user?.id || "")
+          ) ||
+          null
+
+        setAvailablePlayers(loadedPlayers)
+        setPlayers(currentPlayer ? [currentPlayer] : [])
+      } catch (error) {
+        if (isCancelled) return
+
+        console.error("Player list failed.", error)
+        setAvailablePlayers([])
+        setPlayers([])
+        setPlayersError(
+          error instanceof Error && error.message
+            ? error.message
+            : "Spieler konnten nicht geladen werden."
+        )
+      } finally {
+        if (!isCancelled) {
+          setPlayersLoading(false)
+        }
+      }
+    }
+
+    loadPlayers()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [user?.id])
 
   const selectedCourse = currentCourse || safeCourses[0] || null
   const selectedCourseLocation = getCourseLocation(selectedCourse)
@@ -160,29 +275,50 @@ export default function RoundSetupScreen() {
     const playerMap = new Map()
 
     players.forEach((player) => {
-      const trimmedName = String(player || "").trim()
+      const normalizedPlayer = normalizeAvailablePlayer(player)
 
-      if (!trimmedName) {
-        return
-      }
+      if (!normalizedPlayer) return
 
-      const key = normalizeName(trimmedName)
+      const key = getPlayerKey(normalizedPlayer)
 
       if (!playerMap.has(key)) {
-        playerMap.set(key, trimmedName)
+        playerMap.set(key, normalizedPlayer)
       }
     })
 
     return Array.from(playerMap.values())
   }, [players])
 
-  const cleanedNewPlayer = newPlayer.trim()
-
-  const newPlayerAlreadyExists = uniquePlayers.some(
-    (player) => normalizeName(player) === normalizeName(cleanedNewPlayer)
+  const selectedPlayerKeys = useMemo(
+    () => new Set(uniquePlayers.map((player) => getPlayerKey(player))),
+    [uniquePlayers]
   )
 
-  const canAddPlayer = cleanedNewPlayer.length > 0 && !newPlayerAlreadyExists
+  const filteredAvailablePlayers = useMemo(() => {
+    const searchTerm = normalizeName(playerSearch)
+
+    return availablePlayers.filter((player) => {
+      if (selectedPlayerKeys.has(getPlayerKey(player))) {
+        return false
+      }
+
+      if (!searchTerm) {
+        return true
+      }
+
+      const searchableText = normalizeName(
+        [
+          player.name,
+          player.homeClubName,
+          formatHandicapIndex(player.handicapIndex),
+        ]
+          .filter(Boolean)
+          .join(" ")
+      )
+
+      return searchableText.includes(searchTerm)
+    })
+  }, [availablePlayers, playerSearch, selectedPlayerKeys])
 
   const isProfessionalMode = selectedGameMode === GAME_MODES.PROFESSIONAL
   const isWolffnMode = selectedGameMode === GAME_MODES.WOLFFN
@@ -196,25 +332,42 @@ export default function RoundSetupScreen() {
   const gameModeDescription = getGameModeDescription(selectedGameMode)
   const wolffnPlayerCountValid = uniquePlayers.length === 4
 
-  const canStart = isWolffnMode ? wolffnPlayerCountValid : uniquePlayers.length >= 2
+  const canStart =
+    !playersLoading &&
+    !playersError &&
+    (isWolffnMode ? wolffnPlayerCountValid : uniquePlayers.length >= 2)
 
-  function addPlayer() {
-    if (!cleanedNewPlayer) {
-      return
-    }
+  function addPlayer(player) {
+    const normalizedPlayer = normalizeAvailablePlayer(player)
 
-    if (newPlayerAlreadyExists) {
-      setNewPlayer("")
-      return
-    }
+    if (!normalizedPlayer) return
 
-    setPlayers((currentPlayers) => [...currentPlayers, cleanedNewPlayer])
-    setNewPlayer("")
+    const playerKey = getPlayerKey(normalizedPlayer)
+
+    setPlayers((currentPlayers) => {
+      const alreadySelected = currentPlayers.some(
+        (currentPlayer) => getPlayerKey(currentPlayer) === playerKey
+      )
+
+      if (alreadySelected) {
+        return currentPlayers
+      }
+
+      return [...currentPlayers, normalizedPlayer]
+    })
+
+    setPlayerSearch("")
   }
 
-  function removePlayer(name) {
+  function removePlayer(player) {
+    if (player?.isCurrentUser) return
+
+    const playerKey = getPlayerKey(player)
+
     setPlayers((currentPlayers) =>
-      currentPlayers.filter((player) => normalizeName(player) !== normalizeName(name))
+      currentPlayers.filter(
+        (currentPlayer) => getPlayerKey(currentPlayer) !== playerKey
+      )
     )
   }
 
@@ -813,94 +966,196 @@ export default function RoundSetupScreen() {
             </div>
           </div>
 
-          <div className="mt-6 flex gap-3">
-            <input
-              id="new-player"
-              value={newPlayer}
-              onChange={(event) => setNewPlayer(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  addPlayer()
-                }
-              }}
-              placeholder="Mitspieler"
-              autoComplete="given-name"
-              enterKeyHint="done"
-              aria-label="Mitspieler hinzufügen"
-              className={`h-16 min-w-0 flex-1 rounded-[26px] border border-white/70 bg-white/[0.62] px-5 text-lg font-black text-slate-950 shadow-sm outline-none backdrop-blur-xl placeholder:text-slate-300 focus:ring-4 ${modeTheme.ring}`}
-            />
-
-            <motion.button
-              type="button"
-              whileTap={{ scale: canAddPlayer ? 0.92 : 1 }}
-              onClick={addPlayer}
-              disabled={!canAddPlayer}
-              aria-label="Mitspieler hinzufügen"
-              className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-[26px] text-3xl font-black text-white shadow-[0_14px_35px_rgba(15,23,42,0.25)] transition disabled:cursor-not-allowed disabled:opacity-35 ${modeTheme.button} ${modeTheme.buttonHover}`}
+          <div className="mt-6">
+            <label
+              htmlFor="player-search"
+              className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500"
             >
-              +
-            </motion.button>
+              Spieler suchen
+            </label>
+
+            <div className="relative mt-3">
+              <input
+                id="player-search"
+                type="search"
+                value={playerSearch}
+                onChange={(event) => setPlayerSearch(event.target.value)}
+                placeholder="Name oder Heimatclub"
+                autoComplete="off"
+                disabled={playersLoading || Boolean(playersError)}
+                aria-label="Registrierte Spieler suchen"
+                className={`h-16 w-full rounded-[26px] border border-white/70 bg-white/[0.62] px-5 text-lg font-black text-slate-950 shadow-sm outline-none backdrop-blur-xl placeholder:text-slate-300 focus:ring-4 disabled:cursor-not-allowed disabled:opacity-50 ${modeTheme.ring}`}
+              />
+            </div>
           </div>
 
-          {cleanedNewPlayer && newPlayerAlreadyExists && (
-            <div className="mt-3 rounded-[22px] border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-600">
-              Dieser Spieler ist bereits im Flight.
+          {playersLoading && (
+            <div className="mt-4 rounded-[24px] border border-white/70 bg-white/[0.42] px-5 py-4 text-center text-sm font-bold text-slate-500 backdrop-blur-xl">
+              Spieler werden geladen...
+            </div>
+          )}
+
+          {!playersLoading && playersError && (
+            <div className="mt-4 rounded-[24px] border border-red-100 bg-red-50 px-5 py-4 text-center text-sm font-bold text-red-500">
+              {playersError}
+            </div>
+          )}
+
+          {!playersLoading && !playersError && (
+            <div className="mt-4 space-y-3">
+              {filteredAvailablePlayers.length === 0 && (
+                <div className="rounded-[24px] border border-white/70 bg-white/[0.42] px-5 py-4 text-center text-sm font-bold text-slate-500 backdrop-blur-xl">
+                  {playerSearch.trim()
+                    ? "Kein passender aktiver Spieler gefunden."
+                    : "Alle verfügbaren Spieler sind bereits im Flight."}
+                </div>
+              )}
+
+              {filteredAvailablePlayers.map((player) => {
+                const formattedHandicap = formatHandicapIndex(
+                  player.handicapIndex
+                )
+
+                return (
+                  <motion.button
+                    key={getPlayerKey(player)}
+                    type="button"
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => addPlayer(player)}
+                    className="flex w-full items-center justify-between gap-4 rounded-[26px] border border-white/70 bg-white/[0.58] p-4 text-left shadow-sm backdrop-blur-xl transition hover:bg-white/[0.72]"
+                  >
+                    <div className="flex min-w-0 flex-1 items-center gap-4">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-950 text-base font-black uppercase text-white shadow-sm">
+                        {player.name.charAt(0)}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="break-words text-lg font-black leading-tight text-slate-950">
+                          {player.name}
+                        </div>
+
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-bold text-slate-500">
+                          {formattedHandicap && (
+                            <span>HCP {formattedHandicap}</span>
+                          )}
+
+                          {formattedHandicap && player.homeClubName && (
+                            <span aria-hidden="true">·</span>
+                          )}
+
+                          {player.homeClubName && (
+                            <span className="break-words">
+                              {player.homeClubName}
+                            </span>
+                          )}
+
+                          {!formattedHandicap && !player.homeClubName && (
+                            <span>Aktiver Spieler</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <span
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white shadow-sm ${modeTheme.button}`}
+                      aria-hidden="true"
+                    >
+                      <Plus size={20} strokeWidth={3} />
+                    </span>
+                  </motion.button>
+                )
+              })}
             </div>
           )}
 
           {isWolffnMode && !wolffnPlayerCountValid && (
-            <div className="mt-3 rounded-[22px] border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-500">
+            <div className="mt-4 rounded-[22px] border border-red-100 bg-red-50 px-4 py-3 text-center text-sm font-bold text-red-500">
               Wolffn braucht exakt 4 Spieler.
             </div>
           )}
 
-          <div className="mt-6 space-y-3">
-            {uniquePlayers.length === 0 && (
-              <div className="rounded-[26px] border border-white/70 bg-white/[0.42] p-5 text-center text-sm font-bold text-slate-500 backdrop-blur-xl">
-                Noch kein Flight zusammengestellt.
-              </div>
-            )}
+          <div className="mt-6">
+            <div className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
+              Aktueller Flight
+            </div>
 
-            {uniquePlayers.map((player) => {
-              const isCurrentUser = normalizeName(player) === normalizeName(user?.name)
-
-              return (
-                <div
-                  key={player}
-                  className="flex items-center justify-between gap-3 rounded-[28px] border border-white/70 bg-white/[0.42] p-4 shadow-sm backdrop-blur-xl"
-                >
-                  <div className="flex min-w-0 flex-1 items-center gap-4">
-                    <div
-                      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg font-black uppercase shadow-sm ${
-                        isCurrentUser ? modeTheme.avatar : "bg-slate-950 text-white"
-                      }`}
-                    >
-                      {player.charAt(0)}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="break-words text-2xl font-black leading-tight tracking-[-0.035em] text-slate-950">
-                        {player}
-                      </div>
-
-                      <div className="mt-1 text-sm font-semibold text-slate-500">
-                        {isCurrentUser ? "Du" : "Im Flight"}
-                      </div>
-                    </div>
-                  </div>
-
-                  <motion.button
-                    type="button"
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => removePlayer(player)}
-                    aria-label={`${player} entfernen`}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-red-100 bg-white/70 text-xl font-black text-red-500 shadow-sm transition hover:bg-red-50"
-                  >
-                    ×
-                  </motion.button>
+            <div className="mt-3 space-y-3">
+              {uniquePlayers.length === 0 && !playersLoading && (
+                <div className="rounded-[26px] border border-white/70 bg-white/[0.42] p-5 text-center text-sm font-bold text-slate-500 backdrop-blur-xl">
+                  Noch kein Flight zusammengestellt.
                 </div>
-              )
-            })}
+              )}
+
+              {uniquePlayers.map((player) => {
+                const isCurrentUser =
+                  player.isCurrentUser ||
+                  String(player.userId || "") === String(user?.id || "")
+                const formattedHandicap = formatHandicapIndex(
+                  player.handicapIndex
+                )
+
+                return (
+                  <div
+                    key={getPlayerKey(player)}
+                    className="flex items-center justify-between gap-3 rounded-[28px] border border-white/70 bg-white/[0.42] p-4 shadow-sm backdrop-blur-xl"
+                  >
+                    <div className="flex min-w-0 flex-1 items-center gap-4">
+                      <div
+                        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg font-black uppercase shadow-sm ${
+                          isCurrentUser
+                            ? modeTheme.avatar
+                            : "bg-slate-950 text-white"
+                        }`}
+                      >
+                        {player.name.charAt(0)}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="break-words text-2xl font-black leading-tight tracking-[-0.035em] text-slate-950">
+                          {player.name}
+                        </div>
+
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-slate-500">
+                          <span>{isCurrentUser ? "Du" : "Im Flight"}</span>
+
+                          {formattedHandicap && (
+                            <>
+                              <span aria-hidden="true">·</span>
+                              <span>HCP {formattedHandicap}</span>
+                            </>
+                          )}
+
+                          {player.homeClubName && (
+                            <>
+                              <span aria-hidden="true">·</span>
+                              <span className="break-words">
+                                {player.homeClubName}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {isCurrentUser ? (
+                      <div className="flex h-10 shrink-0 items-center justify-center rounded-full border border-white/70 bg-white/60 px-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+                        Fix
+                      </div>
+                    ) : (
+                      <motion.button
+                        type="button"
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => removePlayer(player)}
+                        aria-label={`${player.name} entfernen`}
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-red-100 bg-white/70 text-xl font-black text-red-500 shadow-sm transition hover:bg-red-50"
+                      >
+                        ×
+                      </motion.button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </motion.div>
 
