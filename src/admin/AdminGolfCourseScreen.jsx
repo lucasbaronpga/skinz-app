@@ -188,10 +188,10 @@ export default function AdminGolfCourseScreen() {
       <section className="rounded-[32px] border border-white/70 bg-white/50 p-5 shadow-xl shadow-slate-900/5 backdrop-blur-3xl sm:p-7">
         <Link
           to={`/admin/courses/${clubId}`}
-          className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-emerald-700"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-emerald-200/80 bg-emerald-50/80 px-4 text-center text-xs font-black uppercase tracking-[0.14em] text-emerald-800 shadow-sm transition-colors hover:bg-emerald-100 active:scale-[0.99]"
         >
-          <ArrowLeft size={16} />
-          Zurück zum Golfclub
+          <ArrowLeft size={17} />
+          Golfclub
         </Link>
 
         {isLoading ? (
@@ -319,10 +319,10 @@ export default function AdminGolfCourseScreen() {
           <button
             type="submit"
             disabled={isSaving}
-            className="mt-5 flex h-13 w-full items-center justify-center gap-2 rounded-[20px] bg-emerald-500 px-5 text-sm font-black text-white shadow-lg shadow-emerald-900/10 transition-transform enabled:active:scale-[0.99] disabled:opacity-45"
+            className="mt-6 flex min-h-14 w-full items-center justify-center gap-2.5 rounded-[20px] bg-emerald-500 px-6 py-4 text-center text-base font-black text-white shadow-lg shadow-emerald-900/15 transition-transform enabled:active:scale-[0.99] disabled:opacity-45"
           >
-            {isSaving ? <LoaderCircle size={19} className="animate-spin" /> : <Save size={19} />}
-            Lochdaten speichern
+            {isSaving ? <LoaderCircle size={20} className="animate-spin" /> : <Save size={20} />}
+            Daten speichern
           </button>
         </form>
       )}

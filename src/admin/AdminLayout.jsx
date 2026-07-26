@@ -18,7 +18,7 @@ export default function AdminLayout({ children }) {
 
       <div className="relative z-10 mx-auto w-full max-w-5xl px-4 pb-10 pt-5 sm:px-6 sm:pt-8">
         <header className="overflow-hidden rounded-[32px] border border-white/15 bg-[#071819] px-5 py-5 text-white shadow-[0_24px_60px_rgba(7,24,25,0.28)] sm:px-7">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div className="flex min-w-0 items-center gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-400 text-[#071819]">
                 <ShieldCheck size={23} strokeWidth={2.5} />
@@ -33,21 +33,21 @@ export default function AdminLayout({ children }) {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="grid w-full grid-cols-2 gap-3 sm:flex sm:w-auto sm:items-center sm:gap-2">
               <Link
                 to="/"
-                className="flex h-11 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 text-sm font-black text-white backdrop-blur-xl transition-colors hover:bg-white/15"
+                className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 text-center text-sm font-black text-white backdrop-blur-xl transition-colors hover:bg-white/15 active:scale-[0.99]"
               >
                 <ArrowLeft size={18} />
-                App
+                Zur App
               </Link>
               <button
                 type="button"
                 onClick={handleLogout}
-                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-white transition-colors hover:bg-white/15"
-                aria-label="Abmelden"
+                className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 text-center text-sm font-black text-white transition-colors hover:bg-white/15 active:scale-[0.99]"
               >
                 <LogOut size={18} />
+                Abmelden
               </button>
             </div>
           </div>
