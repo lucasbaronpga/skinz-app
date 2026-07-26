@@ -1,7 +1,8 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/:path((?!api/|src/|@vite/|@react-refresh|node_modules/|assets/).*)",
       "destination": "/index.html"
     }
   ],
