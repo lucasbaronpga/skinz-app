@@ -982,6 +982,8 @@ export function GameProvider({ children }) {
   const [matchCounter, setMatchCounter] = useState(initialState.matchCounter)
   const [startMatchLoading, setStartMatchLoading] = useState(false)
   const [startMatchError, setStartMatchError] = useState("")
+  const [finishHoleLoading, setFinishHoleLoading] = useState(false)
+  const [finishHoleError, setFinishHoleError] = useState("")
   const [celebration, setCelebration] = useState(null)
   const [matchFinished, setMatchFinished] = useState(initialState.matchFinished)
   const [hasActiveMatch, setHasActiveMatch] = useState(initialState.hasActiveMatch)
@@ -1315,9 +1317,77 @@ export function GameProvider({ children }) {
     }
   }, [selectedCourseId, matchCounter, courses])
 
-  const finishHole = useCallback((wolffnSetup = null, oozleInput = null) => {
-    if (matchFinished || !hasActiveMatch) return
+  const finishHole = useCallback(async (wolffnSetup = null, oozleInput = null) => {
+    if (matchFinished || !hasActiveMatch || finishHoleLoading) return false
+    if (!activeDatabaseMatchId) {
+      setFinishHoleError("Die Datenbank-ID des Matches fehlt.")
+      return false
+    }
+    setFinishHoleError("")
     const courseSnapshot = createCourseSnapshot(currentCourse)
+
+    async function persistCompletedHole({ holeResult, updatedPlayers, nextCarryover, nextOozleCarryover }) {
+      setFinishHoleLoading(true)
+      try {
+        const response = await fetch("/api/matches", {
+          method: "PATCH",
+          credentials: "same-origin",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            matchId: activeDatabaseMatchId,
+            holeNumber: hole,
+            par: currentPar,
+            winnerLabel: holeResult.winner || null,
+            winningScore: holeResult.winningScore ?? null,
+            hasTie: Boolean(holeResult.hasTie),
+            skinzAwarded: holeResult.hasTie ? 0 : toNumber(holeResult.skins, 0),
+            carryoverBefore: carryover,
+            carryoverAfter: nextCarryover,
+            oozleCarryoverAfter: nextOozleCarryover,
+            potAmount: roundMoney(holeResult.pot),
+            specialScoringLabel: holeResult.specialScoringLabel || null,
+            isCompleted: hole >= currentHoleCount,
+            gameData: holeResult,
+            players: updatedPlayers.map((player) => {
+              const playedHole = player.holes[player.holes.length - 1]
+              return {
+                userId: player.userId,
+                score: playedHole.score,
+                toPar: playedHole.toPar,
+                skinzDelta: playedHole.skinDelta || 0,
+                winningsDelta: playedHole.winningsDelta || 0,
+                oozleWinningsDelta: playedHole.oozleWinningsDelta || 0,
+                resultLabel: playedHole.result?.label || "Unbekannt",
+                resultData: playedHole,
+                totalStrokes: player.total,
+                totalToPar: player.totalToPar,
+                skinzWon: player.skins,
+                skinzWinnings: player.skinzWinnings,
+                oozleWinnings: player.oozleWinnings,
+                totalWinnings: player.winnings,
+              }
+            }),
+          }),
+        })
+        const payload = await response.json().catch(() => ({}))
+        if (!response.ok) {
+          throw new Error(payload?.error || "Das Loch konnte nicht gespeichert werden.")
+        }
+        return true
+      } catch (error) {
+        setFinishHoleError(
+          error instanceof Error && error.message
+            ? error.message
+            : "Das Loch konnte nicht gespeichert werden."
+        )
+        return false
+      } finally {
+        setFinishHoleLoading(false)
+      }
+    }
 
     if (isWolffnMode) {
       const wolffnResult = calculateWolffnHole({ players, par: currentPar, carryover, stake, wolffnSetup })
@@ -1415,7 +1485,13 @@ export function GameProvider({ children }) {
         }
       })
       const updatedPlayers = settlePlayersAfterHole(playersAfterHole, players, stake)
-
+      const didPersistHole = await persistCompletedHole({
+        holeResult,
+        updatedPlayers,
+        nextCarryover,
+        nextOozleCarryover: 0,
+      })
+      if (!didPersistHole) return false
       setHistory(updatedHistory)
       setPlayers(updatedPlayers)
 
@@ -1459,11 +1535,11 @@ export function GameProvider({ children }) {
         setHasActiveMatch(false)
         setActiveMatchId(createMatchId(matchCounter + 1))
         setActiveDatabaseMatchId(null)
-        return
+        return true
       }
 
       setHole(hole + 1)
-      return
+      return true
     }
 
     const oozleRequired = oozleConfig.enabled && currentPar === 3
@@ -1556,7 +1632,16 @@ export function GameProvider({ children }) {
       }
     })
     const updatedPlayers = settlePlayersAfterHole(playersAfterHole, players, stake)
-
+    const nextOozleCarryover = oozleResult
+      ? oozleResult.nextCarryover
+      : oozleCarryover
+    const didPersistHole = await persistCompletedHole({
+      holeResult,
+      updatedPlayers,
+      nextCarryover,
+      nextOozleCarryover,
+    })
+    if (!didPersistHole) return false
     setHistory(updatedHistory)
     setPlayers(updatedPlayers)
     if (oozleResult) setOozleCarryover(oozleResult.nextCarryover)
@@ -1599,11 +1684,13 @@ export function GameProvider({ children }) {
       setMatchFinished(true)
       setHasActiveMatch(false)
       setActiveMatchId(createMatchId(matchCounter + 1))
-      return
+      setActiveDatabaseMatchId(null)
+      return true
     }
 
     setHole(hole + 1)
-  }, [matchFinished, hasActiveMatch, currentCourse, isWolffnMode, players, currentPar, carryover, stake, hole, gameMode, gameModeLabel, history, currentPars, currentHoleCount, activeMatchId, matchCounter, hasTie, winners, specialScoringEnabled, lowestScore, oozleConfig, oozleCarryover])
+    return true
+  }, [matchFinished, hasActiveMatch, finishHoleLoading, activeDatabaseMatchId, currentCourse, isWolffnMode, players, currentPar, carryover, stake, hole, gameMode, gameModeLabel, history, currentPars, currentHoleCount, activeMatchId, matchCounter, hasTie, winners, specialScoringEnabled, lowestScore, oozleConfig, oozleCarryover])
 
   const resetGame = useCallback(() => {
     setHole(1)
@@ -1718,6 +1805,8 @@ export function GameProvider({ children }) {
     activeDatabaseMatchId,
     startMatchLoading,
     startMatchError,
+    finishHoleLoading,
+    finishHoleError,
     hasActiveMatch,
     matchFinished,
     setMatchFinished,
@@ -1736,7 +1825,7 @@ export function GameProvider({ children }) {
     startMatch,
     resetGame,
     getGolfResult,
-  }), [courses, coursesLoading, coursesError, addCourse, updateCourse, deleteCourse, gameMode, setGameMode, gameModeLabel, isWolffnMode, isProfessionalMode, selectedCourseId, setSelectedCourseId, currentCourse, hole, currentPar, carryover, oozleCarryover, oozleConfig, setOozleConfig, currentBaseSkins, currentBonusSkins, currentSkinsAtStake, currentPot, players, stake, setStake, history, celebration, completedRounds, deleteCompletedRound, playerStats, activeMatchId, activeDatabaseMatchId, startMatchLoading, startMatchError, hasActiveMatch, matchFinished, lowestScore, winners, hasTie, specialScoringEnabled, setSpecialScoringEnabled, updateScore, finishHole, startMatch, resetGame])
+  }), [courses, coursesLoading, coursesError, addCourse, updateCourse, deleteCourse, gameMode, setGameMode, gameModeLabel, isWolffnMode, isProfessionalMode, selectedCourseId, setSelectedCourseId, currentCourse, hole, currentPar, carryover, oozleCarryover, oozleConfig, setOozleConfig, currentBaseSkins, currentBonusSkins, currentSkinsAtStake, currentPot, players, stake, setStake, history, celebration, completedRounds, deleteCompletedRound, playerStats, activeMatchId, activeDatabaseMatchId, startMatchLoading, startMatchError, finishHoleLoading, finishHoleError, hasActiveMatch, matchFinished, lowestScore, winners, hasTie, specialScoringEnabled, setSpecialScoringEnabled, updateScore, finishHole, startMatch, resetGame])
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>
 }

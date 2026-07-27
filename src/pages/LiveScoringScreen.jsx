@@ -391,6 +391,8 @@ export default function LiveScoringScreen() {
     stake,
     updateScore,
     finishHole,
+    finishHoleLoading,
+    finishHoleError,
     getGolfResult,
   } = useGame()
 
@@ -572,13 +574,12 @@ export default function LiveScoringScreen() {
     }
   }
 
-  function handleFinishHole() {
-    if (!holeSetupComplete) return
+  async function handleFinishHole() {
+    if (!holeSetupComplete || finishHoleLoading) return
 
-    setShowSavedFeedback(true)
-
+    let didFinish
     if (isWolffnMode) {
-      finishHole(wolffnTeams)
+      didFinish = await finishHole(wolffnTeams)
     } else if (oozleRequired) {
       const oozleInput = oozleNoGreen
         ? { outcome: "carryover" }
@@ -588,12 +589,15 @@ export default function LiveScoringScreen() {
             putts: oozlePutts,
           }
 
-      finishHole(null, oozleInput)
+      didFinish = await finishHole(null, oozleInput)
     } else {
-      finishHole()
+      didFinish = await finishHole()
     }
 
-    window.setTimeout(() => setShowSavedFeedback(false), 650)
+    if (didFinish) {
+      setShowSavedFeedback(true)
+      window.setTimeout(() => setShowSavedFeedback(false), 650)
+    }
   }
 
   if (!hasActiveMatch && !matchFinished) {
@@ -1073,6 +1077,13 @@ export default function LiveScoringScreen() {
         </div>
       </div>
 
+      {!matchFinished && finishHoleError && (
+        <div className="fixed bottom-[calc(7.7rem+env(safe-area-inset-bottom))] left-0 right-0 z-40 flex justify-center px-5">
+          <div className="w-full max-w-md rounded-[24px] border border-red-200 bg-red-50 px-4 py-3 text-center text-sm font-bold text-red-600 shadow-lg">
+            {finishHoleError}
+          </div>
+        </div>
+      )}
       {!matchFinished && (
         <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center px-5 pb-[calc(1.35rem+env(safe-area-inset-bottom))]">
           <div className="relative w-full max-w-md">
@@ -1092,8 +1103,8 @@ export default function LiveScoringScreen() {
 
             <motion.button
               type="button"
-              whileTap={{ scale: holeSetupComplete ? 0.98 : 1 }}
-              disabled={!holeSetupComplete}
+              whileTap={{ scale: holeSetupComplete && !finishHoleLoading ? 0.98 : 1 }}
+              disabled={!holeSetupComplete || finishHoleLoading}
               onClick={handleFinishHole}
               className={`flex w-full items-center justify-between rounded-[32px] px-6 py-5 text-xl font-black text-white shadow-[0_20px_55px_rgba(15,23,42,0.22)] transition disabled:cursor-not-allowed disabled:opacity-45 ${modeTheme.button} ${modeTheme.buttonHover}`}
             >
@@ -1102,7 +1113,9 @@ export default function LiveScoringScreen() {
                   ? "Wolffn Setup wählen"
                   : !oozleSetupComplete
                     ? "Oozle vervollständigen"
-                    : "Loch abschließen"}
+                    : finishHoleLoading
+                      ? "Loch wird gespeichert..."
+                      : "Loch abschließen"}
               </span>
 
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
