@@ -564,6 +564,44 @@ export function getOozleSettlementRows(players, playerName) {
   }))
 }
 
+function getFinalSettlementPayments(players, stake) {
+  const safePlayers = Array.isArray(players) ? players : []
+  const safeStake = normalizeStake(stake)
+  const payments = []
+  for (let playerIndex = 0; playerIndex < safePlayers.length; playerIndex += 1) {
+    const player = safePlayers[playerIndex]
+    const playerOozleRows = getOozleSettlementRows(safePlayers, player?.name)
+    for (let opponentIndex = playerIndex + 1; opponentIndex < safePlayers.length; opponentIndex += 1) {
+      const opponent = safePlayers[opponentIndex]
+      const skinzAmount = roundMoney(
+        (Math.max(toNumber(player?.skins, 0), 0) - Math.max(toNumber(opponent?.skins, 0), 0)) * safeStake
+      )
+      const oozleRow = playerOozleRows.find(
+        (row) => normalizeName(row?.opponentName) === normalizeName(opponent?.name)
+      )
+      const combinedAmount = roundMoney(skinzAmount + toNumber(oozleRow?.amount, 0))
+      if (combinedAmount > 0) {
+        payments.push({
+          payerUserId: opponent.userId,
+          payerName: opponent.name,
+          recipientUserId: player.userId,
+          recipientName: player.name,
+          amount: combinedAmount,
+        })
+      } else if (combinedAmount < 0) {
+        payments.push({
+          payerUserId: player.userId,
+          payerName: player.name,
+          recipientUserId: opponent.userId,
+          recipientName: opponent.name,
+          amount: Math.abs(combinedAmount),
+        })
+      }
+    }
+  }
+  return payments
+}
+
 function calculateSettlementWinnings(players, stake) {
   const safePlayers = Array.isArray(players) ? players : []
   const safeStake = normalizeStake(stake)
@@ -958,6 +996,7 @@ function createCompletedRound({ activeMatchId, courseSnapshot, gameMode, gameMod
     eagleBonusEnabled: specialScoringEnabled,
     history,
     players: settledFinalPlayers,
+    settlements: getFinalSettlementPayments(settledFinalPlayers, stake),
   }
 }
 
@@ -1040,6 +1079,50 @@ function createRestoredHistory(matchHoles) {
       }
     })
   )
+}
+
+function createCompletedRoundFromApiMatch(match, courseList) {
+  const courseSnapshot = normalizeCourseSnapshot(match?.course, courseList)
+  const matchHoles = Array.isArray(match?.holes) ? match.holes : []
+  const finalPar = courseSnapshot.pars[courseSnapshot.pars.length - 1] || DEFAULT_SCORE
+  const restoredPlayers = (Array.isArray(match?.players) ? match.players : []).map((player) =>
+    createRestoredPlayer(player, matchHoles, finalPar)
+  )
+  const settledPlayers = calculateSettlementWinnings(restoredPlayers, match?.stake)
+  const sortedPlayers = [...settledPlayers].sort(
+    (a, b) =>
+      toNumber(b.winnings, 0) - toNumber(a.winnings, 0) ||
+      toNumber(b.skins, 0) - toNumber(a.skins, 0) ||
+      toNumber(a.totalToPar, 0) - toNumber(b.totalToPar, 0)
+  )
+  const champion = sortedPlayers[0] || null
+  const completedAt = match?.completedAt || match?.updatedAt || match?.createdAt
+  const completedDate = completedAt ? new Date(completedAt) : new Date()
+  return {
+    id: match?.matchCode || match?.id,
+    databaseId: match?.id || null,
+    date: Number.isNaN(completedDate.getTime())
+      ? "Unbekannt"
+      : completedDate.toLocaleDateString("de-DE"),
+    createdAt: Number.isNaN(completedDate.getTime()) ? 0 : completedDate.getTime(),
+    completedAt: match?.completedAt || null,
+    course: courseSnapshot,
+    gameMode: normalizeGameMode(match?.gameMode, match?.specialScoringEnabled),
+    gameModeLabel: getGameModeLabel(
+      normalizeGameMode(match?.gameMode, match?.specialScoringEnabled)
+    ),
+    winner: champion?.name || "Unbekannt",
+    winnings: roundMoney(champion?.winnings),
+    skins: Math.max(toNumber(champion?.skins, 0), 0),
+    totalToPar: toNumber(champion?.totalToPar, 0),
+    stake: normalizeStake(match?.stake),
+    specialScoringEnabled: Boolean(match?.specialScoringEnabled),
+    oozleConfig: normalizeOozleConfig(match?.oozleConfig, match?.gameMode),
+    oozleEnabled: Boolean(match?.oozleConfig?.enabled),
+    history: createRestoredHistory(matchHoles),
+    players: settledPlayers,
+    settlements: Array.isArray(match?.settlements) ? match.settlements : [],
+  }
 }
 
 export function GameProvider({ children }) {
@@ -1285,6 +1368,19 @@ export function GameProvider({ children }) {
       const matches = Array.isArray(payload?.matches) ? payload.matches : []
       const nextMatchCounter = getMatchCounterFromMatches(matches, matchCounter)
       setMatchCounter(nextMatchCounter)
+      const databaseCompletedRounds = matches
+        .filter((match) => match?.status === "completed")
+        .map((match) => createCompletedRoundFromApiMatch(match, courses))
+      setCompletedRounds((currentRounds) => {
+        const databaseIds = new Set(databaseCompletedRounds.map((round) => String(round.id)))
+        const legacyRounds = currentRounds.filter(
+          (round) => !databaseIds.has(String(round?.id || "")) && !round?.databaseId
+        )
+        return normalizeCompletedRounds(
+          [...databaseCompletedRounds, ...legacyRounds],
+          courses
+        )
+      })
       const activeMatch = matches.find((match) => match?.status === "active") || null
 
       if (!activeMatch) {
@@ -1528,6 +1624,10 @@ export function GameProvider({ children }) {
             potAmount: roundMoney(holeResult.pot),
             specialScoringLabel: holeResult.specialScoringLabel || null,
             isCompleted: hole >= currentHoleCount,
+            settlements:
+              hole >= currentHoleCount
+                ? getFinalSettlementPayments(updatedPlayers, stake)
+                : [],
             gameData: holeResult,
             players: updatedPlayers.map((player) => {
               const playedHole = player.holes[player.holes.length - 1]
@@ -1887,12 +1987,7 @@ export function GameProvider({ children }) {
     setActiveDatabaseMatchId(null)
   }, [matchCounter])
 
-  const deleteCompletedRound = useCallback((roundId) => {
-    const normalizedRoundId = String(roundId || "").trim()
-    if (!normalizedRoundId) return false
-    setCompletedRounds((previousRounds) => previousRounds.filter((round) => String(round?.id || "").trim() !== normalizedRoundId))
-    return true
-  }, [])
+  const deleteCompletedRound = useCallback(() => false, [])
 
   const uniquePlayerNames = useMemo(() => {
     const playerMap = new Map()

@@ -152,7 +152,7 @@ function mapPlayerRow(player) {
   }
 }
 
-function mapMatchRow(match, players, holes = []) {
+function mapMatchRow(match, players, holes = [], settlements = []) {
   return {
     id: match.id,
     matchCode: match.match_code,
@@ -318,6 +318,26 @@ async function handleGet(request, response, currentUser) {
     playerHolesByHoleId.set(holeId, entries)
   })
 
+  const settlementRows = await sql`
+    SELECT
+      ms.id, ms.match_id, ms.amount,
+      payer.user_id AS payer_user_id,
+      payer.display_name_snapshot AS payer_name,
+      recipient.user_id AS recipient_user_id,
+      recipient.display_name_snapshot AS recipient_name
+    FROM match_settlements AS ms
+    JOIN match_players AS payer ON payer.id = ms.payer_match_player_id
+    JOIN match_players AS recipient ON recipient.id = ms.recipient_match_player_id
+    WHERE ms.match_id = ANY(${matchIds}::uuid[])
+    ORDER BY ms.match_id, payer.display_order, recipient.display_order
+  `
+  const settlementsByMatchId = new Map()
+  settlementRows.forEach((settlement) => {
+    const matchId = String(settlement.match_id)
+    const entries = settlementsByMatchId.get(matchId) || []
+    entries.push(mapSettlementRow(settlement))
+    settlementsByMatchId.set(matchId, entries)
+  })
   const holesByMatchId = new Map()
   holeRows.forEach((hole) => {
     const matchId = String(hole.match_id)
@@ -334,7 +354,8 @@ async function handleGet(request, response, currentUser) {
       return mapMatchRow(
         match,
         playersByMatchId.get(matchId) || [],
-        holesByMatchId.get(matchId) || []
+        holesByMatchId.get(matchId) || [],
+        settlementsByMatchId.get(matchId) || []
       )
     }),
   })
@@ -661,6 +682,25 @@ function normalizeHolePlayers(players) {
   return normalizedPlayers
 }
 
+function normalizeSettlements(settlements) {
+  if (!Array.isArray(settlements)) return null
+  const normalized = settlements.map((settlement) => {
+    const payerUserId = normalizeUuid(settlement?.payerUserId)
+    const recipientUserId = normalizeUuid(settlement?.recipientUserId)
+    const amount = normalizePositiveMoney(settlement?.amount)
+    if (!payerUserId || !recipientUserId || payerUserId === recipientUserId || !amount) {
+      return null
+    }
+    return { payerUserId, recipientUserId, amount }
+  })
+  if (normalized.some((settlement) => !settlement)) return null
+  const pairKeys = normalized.map(
+    (settlement) => `${settlement.payerUserId}:${settlement.recipientUserId}`
+  )
+  if (new Set(pairKeys).size !== pairKeys.length) return null
+  return normalized
+}
+
 async function handlePatch(request, response, currentUser) {
   const body = getRequestBody(request)
   if (!body) return response.status(400).json({ error: "Ungueltige JSON-Daten." })
@@ -678,12 +718,14 @@ async function handlePatch(request, response, currentUser) {
   const potAmount = normalizeMoney(body.potAmount)
   const players = normalizeHolePlayers(body.players)
   const isCompleted = Boolean(body.isCompleted)
+  const settlements = isCompleted ? normalizeSettlements(body.settlements) : []
 
   if (
     !matchId || holeNumber === null || par === null ||
     (body.winningScore !== null && body.winningScore !== undefined && winningScore === null) ||
     skinzAwarded === null || carryoverBefore === null || carryoverAfter === null ||
-    oozleCarryoverAfter === null || potAmount === null || potAmount < 0 || !players
+    oozleCarryoverAfter === null || potAmount === null || potAmount < 0 || !players ||
+    (isCompleted && settlements === null)
   ) {
     return response.status(400).json({ error: "Die Lochdaten sind unvollstaendig oder ungueltig." })
   }
@@ -723,6 +765,42 @@ async function handlePatch(request, response, currentUser) {
     return response.status(409).json({ error: "Die Spieler stimmen nicht mit dem Match ueberein." })
   }
 
+  const matchPlayerByUserId = new Map(
+    matchPlayers.map((matchPlayer) => [String(matchPlayer.user_id), matchPlayer])
+  )
+  if (
+    settlements.some(
+      (settlement) =>
+        !matchPlayerByUserId.has(settlement.payerUserId) ||
+        !matchPlayerByUserId.has(settlement.recipientUserId)
+    )
+  ) {
+    return response.status(409).json({ error: "Die Abrechnung enthält unbekannte Spieler." })
+  }
+  const settlementBalanceByUserId = new Map(
+    matchPlayers.map((matchPlayer) => [String(matchPlayer.user_id), 0])
+  )
+  settlements.forEach((settlement) => {
+    settlementBalanceByUserId.set(
+      settlement.payerUserId,
+      normalizeMoney(settlementBalanceByUserId.get(settlement.payerUserId) - settlement.amount)
+    )
+    settlementBalanceByUserId.set(
+      settlement.recipientUserId,
+      normalizeMoney(settlementBalanceByUserId.get(settlement.recipientUserId) + settlement.amount)
+    )
+  })
+  if (
+    isCompleted &&
+    players.some(
+      (player) =>
+        Math.abs(
+          normalizeMoney(settlementBalanceByUserId.get(player.userId)) - player.totalWinnings
+        ) > 0.009
+    )
+  ) {
+    return response.status(409).json({ error: "Die Endabrechnung stimmt nicht mit den Spielersummen überein." })
+  }
   const existingHole = await sql`
     SELECT id
     FROM match_holes
@@ -783,6 +861,21 @@ async function handlePatch(request, response, currentUser) {
         WHERE id = ${matchPlayer.id}
       `
     }),
+    ...(isCompleted
+      ? [
+          sql`DELETE FROM match_settlements WHERE match_id = ${matchId}`,
+          ...settlements.map((settlement) => sql`
+            INSERT INTO match_settlements (
+              match_id, payer_match_player_id, recipient_match_player_id, amount
+            ) VALUES (
+              ${matchId},
+              ${matchPlayerByUserId.get(settlement.payerUserId).id},
+              ${matchPlayerByUserId.get(settlement.recipientUserId).id},
+              ${settlement.amount}
+            )
+          `),
+        ]
+      : []),
     sql`
       UPDATE matches
       SET current_hole = ${nextHole},

@@ -1,12 +1,10 @@
-import { useState } from "react"
 
-import { AnimatePresence, motion } from "framer-motion"
+import { motion } from "framer-motion"
 import { useNavigate } from "react-router-dom"
 import {
   ChevronRight,
   Crown,
   MapPin,
-  Trash2,
   Trophy,
   Users,
 } from "lucide-react"
@@ -405,17 +403,10 @@ function getRoundGameModeMeta(round) {
   }
 }
 
-function stopEvent(event) {
-  event.preventDefault()
-  event.stopPropagation()
-}
 
 export default function MatchArchiveScreen() {
   const navigate = useNavigate()
-  const { completedRounds, deleteCompletedRound } = useGame()
-
-  const [confirmDeleteRoundId, setConfirmDeleteRoundId] = useState(null)
-  const [deletingRoundId, setDeletingRoundId] = useState(null)
+  const { completedRounds } = useGame()
 
   const safeCompletedRounds = Array.isArray(completedRounds)
     ? completedRounds
@@ -426,7 +417,7 @@ export default function MatchArchiveScreen() {
   )
 
   const openRound = (roundId) => {
-    if (!roundId || confirmDeleteRoundId) return
+    if (!roundId) return
 
     navigate(`/matches/${roundId}`)
   }
@@ -436,37 +427,6 @@ export default function MatchArchiveScreen() {
       event.preventDefault()
       openRound(roundId)
     }
-  }
-
-  const handleDeleteRequest = (event, roundId) => {
-    stopEvent(event)
-    setConfirmDeleteRoundId(roundId)
-  }
-
-  const handleDeleteCancel = (event) => {
-    stopEvent(event)
-
-    if (deletingRoundId) return
-
-    setConfirmDeleteRoundId(null)
-  }
-
-  const handleDeleteConfirm = (event, roundId) => {
-    stopEvent(event)
-
-    if (!roundId || deletingRoundId) return
-
-    setDeletingRoundId(roundId)
-
-    const deleted = deleteCompletedRound(roundId)
-
-    if (deleted) {
-      setConfirmDeleteRoundId(null)
-      setDeletingRoundId(null)
-      return
-    }
-
-    setDeletingRoundId(null)
   }
 
   return (
@@ -535,8 +495,6 @@ export default function MatchArchiveScreen() {
             const gameModeMeta = getRoundGameModeMeta(round)
             const hasOozle = roundHasOozle(round)
             const oozleValue = roundMoney(round?.oozleConfig?.value)
-            const isConfirmingDelete = confirmDeleteRoundId === roundId
-            const isDeleting = deletingRoundId === roundId
 
             return (
               <motion.div
@@ -693,60 +651,6 @@ export default function MatchArchiveScreen() {
                       </div>
                     </div>
 
-                    <AnimatePresence mode="wait">
-                      {!isConfirmingDelete ? (
-                        <motion.button
-                          key="delete-trigger"
-                          type="button"
-                          whileTap={{ scale: 0.98 }}
-                          onClick={(event) => handleDeleteRequest(event, roundId)}
-                          className="mt-5 flex w-full items-center justify-center gap-2 rounded-[24px] border border-red-200 bg-red-50 px-4 py-4 text-sm font-black uppercase tracking-widest text-red-600 shadow-sm transition-colors hover:bg-red-100"
-                        >
-                          <Trash2 size={16} />
-                          Delete Match
-                        </motion.button>
-                      ) : (
-                        <motion.div
-                          key="delete-confirm"
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -8 }}
-                          transition={{ duration: 0.2, ease: "easeOut" }}
-                          onClick={stopEvent}
-                          className="mt-5 rounded-[26px] border border-red-200 bg-red-50 p-4"
-                        >
-                          <div className="text-base font-black text-red-700">
-                            Match wirklich löschen?
-                          </div>
-
-                          <div className="mt-2 text-sm font-bold leading-relaxed text-red-500">
-                            Diese Aktion entfernt die Scorecard dauerhaft aus Archiv, Leaderboard und Spielerstatistiken.
-                          </div>
-
-                          <div className="mt-4 grid grid-cols-2 gap-3">
-                            <motion.button
-                              type="button"
-                              whileTap={{ scale: 0.98 }}
-                              onClick={handleDeleteCancel}
-                              disabled={Boolean(deletingRoundId)}
-                              className="rounded-[22px] border border-white/70 bg-white px-4 py-4 text-sm font-black uppercase tracking-widest text-slate-700 shadow-sm disabled:opacity-50"
-                            >
-                              Cancel
-                            </motion.button>
-
-                            <motion.button
-                              type="button"
-                              whileTap={{ scale: 0.98 }}
-                              onClick={(event) => handleDeleteConfirm(event, roundId)}
-                              disabled={Boolean(deletingRoundId)}
-                              className="rounded-[22px] bg-red-600 px-4 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-red-600/20 disabled:opacity-50"
-                            >
-                              {isDeleting ? "Deleting..." : "Delete"}
-                            </motion.button>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
                   </div>
                 </div>
               </motion.div>
