@@ -976,6 +976,8 @@ export function GameProvider({ children }) {
   const [completedRounds, setCompletedRounds] = useState(initialState.completedRounds)
   const [activeMatchId, setActiveMatchId] = useState(initialState.activeMatchId)
   const [matchCounter, setMatchCounter] = useState(initialState.matchCounter)
+  const [startMatchLoading, setStartMatchLoading] = useState(false)
+  const [startMatchError, setStartMatchError] = useState("")
   const [celebration, setCelebration] = useState(null)
   const [matchFinished, setMatchFinished] = useState(initialState.matchFinished)
   const [hasActiveMatch, setHasActiveMatch] = useState(initialState.hasActiveMatch)
@@ -1176,7 +1178,7 @@ export function GameProvider({ children }) {
     setPlayers((currentPlayers) => currentPlayers.map((player, playerIndex) => playerIndex !== index ? player : { ...player, score: toNumber(value, currentPar) }))
   }, [matchFinished, hasActiveMatch, currentPar])
 
-  const startMatch = useCallback((playerEntries, selectedStake = DEFAULT_STAKE, courseId = selectedCourseId, selectedSpecialScoringEnabledOrGameMode = false, selectedGameMode, selectedOozleConfig) => {
+  const startMatch = useCallback(async (playerEntries, selectedStake = DEFAULT_STAKE, courseId = selectedCourseId, selectedSpecialScoringEnabledOrGameMode = false, selectedGameMode, selectedOozleConfig) => {
     const normalizedEntries = Array.isArray(playerEntries)
       ? playerEntries
           .map((entry) => {
@@ -1218,7 +1220,11 @@ export function GameProvider({ children }) {
       uniquePlayers.push(player)
     })
 
-    if (uniquePlayers.length < 2) return false
+    setStartMatchError("")
+    if (uniquePlayers.length < 2) {
+      setStartMatchError("Mindestens zwei Spieler werden für eine Runde benötigt.")
+      return false
+    }
 
     const requestedGameMode = selectedGameMode !== undefined
       ? selectedGameMode
@@ -1228,32 +1234,77 @@ export function GameProvider({ children }) {
     const requestedSpecialScoringEnabled = typeof selectedSpecialScoringEnabledOrGameMode === "boolean" ? selectedSpecialScoringEnabledOrGameMode : false
     const nextGameMode = normalizeGameMode(requestedGameMode, requestedSpecialScoringEnabled)
 
-    if (isWolffnGameMode(nextGameMode) && uniquePlayers.length !== 4) return false
+    if (isWolffnGameMode(nextGameMode) && uniquePlayers.length !== 4) {
+      setStartMatchError("Wolffn benötigt genau vier Spieler.")
+      return false
+    }
+    if (uniquePlayers.some((player) => !player.userId)) {
+      setStartMatchError("Alle Spieler müssen registrierte Benutzer sein.")
+      return false
+    }
 
     const matchCourse = getCourseById(courseId, courses)
     const matchPars = matchCourse?.pars || DEFAULT_COURSES[0].pars
     const nextCounter = matchCounter + 1
-    const newMatchId = createMatchId(nextCounter)
-    const formattedPlayers = uniquePlayers.map((player) =>
-      createPlayer(player, matchPars[0] || DEFAULT_SCORE)
+    const normalizedStake = normalizeStake(selectedStake)
+    const normalizedOozleConfig = normalizeOozleConfig(
+      selectedOozleConfig,
+      nextGameMode
     )
 
-    setSelectedCourseIdState(matchCourse.id)
-    setPlayers(formattedPlayers)
-    setStakeState(normalizeStake(selectedStake))
-    setHole(1)
-    setCarryover(0)
-    setOozleCarryover(0)
-    setHistory([])
-    setCelebration(null)
-    setMatchFinished(false)
-    setHasActiveMatch(true)
-    setGameModeState(nextGameMode)
-    setSpecialScoringEnabledState(isProfessionalGameMode(nextGameMode))
-    setOozleConfigState(normalizeOozleConfig(selectedOozleConfig, nextGameMode))
-    setActiveMatchId(newMatchId)
-    setMatchCounter(nextCounter)
-    return true
+    setStartMatchLoading(true)
+    try {
+      const response = await fetch("/api/matches", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          golfCourseId: matchCourse.id,
+          gameMode: nextGameMode,
+          stake: normalizedStake,
+          players: uniquePlayers.map((player) => ({ userId: player.userId })),
+          oozleConfig: normalizedOozleConfig,
+        }),
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok || !payload?.match) {
+        throw new Error(payload?.error || "Die Runde konnte nicht gestartet werden.")
+      }
+
+      const createdMatch = payload.match
+      const formattedPlayers = uniquePlayers.map((player) =>
+        createPlayer(player, matchPars[0] || DEFAULT_SCORE)
+      )
+
+      setSelectedCourseIdState(matchCourse.id)
+      setPlayers(formattedPlayers)
+      setStakeState(normalizedStake)
+      setHole(1)
+      setCarryover(0)
+      setOozleCarryover(0)
+      setHistory([])
+      setCelebration(null)
+      setMatchFinished(false)
+      setHasActiveMatch(true)
+      setGameModeState(nextGameMode)
+      setSpecialScoringEnabledState(isProfessionalGameMode(nextGameMode))
+      setOozleConfigState(normalizedOozleConfig)
+      setActiveMatchId(createdMatch.matchCode || createdMatch.id)
+      setMatchCounter(nextCounter)
+      return true
+    } catch (error) {
+      setStartMatchError(
+        error instanceof Error && error.message
+          ? error.message
+          : "Die Runde konnte nicht gestartet werden."
+      )
+      return false
+    } finally {
+      setStartMatchLoading(false)
+    }
   }, [selectedCourseId, matchCounter, courses])
 
   const finishHole = useCallback((wolffnSetup = null, oozleInput = null) => {
@@ -1654,6 +1705,8 @@ export function GameProvider({ children }) {
     deleteCompletedRound,
     playerStats,
     activeMatchId,
+    startMatchLoading,
+    startMatchError,
     hasActiveMatch,
     matchFinished,
     setMatchFinished,
@@ -1672,7 +1725,7 @@ export function GameProvider({ children }) {
     startMatch,
     resetGame,
     getGolfResult,
-  }), [courses, coursesLoading, coursesError, addCourse, updateCourse, deleteCourse, gameMode, setGameMode, gameModeLabel, isWolffnMode, isProfessionalMode, selectedCourseId, setSelectedCourseId, currentCourse, hole, currentPar, carryover, oozleCarryover, oozleConfig, setOozleConfig, currentBaseSkins, currentBonusSkins, currentSkinsAtStake, currentPot, players, stake, setStake, history, celebration, completedRounds, deleteCompletedRound, playerStats, activeMatchId, hasActiveMatch, matchFinished, lowestScore, winners, hasTie, specialScoringEnabled, setSpecialScoringEnabled, updateScore, finishHole, startMatch, resetGame])
+  }), [courses, coursesLoading, coursesError, addCourse, updateCourse, deleteCourse, gameMode, setGameMode, gameModeLabel, isWolffnMode, isProfessionalMode, selectedCourseId, setSelectedCourseId, currentCourse, hole, currentPar, carryover, oozleCarryover, oozleConfig, setOozleConfig, currentBaseSkins, currentBonusSkins, currentSkinsAtStake, currentPot, players, stake, setStake, history, celebration, completedRounds, deleteCompletedRound, playerStats, activeMatchId, startMatchLoading, startMatchError, hasActiveMatch, matchFinished, lowestScore, winners, hasTie, specialScoringEnabled, setSpecialScoringEnabled, updateScore, finishHole, startMatch, resetGame])
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>
 }

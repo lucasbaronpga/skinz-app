@@ -172,6 +172,8 @@ export default function RoundSetupScreen() {
 
   const {
     startMatch,
+    startMatchLoading,
+    startMatchError,
     activeMatchId,
     hasActiveMatch,
     courses,
@@ -335,6 +337,7 @@ export default function RoundSetupScreen() {
   const canStart =
     !playersLoading &&
     !playersError &&
+    !startMatchLoading &&
     (isWolffnMode ? wolffnPlayerCountValid : uniquePlayers.length >= 2)
 
   function addPlayer(player) {
@@ -413,7 +416,7 @@ export default function RoundSetupScreen() {
     setShowWolffnModal(false)
   }
 
-  function handleStartMatch() {
+  async function handleStartMatch() {
     if (!canStart) {
       return
     }
@@ -435,7 +438,7 @@ export default function RoundSetupScreen() {
       carryoverEnabled: true,
     }
 
-    const didStart = startMatch(
+    const didStart = await startMatch(
       uniquePlayers,
       stake,
       selectedCourseId,
@@ -1159,7 +1162,13 @@ export default function RoundSetupScreen() {
           </div>
         </motion.div>
 
-        {!canStart && (
+        {startMatchError && (
+          <div className="mt-5 rounded-[28px] border border-red-100 bg-white/[0.62] p-5 text-center text-sm font-bold text-red-500 shadow-sm backdrop-blur-xl">
+            {startMatchError}
+          </div>
+        )}
+
+        {!canStart && !startMatchLoading && !startMatchError && (
           <div className="mt-5 rounded-[28px] border border-red-100 bg-white/[0.62] p-5 text-center text-sm font-bold text-red-500 shadow-sm backdrop-blur-xl">
             {isWolffnMode
               ? "Wolffn braucht exakt 4 Spieler."
@@ -1170,16 +1179,18 @@ export default function RoundSetupScreen() {
         <motion.button
           type="button"
           whileTap={{ scale: canStart ? 0.98 : 1 }}
-          disabled={!canStart}
+          disabled={!canStart || startMatchLoading}
           onClick={handleStartMatch}
           className={`mt-8 flex w-full items-center justify-between gap-4 rounded-[34px] px-6 py-6 text-xl font-black text-white shadow-[0_20px_55px_rgba(15,23,42,0.22)] transition disabled:cursor-not-allowed disabled:opacity-40 ${modeTheme.button} ${modeTheme.buttonHover}`}
         >
           <span className="min-w-0 break-words text-left">
-            {getStartButtonLabel({
-              hasActiveMatch,
-              isProfessionalMode,
-              isWolffnMode,
-            })}
+            {startMatchLoading
+              ? "Runde wird gestartet..."
+              : getStartButtonLabel({
+                  hasActiveMatch,
+                  isProfessionalMode,
+                  isWolffnMode,
+                })}
           </span>
 
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20 text-2xl">
