@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react"
 
@@ -960,6 +961,87 @@ function createCompletedRound({ activeMatchId, courseSnapshot, gameMode, gameMod
   }
 }
 
+function getMatchCounterFromMatches(matches, fallback = 0) {
+  if (!Array.isArray(matches)) return fallback
+  return matches.reduce((highest, match) => {
+    const matchNumber = Number(String(match?.matchCode || "").replace(/^SKZ-/, ""))
+    return Number.isInteger(matchNumber) ? Math.max(highest, matchNumber) : highest
+  }, Math.max(toNumber(fallback, 0), 0))
+}
+
+function createRestoredPlayer(player, matchHoles, currentScore) {
+  const playerHoles = (Array.isArray(matchHoles) ? matchHoles : [])
+    .map((matchHole) => {
+      const playerHole = (Array.isArray(matchHole?.players) ? matchHole.players : []).find(
+        (entry) => String(entry?.userId || "") === String(player?.userId || "")
+      )
+      if (!playerHole) return null
+      const storedResultData =
+        playerHole.resultData && typeof playerHole.resultData === "object"
+          ? playerHole.resultData
+          : {}
+      return {
+        ...storedResultData,
+        hole: toNumber(storedResultData.hole, matchHole.holeNumber),
+        par: toNumber(storedResultData.par, matchHole.par),
+        score: toNumber(playerHole.score, matchHole.par),
+        toPar: toNumber(playerHole.toPar, 0),
+        skinDelta: Math.max(toNumber(playerHole.skinzDelta, 0), 0),
+        winningsDelta: roundMoney(playerHole.winningsDelta),
+        oozleWinningsDelta: roundMoney(playerHole.oozleWinningsDelta),
+        result:
+          storedResultData.result && typeof storedResultData.result === "object"
+            ? storedResultData.result
+            : {
+                label: playerHole.resultLabel || "Unbekannt",
+                color: getGolfResult(playerHole.score, matchHole.par).color,
+              },
+      }
+    })
+    .filter(Boolean)
+
+  return normalizePlayer({
+    ...player,
+    score: currentScore,
+    total: player?.total,
+    totalToPar: player?.totalToPar,
+    skins: player?.skins,
+    skinzWinnings: player?.skinzWinnings,
+    oozleWinnings: player?.oozleWinnings,
+    winnings: player?.winnings,
+    holes: playerHoles,
+  }, currentScore)
+}
+
+function createRestoredHistory(matchHoles) {
+  return normalizeHistory(
+    (Array.isArray(matchHoles) ? matchHoles : []).map((matchHole) => {
+      const gameData =
+        matchHole?.gameData && typeof matchHole.gameData === "object"
+          ? matchHole.gameData
+          : {}
+      return {
+        ...gameData,
+        hole: toNumber(gameData.hole, matchHole.holeNumber),
+        par: toNumber(gameData.par, matchHole.par),
+        winner: gameData.winner || matchHole.winnerLabel || "Carryover",
+        winningScore: gameData.winningScore ?? matchHole.winningScore,
+        hasTie: Boolean(gameData.hasTie ?? matchHole.hasTie),
+        skins:
+          gameData.skins !== undefined
+            ? toNumber(gameData.skins, 0)
+            : toNumber(matchHole.skinzAwarded, 0),
+        pot:
+          gameData.pot !== undefined
+            ? roundMoney(gameData.pot)
+            : roundMoney(matchHole.potAmount),
+        specialScoringLabel:
+          gameData.specialScoringLabel || matchHole.specialScoringLabel || null,
+      }
+    })
+  )
+}
+
 export function GameProvider({ children }) {
   const initialState = useMemo(() => createInitialGameState(), [])
 
@@ -984,6 +1066,9 @@ export function GameProvider({ children }) {
   const [startMatchError, setStartMatchError] = useState("")
   const [finishHoleLoading, setFinishHoleLoading] = useState(false)
   const [finishHoleError, setFinishHoleError] = useState("")
+  const [restoreMatchLoading, setRestoreMatchLoading] = useState(false)
+  const [restoreMatchError, setRestoreMatchError] = useState("")
+  const restoreAttemptedRef = useRef(false)
   const [celebration, setCelebration] = useState(null)
   const [matchFinished, setMatchFinished] = useState(initialState.matchFinished)
   const [hasActiveMatch, setHasActiveMatch] = useState(initialState.hasActiveMatch)
@@ -1179,6 +1264,99 @@ export function GameProvider({ children }) {
       // localStorage kann z. B. im Private Mode oder bei vollem Speicher fehlschlagen.
     }
   }, [courses, hole, carryover, oozleCarryover, oozleConfig, history, players, stake, matchFinished, hasActiveMatch, completedRounds, activeMatchId, activeDatabaseMatchId, matchCounter, selectedCourseId, gameMode, gameModeLabel, specialScoringEnabled])
+
+  const restoreActiveMatch = useCallback(async ({ force = false } = {}) => {
+    if (restoreMatchLoading || (restoreAttemptedRef.current && !force)) return false
+    restoreAttemptedRef.current = true
+    setRestoreMatchLoading(true)
+    setRestoreMatchError("")
+
+    try {
+      const response = await fetch("/api/matches", {
+        method: "GET",
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(payload?.error || "Das laufende Match konnte nicht geladen werden.")
+      }
+
+      const matches = Array.isArray(payload?.matches) ? payload.matches : []
+      const nextMatchCounter = getMatchCounterFromMatches(matches, matchCounter)
+      setMatchCounter(nextMatchCounter)
+      const activeMatch = matches.find((match) => match?.status === "active") || null
+
+      if (!activeMatch) {
+        setHasActiveMatch(false)
+        setMatchFinished(false)
+        setActiveDatabaseMatchId(null)
+        setHole(1)
+        setCarryover(0)
+        setOozleCarryover(0)
+        setHistory([])
+        setActiveMatchId(createMatchId(nextMatchCounter + 1))
+        return false
+      }
+
+      const restoredCourse = normalizeCourseSnapshot(activeMatch.course, courses)
+      const restoredHole = Math.min(
+        Math.max(toNumber(activeMatch.currentHole, 1), 1),
+        normalizeHoleCount(activeMatch.holeCount, restoredCourse.holeCount)
+      )
+      const restoredPar = restoredCourse.pars[restoredHole - 1] || DEFAULT_SCORE
+      const restoredGameMode = normalizeGameMode(
+        activeMatch.gameMode,
+        activeMatch.specialScoringEnabled
+      )
+      const restoredOozleConfig = normalizeOozleConfig(
+        activeMatch.oozleConfig,
+        restoredGameMode
+      )
+      const restoredHoles = Array.isArray(activeMatch.holes) ? activeMatch.holes : []
+      const restoredPlayers = (Array.isArray(activeMatch.players)
+        ? activeMatch.players
+        : []
+      ).map((player) => createRestoredPlayer(player, restoredHoles, restoredPar))
+
+      if (restoredPlayers.length < 2) {
+        throw new Error("Das laufende Match enthält keine vollständigen Spielerdaten.")
+      }
+
+      setCourses((currentCourses) => {
+        const withoutRestoredCourse = currentCourses.filter(
+          (course) => course.id !== restoredCourse.id
+        )
+        return [...withoutRestoredCourse, restoredCourse]
+      })
+      setSelectedCourseIdState(restoredCourse.id)
+      setPlayers(restoredPlayers)
+      setStakeState(normalizeStake(activeMatch.stake))
+      setHole(restoredHole)
+      setCarryover(Math.max(toNumber(activeMatch.carryover, 0), 0))
+      setOozleCarryover(Math.max(toNumber(activeMatch.oozleCarryover, 0), 0))
+      setOozleConfigState(restoredOozleConfig)
+      setHistory(createRestoredHistory(restoredHoles))
+      setCelebration(null)
+      setMatchFinished(false)
+      setHasActiveMatch(true)
+      setGameModeState(restoredGameMode)
+      setSpecialScoringEnabledState(isProfessionalGameMode(restoredGameMode))
+      setActiveMatchId(activeMatch.matchCode)
+      setActiveDatabaseMatchId(activeMatch.id)
+      return true
+    } catch (error) {
+      restoreAttemptedRef.current = false
+      setRestoreMatchError(
+        error instanceof Error && error.message
+          ? error.message
+          : "Das laufende Match konnte nicht geladen werden."
+      )
+      return false
+    } finally {
+      setRestoreMatchLoading(false)
+    }
+  }, [courses, matchCounter, restoreMatchLoading])
 
   const updateScore = useCallback((index, value) => {
     if (matchFinished || !hasActiveMatch) return
@@ -1807,6 +1985,9 @@ export function GameProvider({ children }) {
     startMatchError,
     finishHoleLoading,
     finishHoleError,
+    restoreMatchLoading,
+    restoreMatchError,
+    restoreActiveMatch,
     hasActiveMatch,
     matchFinished,
     setMatchFinished,
@@ -1825,7 +2006,7 @@ export function GameProvider({ children }) {
     startMatch,
     resetGame,
     getGolfResult,
-  }), [courses, coursesLoading, coursesError, addCourse, updateCourse, deleteCourse, gameMode, setGameMode, gameModeLabel, isWolffnMode, isProfessionalMode, selectedCourseId, setSelectedCourseId, currentCourse, hole, currentPar, carryover, oozleCarryover, oozleConfig, setOozleConfig, currentBaseSkins, currentBonusSkins, currentSkinsAtStake, currentPot, players, stake, setStake, history, celebration, completedRounds, deleteCompletedRound, playerStats, activeMatchId, activeDatabaseMatchId, startMatchLoading, startMatchError, finishHoleLoading, finishHoleError, hasActiveMatch, matchFinished, lowestScore, winners, hasTie, specialScoringEnabled, setSpecialScoringEnabled, updateScore, finishHole, startMatch, resetGame])
+  }), [courses, coursesLoading, coursesError, addCourse, updateCourse, deleteCourse, gameMode, setGameMode, gameModeLabel, isWolffnMode, isProfessionalMode, selectedCourseId, setSelectedCourseId, currentCourse, hole, currentPar, carryover, oozleCarryover, oozleConfig, setOozleConfig, currentBaseSkins, currentBonusSkins, currentSkinsAtStake, currentPot, players, stake, setStake, history, celebration, completedRounds, deleteCompletedRound, playerStats, activeMatchId, activeDatabaseMatchId, startMatchLoading, startMatchError, finishHoleLoading, finishHoleError, restoreMatchLoading, restoreMatchError, restoreActiveMatch, hasActiveMatch, matchFinished, lowestScore, winners, hasTie, specialScoringEnabled, setSpecialScoringEnabled, updateScore, finishHole, startMatch, resetGame])
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>
 }

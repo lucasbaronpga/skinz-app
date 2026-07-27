@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
 
@@ -466,7 +467,14 @@ export default function HomeScreen() {
     hasActiveMatch,
     isWolffnMode,
     specialScoringEnabled,
+    restoreMatchLoading,
+    restoreMatchError,
+    restoreActiveMatch,
   } = useGame()
+
+  useEffect(() => {
+    restoreActiveMatch()
+  }, [restoreActiveMatch])
 
   const authenticatedPlayerName = getAuthenticatedPlayerName(user)
 
@@ -564,6 +572,20 @@ export default function HomeScreen() {
             </h1>
           </motion.div>
 
+          {restoreMatchLoading && (
+            <div className="mt-5 rounded-[24px] border border-white/70 bg-white/[0.46] px-4 py-3 text-center text-sm font-bold text-slate-500 shadow-sm backdrop-blur-xl">
+              Laufendes Match wird geladen...
+            </div>
+          )}
+          {restoreMatchError && (
+            <button
+              type="button"
+              onClick={() => restoreActiveMatch({ force: true })}
+              className="mt-5 w-full rounded-[24px] border border-red-200 bg-red-50/90 px-4 py-3 text-center text-sm font-bold text-red-600 shadow-sm"
+            >
+              {restoreMatchError} Erneut versuchen
+            </button>
+          )}
           {hasActiveMatch ? (
             <motion.button
               type="button"

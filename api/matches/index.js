@@ -152,7 +152,7 @@ function mapPlayerRow(player) {
   }
 }
 
-function mapMatchRow(match, players) {
+function mapMatchRow(match, players, holes = []) {
   return {
     id: match.id,
     matchCode: match.match_code,
@@ -177,6 +177,39 @@ function mapMatchRow(match, players) {
     createdAt: toIsoString(match.created_at),
     updatedAt: toIsoString(match.updated_at),
     players,
+    holes,
+  }
+}
+
+function mapHoleRow(hole, playerHoles = []) {
+  return {
+    id: hole.id,
+    holeNumber: Number(hole.hole_number),
+    par: Number(hole.par),
+    winnerLabel: hole.winner_label || null,
+    winningScore: toNumberOrNull(hole.winning_score),
+    hasTie: Boolean(hole.has_tie),
+    skinzAwarded: Number(hole.skinz_awarded),
+    carryoverBefore: Number(hole.carryover_before),
+    carryoverAfter: Number(hole.carryover_after),
+    potAmount: Number(hole.pot_amount),
+    specialScoringLabel: hole.special_scoring_label || null,
+    gameData: hole.game_data || {},
+    completedAt: toIsoString(hole.completed_at),
+    players: playerHoles,
+  }
+}
+
+function mapPlayerHoleRow(playerHole) {
+  return {
+    userId: playerHole.user_id,
+    score: Number(playerHole.score),
+    toPar: Number(playerHole.to_par),
+    skinzDelta: Number(playerHole.skinz_delta),
+    winningsDelta: Number(playerHole.winnings_delta),
+    oozleWinningsDelta: Number(playerHole.oozle_winnings_delta),
+    resultLabel: playerHole.result_label,
+    resultData: playerHole.result_data || {},
   }
 }
 
@@ -251,10 +284,59 @@ async function handleGet(request, response, currentUser) {
     playersByMatchId.set(matchId, matchPlayers)
   })
 
+  const holeRows = await sql`
+    SELECT
+      mh.id, mh.match_id, mh.hole_number, mh.par, mh.winner_label,
+      mh.winning_score, mh.has_tie, mh.skinz_awarded, mh.carryover_before,
+      mh.carryover_after, mh.pot_amount, mh.special_scoring_label,
+      mh.game_data, mh.completed_at
+    FROM match_holes AS mh
+    WHERE mh.match_id = ANY(${matchIds}::uuid[])
+      AND mh.status = 'completed'
+    ORDER BY mh.match_id, mh.hole_number
+  `
+
+  const matchHoleIds = holeRows.map((hole) => hole.id)
+  const playerHoleRows = matchHoleIds.length
+    ? await sql`
+        SELECT
+          mph.match_hole_id, mp.user_id, mph.score, mph.to_par,
+          mph.skinz_delta, mph.winnings_delta, mph.oozle_winnings_delta,
+          mph.result_label, mph.result_data
+        FROM match_player_holes AS mph
+        JOIN match_players AS mp ON mp.id = mph.match_player_id
+        WHERE mph.match_hole_id = ANY(${matchHoleIds}::uuid[])
+        ORDER BY mph.match_hole_id, mp.display_order
+      `
+    : []
+
+  const playerHolesByHoleId = new Map()
+  playerHoleRows.forEach((playerHole) => {
+    const holeId = String(playerHole.match_hole_id)
+    const entries = playerHolesByHoleId.get(holeId) || []
+    entries.push(mapPlayerHoleRow(playerHole))
+    playerHolesByHoleId.set(holeId, entries)
+  })
+
+  const holesByMatchId = new Map()
+  holeRows.forEach((hole) => {
+    const matchId = String(hole.match_id)
+    const entries = holesByMatchId.get(matchId) || []
+    entries.push(
+      mapHoleRow(hole, playerHolesByHoleId.get(String(hole.id)) || [])
+    )
+    holesByMatchId.set(matchId, entries)
+  })
+
   return response.status(200).json({
-    matches: matches.map((match) =>
-      mapMatchRow(match, playersByMatchId.get(String(match.id)) || [])
-    ),
+    matches: matches.map((match) => {
+      const matchId = String(match.id)
+      return mapMatchRow(
+        match,
+        playersByMatchId.get(matchId) || [],
+        holesByMatchId.get(matchId) || []
+      )
+    }),
   })
 }
 
