@@ -1624,10 +1624,6 @@ export function GameProvider({ children }) {
             potAmount: roundMoney(holeResult.pot),
             specialScoringLabel: holeResult.specialScoringLabel || null,
             isCompleted: hole >= currentHoleCount,
-            settlements:
-              hole >= currentHoleCount
-                ? getFinalSettlementPayments(updatedPlayers, stake)
-                : [],
             gameData: holeResult,
             players: updatedPlayers.map((player) => {
               const playedHole = player.holes[player.holes.length - 1]

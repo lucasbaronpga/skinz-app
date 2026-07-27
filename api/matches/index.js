@@ -178,6 +178,18 @@ function mapMatchRow(match, players, holes = [], settlements = []) {
     updatedAt: toIsoString(match.updated_at),
     players,
     holes,
+    settlements,
+  }
+}
+
+function mapSettlementRow(settlement) {
+  return {
+    id: settlement.id,
+    payerUserId: settlement.payer_user_id,
+    payerName: settlement.payer_name,
+    recipientUserId: settlement.recipient_user_id,
+    recipientName: settlement.recipient_name,
+    amount: Number(settlement.amount),
   }
 }
 
@@ -682,25 +694,53 @@ function normalizeHolePlayers(players) {
   return normalizedPlayers
 }
 
-function normalizeSettlements(settlements) {
-  if (!Array.isArray(settlements)) return null
-  const normalized = settlements.map((settlement) => {
-    const payerUserId = normalizeUuid(settlement?.payerUserId)
-    const recipientUserId = normalizeUuid(settlement?.recipientUserId)
-    const amount = normalizePositiveMoney(settlement?.amount)
-    if (!payerUserId || !recipientUserId || payerUserId === recipientUserId || !amount) {
-      return null
-    }
-    return { payerUserId, recipientUserId, amount }
-  })
-  if (normalized.some((settlement) => !settlement)) return null
-  const pairKeys = normalized.map(
-    (settlement) => `${settlement.payerUserId}:${settlement.recipientUserId}`
+function buildSettlementsFromPlayerTotals(players) {
+  const debtors = players
+    .filter((player) => player.totalWinnings < 0)
+    .map((player) => ({
+      userId: player.userId,
+      remaining: roundAbsoluteMoney(player.totalWinnings),
+    }))
+  const recipients = players
+    .filter((player) => player.totalWinnings > 0)
+    .map((player) => ({
+      userId: player.userId,
+      remaining: roundAbsoluteMoney(player.totalWinnings),
+    }))
+  const totalDebt = roundMoneyValue(
+    debtors.reduce((total, debtor) => total + debtor.remaining, 0)
   )
-  if (new Set(pairKeys).size !== pairKeys.length) return null
-  return normalized
+  const totalCredit = roundMoneyValue(
+    recipients.reduce((total, recipient) => total + recipient.remaining, 0)
+  )
+  if (Math.abs(totalDebt - totalCredit) > 0.009) return null
+  const settlements = []
+  let debtorIndex = 0
+  let recipientIndex = 0
+  while (debtorIndex < debtors.length && recipientIndex < recipients.length) {
+    const debtor = debtors[debtorIndex]
+    const recipient = recipients[recipientIndex]
+    const amount = roundMoneyValue(Math.min(debtor.remaining, recipient.remaining))
+    if (amount > 0) {
+      settlements.push({
+        payerUserId: debtor.userId,
+        recipientUserId: recipient.userId,
+        amount,
+      })
+      debtor.remaining = roundMoneyValue(debtor.remaining - amount)
+      recipient.remaining = roundMoneyValue(recipient.remaining - amount)
+    }
+    if (debtor.remaining <= 0.009) debtorIndex += 1
+    if (recipient.remaining <= 0.009) recipientIndex += 1
+  }
+  return settlements
 }
-
+function roundMoneyValue(value) {
+  return Math.round(Number(value) * 100) / 100
+}
+function roundAbsoluteMoney(value) {
+  return roundMoneyValue(Math.abs(Number(value)))
+}
 async function handlePatch(request, response, currentUser) {
   const body = getRequestBody(request)
   if (!body) return response.status(400).json({ error: "Ungueltige JSON-Daten." })
@@ -718,16 +758,14 @@ async function handlePatch(request, response, currentUser) {
   const potAmount = normalizeMoney(body.potAmount)
   const players = normalizeHolePlayers(body.players)
   const isCompleted = Boolean(body.isCompleted)
-  const settlements = isCompleted ? normalizeSettlements(body.settlements) : []
 
   if (
     !matchId || holeNumber === null || par === null ||
     (body.winningScore !== null && body.winningScore !== undefined && winningScore === null) ||
     skinzAwarded === null || carryoverBefore === null || carryoverAfter === null ||
-    oozleCarryoverAfter === null || potAmount === null || potAmount < 0 || !players ||
-    (isCompleted && settlements === null)
+    oozleCarryoverAfter === null || potAmount === null || potAmount < 0 || !players
   ) {
-    return response.status(400).json({ error: "Die Lochdaten sind unvollstaendig oder ungueltig." })
+    return response.status(400).json({ error: "Daten sind unvollständig oder ungültig." })
   }
 
   const sql = getSql()
@@ -768,38 +806,13 @@ async function handlePatch(request, response, currentUser) {
   const matchPlayerByUserId = new Map(
     matchPlayers.map((matchPlayer) => [String(matchPlayer.user_id), matchPlayer])
   )
-  if (
-    settlements.some(
-      (settlement) =>
-        !matchPlayerByUserId.has(settlement.payerUserId) ||
-        !matchPlayerByUserId.has(settlement.recipientUserId)
-    )
-  ) {
-    return response.status(409).json({ error: "Die Abrechnung enthält unbekannte Spieler." })
-  }
-  const settlementBalanceByUserId = new Map(
-    matchPlayers.map((matchPlayer) => [String(matchPlayer.user_id), 0])
-  )
-  settlements.forEach((settlement) => {
-    settlementBalanceByUserId.set(
-      settlement.payerUserId,
-      normalizeMoney(settlementBalanceByUserId.get(settlement.payerUserId) - settlement.amount)
-    )
-    settlementBalanceByUserId.set(
-      settlement.recipientUserId,
-      normalizeMoney(settlementBalanceByUserId.get(settlement.recipientUserId) + settlement.amount)
-    )
-  })
-  if (
-    isCompleted &&
-    players.some(
-      (player) =>
-        Math.abs(
-          normalizeMoney(settlementBalanceByUserId.get(player.userId)) - player.totalWinnings
-        ) > 0.009
-    )
-  ) {
-    return response.status(409).json({ error: "Die Endabrechnung stimmt nicht mit den Spielersummen überein." })
+  const settlements = isCompleted
+    ? buildSettlementsFromPlayerTotals(players)
+    : []
+  if (isCompleted && settlements === null) {
+    return response.status(409).json({
+      error: "Die Endabrechnung ist nicht ausgeglichen.",
+    })
   }
   const existingHole = await sql`
     SELECT id
