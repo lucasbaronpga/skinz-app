@@ -917,6 +917,7 @@ function createInitialGameState() {
     stake: normalizeStake(savedGame?.stake ?? DEFAULT_STAKE),
     completedRounds,
     activeMatchId: savedGame?.activeMatchId || createMatchId(matchCounter + 1),
+    activeDatabaseMatchId: savedGame?.activeDatabaseMatchId || null,
     matchCounter,
     matchFinished: Boolean(savedGame?.matchFinished),
     hasActiveMatch: Boolean(savedGame?.hasActiveMatch),
@@ -975,6 +976,9 @@ export function GameProvider({ children }) {
   const [stake, setStakeState] = useState(initialState.stake)
   const [completedRounds, setCompletedRounds] = useState(initialState.completedRounds)
   const [activeMatchId, setActiveMatchId] = useState(initialState.activeMatchId)
+  const [activeDatabaseMatchId, setActiveDatabaseMatchId] = useState(
+    initialState.activeDatabaseMatchId
+  )
   const [matchCounter, setMatchCounter] = useState(initialState.matchCounter)
   const [startMatchLoading, setStartMatchLoading] = useState(false)
   const [startMatchError, setStartMatchError] = useState("")
@@ -1160,6 +1164,7 @@ export function GameProvider({ children }) {
         hasActiveMatch,
         completedRounds,
         activeMatchId,
+        activeDatabaseMatchId,
         matchCounter,
         selectedCourseId,
         gameMode,
@@ -1171,7 +1176,7 @@ export function GameProvider({ children }) {
     } catch {
       // localStorage kann z. B. im Private Mode oder bei vollem Speicher fehlschlagen.
     }
-  }, [courses, hole, carryover, oozleCarryover, oozleConfig, history, players, stake, matchFinished, hasActiveMatch, completedRounds, activeMatchId, matchCounter, selectedCourseId, gameMode, gameModeLabel, specialScoringEnabled])
+  }, [courses, hole, carryover, oozleCarryover, oozleConfig, history, players, stake, matchFinished, hasActiveMatch, completedRounds, activeMatchId, activeDatabaseMatchId, matchCounter, selectedCourseId, gameMode, gameModeLabel, specialScoringEnabled])
 
   const updateScore = useCallback((index, value) => {
     if (matchFinished || !hasActiveMatch) return
@@ -1246,6 +1251,7 @@ export function GameProvider({ children }) {
     const matchCourse = getCourseById(courseId, courses)
     const matchPars = matchCourse?.pars || DEFAULT_COURSES[0].pars
     const nextCounter = matchCounter + 1
+    const newMatchId = createMatchId(nextCounter)
     const normalizedStake = normalizeStake(selectedStake)
     const normalizedOozleConfig = normalizeOozleConfig(
       selectedOozleConfig,
@@ -1262,6 +1268,7 @@ export function GameProvider({ children }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          matchCode: newMatchId,
           golfCourseId: matchCourse.id,
           gameMode: nextGameMode,
           stake: normalizedStake,
@@ -1292,7 +1299,8 @@ export function GameProvider({ children }) {
       setGameModeState(nextGameMode)
       setSpecialScoringEnabledState(isProfessionalGameMode(nextGameMode))
       setOozleConfigState(normalizedOozleConfig)
-      setActiveMatchId(createdMatch.matchCode || createdMatch.id)
+      setActiveMatchId(newMatchId)
+      setActiveDatabaseMatchId(createdMatch.id)
       setMatchCounter(nextCounter)
       return true
     } catch (error) {
@@ -1450,6 +1458,7 @@ export function GameProvider({ children }) {
         setMatchFinished(true)
         setHasActiveMatch(false)
         setActiveMatchId(createMatchId(matchCounter + 1))
+        setActiveDatabaseMatchId(null)
         return
       }
 
@@ -1610,6 +1619,7 @@ export function GameProvider({ children }) {
     setStakeState(DEFAULT_STAKE)
     setPlayers(createDefaultPlayers())
     setActiveMatchId(createMatchId(matchCounter + 1))
+    setActiveDatabaseMatchId(null)
   }, [matchCounter])
 
   const deleteCompletedRound = useCallback((roundId) => {
@@ -1705,6 +1715,7 @@ export function GameProvider({ children }) {
     deleteCompletedRound,
     playerStats,
     activeMatchId,
+    activeDatabaseMatchId,
     startMatchLoading,
     startMatchError,
     hasActiveMatch,
@@ -1725,7 +1736,7 @@ export function GameProvider({ children }) {
     startMatch,
     resetGame,
     getGolfResult,
-  }), [courses, coursesLoading, coursesError, addCourse, updateCourse, deleteCourse, gameMode, setGameMode, gameModeLabel, isWolffnMode, isProfessionalMode, selectedCourseId, setSelectedCourseId, currentCourse, hole, currentPar, carryover, oozleCarryover, oozleConfig, setOozleConfig, currentBaseSkins, currentBonusSkins, currentSkinsAtStake, currentPot, players, stake, setStake, history, celebration, completedRounds, deleteCompletedRound, playerStats, activeMatchId, startMatchLoading, startMatchError, hasActiveMatch, matchFinished, lowestScore, winners, hasTie, specialScoringEnabled, setSpecialScoringEnabled, updateScore, finishHole, startMatch, resetGame])
+  }), [courses, coursesLoading, coursesError, addCourse, updateCourse, deleteCourse, gameMode, setGameMode, gameModeLabel, isWolffnMode, isProfessionalMode, selectedCourseId, setSelectedCourseId, currentCourse, hole, currentPar, carryover, oozleCarryover, oozleConfig, setOozleConfig, currentBaseSkins, currentBonusSkins, currentSkinsAtStake, currentPot, players, stake, setStake, history, celebration, completedRounds, deleteCompletedRound, playerStats, activeMatchId, activeDatabaseMatchId, startMatchLoading, startMatchError, hasActiveMatch, matchFinished, lowestScore, winners, hasTie, specialScoringEnabled, setSpecialScoringEnabled, updateScore, finishHole, startMatch, resetGame])
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>
 }

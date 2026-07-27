@@ -89,8 +89,9 @@ function toIsoString(value) {
   return Number.isNaN(date.getTime()) ? null : date.toISOString()
 }
 
-function createMatchCode(matchId) {
-  return `SKZ-${matchId.replaceAll("-", "").slice(0, 12).toUpperCase()}`
+function normalizeMatchCode(value) {
+  const matchCode = String(value || "").trim().toUpperCase()
+  return /^SKZ-[0-9]{4,}$/.test(matchCode) ? matchCode : null
 }
 
 function buildCourseSnapshot(course, holes, tees, teeHoles) {
@@ -264,12 +265,13 @@ async function handlePost(request, response, currentUser) {
   }
 
   const currentUserId = normalizeUuid(currentUser.user_id || currentUser.id)
+  const matchCode = normalizeMatchCode(body.matchCode)
   const golfCourseId = normalizeUuid(body.golfCourseId || body.courseId)
   const gameMode = normalizeGameMode(body.gameMode)
   const stake = normalizePositiveMoney(body.stake)
   const playerIds = normalizePlayerIds(body.players)
 
-  if (!currentUserId || !golfCourseId || !gameMode || !stake || !playerIds) {
+  if (!currentUserId || !matchCode || !golfCourseId || !gameMode || !stake || !playerIds) {
     return response.status(400).json({ error: "Die Match-Daten sind unvollstaendig oder ungueltig." })
   }
 
@@ -379,8 +381,17 @@ async function handlePost(request, response, currentUser) {
   const courseSnapshot = buildCourseSnapshot(course, holes, tees, teeHoles)
   const usersById = new Map(users.map((user) => [String(user.id), user]))
   const orderedUsers = playerIds.map((playerId) => usersById.get(playerId))
+  const existingMatches = await sql`
+    SELECT id
+    FROM matches
+    WHERE LOWER(BTRIM(match_code)) = LOWER(BTRIM(${matchCode}))
+    LIMIT 1
+  `
+  if (existingMatches.length > 0) {
+    return response.status(409).json({ error: "Diese Skinz Match ID ist bereits vergeben." })
+  }
+
   const matchId = randomUUID()
-  const matchCode = createMatchCode(matchId)
   const specialScoringEnabled = gameMode === "professional"
 
   const transactionQueries = [
