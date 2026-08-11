@@ -3,7 +3,6 @@ import { useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { useNavigate } from "react-router-dom"
 import {
-  ArrowLeft,
   ChevronDown,
   Crown,
   Flame,
@@ -420,56 +419,28 @@ export default function LeaderboardScreen() {
 
   const seasonLeader = sortedPlayers[0] || null
 
-  function handleBack() {
-    if (window.history.length > 1) {
-      navigate(-1)
-      return
-    }
-
-    navigate("/")
-  }
-
   return (
     <div className="relative min-h-[100dvh] overflow-hidden bg-[#e8ebe5] pb-[calc(9rem+env(safe-area-inset-bottom))] pt-8 text-slate-950">
       <AppBackground />
 
       <div className="relative mx-auto max-w-md px-5">
-        <div className="flex items-center justify-between">
-          <motion.button
-            type="button"
-            whileTap={{ scale: 0.92 }}
-            onClick={handleBack}
-            aria-label="Zurück"
-            className="flex h-14 w-14 items-center justify-center rounded-full border border-white/70 bg-white/[0.48] shadow-[0_14px_38px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
-          >
-            <ArrowLeft size={22} />
-          </motion.button>
-
-          <div className="text-right">
-            <div className="text-xs font-black uppercase tracking-[0.3em] text-emerald-700">
-              Season
-            </div>
-
-            <div className="mt-2 text-2xl font-black tracking-tight text-slate-950">
-              Leaderboard
-            </div>
-          </div>
-        </div>
-
-        <motion.div
+        <motion.header
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: "easeOut" }}
-          className="mt-8"
         >
-          <h1 className="text-6xl font-black tracking-[-0.055em] text-slate-950">
+          <div className="text-xs font-black uppercase tracking-[0.3em] text-emerald-700">
+            Season
+          </div>
+
+          <h1 className="mt-4 text-6xl font-black tracking-[-0.055em] text-slate-950">
             Leaderboard
           </h1>
 
           <p className="mt-4 max-w-sm text-sm font-bold leading-relaxed text-slate-500">
             Season Rankings, Earnings & Performance of all Players.
           </p>
-        </motion.div>
+        </motion.header>
 
         {sortedPlayers.length === 0 && (
           <motion.div

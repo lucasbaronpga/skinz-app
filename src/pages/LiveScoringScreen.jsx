@@ -1016,36 +1016,37 @@ export default function LiveScoringScreen() {
                           )}
                         </div>
 
-                        <div className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Par {item.par}</div>
+                        <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-500">Par {item.par}</div>
 
-                        <div className="mt-2 inline-flex min-h-7 items-center justify-center rounded-full bg-white/[0.62] px-2.5 py-1 text-center text-[9px] font-black uppercase leading-none tracking-[0.16em] text-slate-500 shadow-sm">
-                          {historyResultSummary}
-                        </div>
-
-                        {item?.oozle?.enabled && (
-                          <div className={`mt-2 inline-flex min-h-7 w-fit max-w-full items-center justify-center rounded-full px-3 py-1 text-center text-[9px] font-black uppercase leading-none tracking-widest shadow-sm ${
-                            item.oozle.outcome === "oozle"
-                              ? "bg-amber-300 text-slate-950"
-                              : item.oozle.outcome === "foozle"
-                                ? "bg-red-500 text-white"
-                                : "bg-slate-950 text-white"
-                          }`}>
-                            {item.oozle.outcome === "oozle"
-                              ? `Oozle · ${item.oozle.playerName}`
-                              : item.oozle.outcome === "foozle"
-                                ? `Foozle · ${item.oozle.playerName}`
-                                : item.oozle.expired
-                                  ? "Oozle Carryover verfallen"
-                                  : "Oozle Carryover"}
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <div className="inline-flex min-h-7 items-center justify-center rounded-full bg-white/[0.62] px-2.5 py-1 text-center text-[9px] font-black uppercase leading-none tracking-[0.16em] text-slate-600 shadow-sm">
+                            {historyResultSummary}
                           </div>
-                        )}
-                        {!item.hasTie && wonHolesLabel && (
-                          <div className="mt-2">
+
+                          {item?.oozle?.enabled && (
+                            <div className={`inline-flex min-h-7 w-fit max-w-full items-center justify-center rounded-full px-3 py-1 text-center text-[9px] font-black uppercase leading-none tracking-widest shadow-sm ${
+                              item.oozle.outcome === "oozle"
+                                ? "bg-amber-300 text-slate-950"
+                                : item.oozle.outcome === "foozle"
+                                  ? "bg-red-500 text-white"
+                                  : "bg-slate-950 text-white"
+                            }`}>
+                              {item.oozle.outcome === "oozle"
+                                ? `Oozle · ${item.oozle.playerName}`
+                                : item.oozle.outcome === "foozle"
+                                  ? `Foozle · ${item.oozle.playerName}`
+                                  : item.oozle.expired
+                                    ? "Oozle Carryover verfallen"
+                                    : "Oozle Carryover"}
+                            </div>
+                          )}
+
+                          {!item.hasTie && wonHolesLabel && (
                             <div className="inline-flex min-h-7 w-fit max-w-full items-center justify-center rounded-full bg-slate-950 px-3 py-1 text-center text-[9px] font-black uppercase leading-none tracking-widest text-white shadow-sm">
                               Holes: {wonHolesLabel}
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
 
                       <div className="shrink-0 text-right">

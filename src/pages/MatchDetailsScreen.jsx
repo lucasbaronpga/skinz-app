@@ -1023,11 +1023,11 @@ export default function MatchDetailsScreen() {
                     key={`${roundId}-history-${item.hole}-${item.winner || index}`}
                     className="rounded-[26px] border border-white/70 bg-white/[0.74] px-4 py-4 shadow-sm backdrop-blur-xl sm:px-5"
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0 flex-1">
-                        <div>
+                    <div className="relative">
+                      <div className="min-w-0">
+                        <div className="pr-24">
                           <div className="text-lg font-black text-slate-950">Hole {item.hole}</div>
-                          <div className="mt-1 text-xs font-black uppercase tracking-widest text-slate-400">Par {item.par}</div>
+                          <div className="mt-1 text-[11px] font-black uppercase tracking-widest text-slate-500">Par {item.par}</div>
                         </div>
 
                         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -1099,11 +1099,11 @@ export default function MatchDetailsScreen() {
                         </div>
                       </div>
 
-                      <div className="min-w-[86px] shrink-0 text-right">
+                      <div className="absolute right-0 top-0 min-w-[86px] text-right">
                         <div className="break-words text-base font-black leading-tight text-slate-950 sm:text-lg">
                           {item.hasTie ? "Carryover" : item.winner}
                         </div>
-                        <div className="mt-1 text-xs font-black uppercase leading-relaxed tracking-widest text-slate-400">
+                        <div className="mt-1 text-[11px] font-black uppercase leading-relaxed tracking-widest text-slate-500">
                           {formatSkinsText(item.skins || 0)} · {formatPlainMoney(item.pot || 0)}
                         </div>
                       </div>
