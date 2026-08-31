@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from "framer-motion"
 import {
   BrowserRouter,
   Navigate,
@@ -5,27 +6,23 @@ import {
   Routes,
   useLocation,
 } from "react-router-dom"
-
-import { AnimatePresence, motion } from "framer-motion"
-
 import AdminCoursesScreen from "./admin/AdminCoursesScreen"
+import AdminDashboard from "./admin/AdminDashboard"
 import AdminGolfClubScreen from "./admin/AdminGolfClubScreen"
 import AdminGolfCourseScreen from "./admin/AdminGolfCourseScreen"
-import AdminDashboard from "./admin/AdminDashboard"
+import AdminUsersScreen from "./admin/AdminUsersScreen"
 import AdminRoute from "./components/AdminRoute"
 import AppBackground from "./components/AppBackground"
 import BottomNav from "./components/BottomNav"
-
 import { useAuth } from "./context/AuthContext"
-
 import HomeScreen from "./pages/HomeScreen"
-import LoginScreen from "./pages/LoginScreen"
-import RoundSetupScreen from "./pages/RoundSetupScreen"
+import LeaderboardScreen from "./pages/LeaderboardScreen"
 import LiveScoringScreen from "./pages/LiveScoringScreen"
+import LoginScreen from "./pages/LoginScreen"
 import MatchArchiveScreen from "./pages/MatchArchiveScreen"
 import MatchDetailsScreen from "./pages/MatchDetailsScreen"
-import LeaderboardScreen from "./pages/LeaderboardScreen"
 import ProfileScreen from "./pages/ProfileScreen"
+import RoundSetupScreen from "./pages/RoundSetupScreen"
 
 export default function App() {
   return (
@@ -38,7 +35,6 @@ export default function App() {
 function AppShell() {
   const location = useLocation()
   const { isAuthenticated, isLoading } = useAuth()
-
   const hideBottomNav =
     location.pathname === "/login" ||
     location.pathname.startsWith("/live") ||
@@ -49,11 +45,10 @@ function AppShell() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#e8ebe5]">
+    <>
       <AnimatedRoutes isAuthenticated={isAuthenticated} />
-
       {isAuthenticated && !hideBottomNav && <BottomNav />}
-    </div>
+    </>
   )
 }
 
@@ -62,7 +57,7 @@ function AnimatedRoutes({ isAuthenticated }) {
   const routeKey = `${location.pathname}${location.search}`
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode="wait" initial={false}>
       <Routes location={location} key={routeKey}>
         <Route
           path="/login"
@@ -76,7 +71,6 @@ function AnimatedRoutes({ isAuthenticated }) {
             )
           }
         />
-
         <Route
           path="/"
           element={
@@ -87,7 +81,6 @@ function AnimatedRoutes({ isAuthenticated }) {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/round"
           element={
@@ -98,7 +91,6 @@ function AnimatedRoutes({ isAuthenticated }) {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/live"
           element={
@@ -109,7 +101,6 @@ function AnimatedRoutes({ isAuthenticated }) {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/matches"
           element={
@@ -120,7 +111,6 @@ function AnimatedRoutes({ isAuthenticated }) {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/matches/:id"
           element={
@@ -131,7 +121,6 @@ function AnimatedRoutes({ isAuthenticated }) {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/leaderboard"
           element={
@@ -142,7 +131,6 @@ function AnimatedRoutes({ isAuthenticated }) {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/profile"
           element={
@@ -153,56 +141,49 @@ function AnimatedRoutes({ isAuthenticated }) {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/admin"
           element={
             <AdminRoute>
-              <PageTransition>
-                <AdminDashboard />
-              </PageTransition>
+              <AdminDashboard />
             </AdminRoute>
           }
         />
-
+        <Route
+          path="/admin/users"
+          element={
+            <AdminRoute>
+              <AdminUsersScreen />
+            </AdminRoute>
+          }
+        />
         <Route
           path="/admin/courses"
           element={
             <AdminRoute>
-              <PageTransition>
-                <AdminCoursesScreen />
-              </PageTransition>
+              <AdminCoursesScreen />
             </AdminRoute>
           }
         />
-
         <Route
           path="/admin/courses/:clubId"
           element={
             <AdminRoute>
-              <PageTransition>
-                <AdminGolfClubScreen />
-              </PageTransition>
+              <AdminGolfClubScreen />
             </AdminRoute>
           }
         />
-
         <Route
           path="/admin/courses/:clubId/:courseId"
           element={
             <AdminRoute>
-              <PageTransition>
-                <AdminGolfCourseScreen />
-              </PageTransition>
+              <AdminGolfCourseScreen />
             </AdminRoute>
           }
         />
-
         <Route
           path="*"
-          element={
-            <Navigate to={isAuthenticated ? "/" : "/login"} replace />
-          }
+          element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />}
         />
       </Routes>
     </AnimatePresence>
@@ -213,15 +194,7 @@ function ProtectedRoute({ children, isAuthenticated }) {
   const location = useLocation()
 
   if (!isAuthenticated) {
-    return (
-      <Navigate
-        to="/login"
-        replace
-        state={{
-          from: location,
-        }}
-      />
-    )
+    return <Navigate to="/login" replace state={{ from: location }} />
   }
 
   return children
@@ -230,23 +203,10 @@ function ProtectedRoute({ children, isAuthenticated }) {
 function PageTransition({ children }) {
   return (
     <motion.div
-      initial={{
-        opacity: 0,
-        y: 12,
-      }}
-      animate={{
-        opacity: 1,
-        y: 0,
-      }}
-      exit={{
-        opacity: 0,
-        y: -12,
-      }}
-      transition={{
-        duration: 0.24,
-        ease: "easeOut",
-      }}
-      className="min-h-[100dvh]"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
     >
       {children}
     </motion.div>
@@ -257,71 +217,28 @@ function SplashScreen() {
   const loadingDots = [0, 1, 2]
 
   return (
-    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#e8ebe5] px-6 text-slate-950">
+    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#e8ebe5] text-slate-950">
       <AppBackground />
-
-      <motion.div
-        initial={{
-          opacity: 0,
-          y: 16,
-          scale: 0.96,
-        }}
-        animate={{
-          opacity: 1,
-          y: 0,
-          scale: 1,
-        }}
-        transition={{
-          duration: 0.35,
-          ease: "easeOut",
-        }}
-        className="relative w-full max-w-sm overflow-hidden rounded-[44px] border border-white/20 bg-[#071819] px-8 py-12 text-center text-white shadow-[0_28px_70px_rgba(7,24,25,0.42)]"
-      >
-        <div
-          aria-hidden="true"
-          className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-emerald-400/32 via-emerald-500/8 to-transparent"
-        />
-
-        <div
-          aria-hidden="true"
-          className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/8 blur-3xl"
-        />
-
-        <div className="relative flex flex-col items-center justify-center">
-          <div className="text-[15px] font-black uppercase leading-none tracking-[0.3em] text-emerald-200">
-            Loading
-          </div>
-
-          <div
-            className="mt-5 flex h-5 items-center justify-center gap-2"
-            role="status"
-            aria-label="Skinz wird geladen"
-          >
-            {loadingDots.map((dot) => (
-              <motion.span
-                key={dot}
-                aria-hidden="true"
-                className="h-2.5 w-2.5 rounded-full bg-emerald-300"
-                animate={{
-                  opacity: [0.3, 1, 0.3],
-                  scale: [0.75, 1.2, 0.75],
-                  y: [0, -3, 0],
-                }}
-                transition={{
-                  duration: 1,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: dot * 0.18,
-                }}
-              />
-            ))}
-          </div>
-
-          <div className="mt-7 text-6xl font-black leading-none tracking-[-0.07em] text-white">
-            Skinz
-          </div>
+      <div className="relative text-center">
+        <div className="text-[10px] font-black uppercase tracking-[0.28em] text-emerald-700">
+          Loading
         </div>
-      </motion.div>
+        <div className="mt-4 flex justify-center gap-2" aria-hidden="true">
+          {loadingDots.map((dot) => (
+            <motion.span
+              key={dot}
+              className="h-2.5 w-2.5 rounded-full bg-[#071819]"
+              animate={{ opacity: [0.25, 1, 0.25], y: [0, -5, 0] }}
+              transition={{
+                duration: 0.9,
+                repeat: Infinity,
+                delay: dot * 0.14,
+              }}
+            />
+          ))}
+        </div>
+        <div className="mt-5 text-5xl font-black tracking-[-0.07em]">Skinz</div>
+      </div>
     </div>
   )
 }
