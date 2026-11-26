@@ -4,6 +4,7 @@ import { ChevronLeft } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
 import { getResultLabel, getTeeOrder } from "../../lib/engine/index.js"
 import AppBackground from "../components/AppBackground"
+import Scorecard from "../components/Scorecard"
 import { useGame } from "../context/GameContext"
 import {
   Button,
@@ -18,7 +19,6 @@ import {
   ScreenHeader,
 } from "../ui/index.js"
 import cn from "../ui/cn.js"
-import { getScoreTone } from "../ui/scoreStyles.js"
 import { apiRequest, getErrorMessage } from "../utils/api.js"
 import { formatCents, formatSkinz } from "../utils/format.js"
 import {
@@ -94,6 +94,14 @@ function describeHole(match, hole) {
   }
 
   return `${getNames(match, hole.winnerPlayerIds)} gewinnt ${formatSkinz(hole.potSkinz)} auf Loch ${hole.holeNumber}`
+}
+
+function getScorecardRows(match) {
+  return match.players.map((player) => ({
+    key: player.userId,
+    label: player.shortName || player.name,
+    scores: match.course.pars.map((_, index) => match.inputs[index]?.scores?.[player.userId] ?? null),
+  }))
 }
 
 function Section({ title, action, children, className }) {
@@ -285,100 +293,6 @@ function OozleSetup({ match, draft, amountCents, unitsAtStake, onChange }) {
 
       {summary && <p className="mt-4 text-sm font-semibold text-ink">{summary}</p>}
     </Card>
-  )
-}
-
-function Scorecard({ match, activeHole, onSelectHole }) {
-  const { holeCount, pars } = match.course
-  const holes = Array.from({ length: holeCount }, (_, index) => index + 1)
-  const holesPlayed = getHolesPlayed(match)
-  const cellClass = "min-w-[2.25rem] px-0.5 py-2 text-center"
-
-  return (
-    <div className="surface -mx-1 overflow-x-auto rounded-[18px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <table className="w-max border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-line/10 text-[11px] font-semibold uppercase tracking-[0.04em] text-ink-mute">
-            <th className="sticky left-0 z-10 bg-card px-3 py-2 text-left">Loch</th>
-            {holes.map((holeNumber) => {
-              const selectable = Boolean(onSelectHole) && holeNumber <= holesPlayed + 1
-
-              return (
-                <th key={holeNumber} className={cellClass}>
-                  {selectable ? (
-                    <button
-                      type="button"
-                      onClick={() => onSelectHole(holeNumber)}
-                      className={cn(
-                        "h-7 w-7 rounded-full font-bold",
-                        holeNumber === activeHole ? "bg-ink text-page" : "text-ink-soft"
-                      )}
-                    >
-                      {holeNumber}
-                    </button>
-                  ) : (
-                    <span className={cn(holeNumber === activeHole && "font-bold text-ink")}>{holeNumber}</span>
-                  )}
-                </th>
-              )
-            })}
-            <th className="px-3 py-2 text-right">Ges.</th>
-          </tr>
-          <tr className="border-b border-line/10 text-xs font-medium text-ink-mute">
-            <td className="sticky left-0 z-10 bg-card px-3 py-1.5">Par</td>
-            {holes.map((holeNumber) => (
-              <td key={holeNumber} className={cellClass}>
-                {pars[holeNumber - 1]}
-              </td>
-            ))}
-            <td className="px-3 py-1.5 text-right font-semibold">{match.course.par}</td>
-          </tr>
-        </thead>
-        <tbody>
-          {match.players.map((player) => {
-            let total = 0
-
-            return (
-              <tr key={player.userId} className="border-b border-line/10 last:border-b-0">
-                <th
-                  scope="row"
-                  className="sticky left-0 z-10 bg-card px-3 py-2 text-left font-bold text-ink"
-                >
-                  {player.shortName || player.name}
-                </th>
-                {holes.map((holeNumber) => {
-                  const score = match.inputs[holeNumber - 1]?.scores?.[player.userId]
-
-                  if (!score) {
-                    return (
-                      <td key={holeNumber} className={cn(cellClass, "text-ink-mute")}>
-                        –
-                      </td>
-                    )
-                  }
-
-                  total += score
-
-                  return (
-                    <td key={holeNumber} className={cellClass}>
-                      <span
-                        className={cn(
-                          "mx-auto grid h-7 w-7 place-items-center text-sm font-bold tabular-nums",
-                          getScoreTone(getResultLabel(score, pars[holeNumber - 1])).tile
-                        )}
-                      >
-                        {score}
-                      </span>
-                    </td>
-                  )
-                })}
-                <td className="px-3 py-2 text-right font-bold tabular-nums text-ink">{total || "–"}</td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
   )
 }
 
@@ -579,6 +493,7 @@ export default function LiveScoringScreen() {
     currentDraft.oozle.noGreen ||
     (Boolean(currentDraft.oozle.playerId) && [1, 2, 3].includes(currentDraft.oozle.putts))
   const showEntry = match.canScore && !isCompleted
+  const canPause = match.status === "active" && !match.legacy
   const completesMatch = !isCorrection && activeHole === holeCount
   const scorer = match.players.find((player) => player.isScorer)
   const lengths = match.course.lengths[activeHole - 1]
@@ -664,10 +579,6 @@ export default function LiveScoringScreen() {
     else if (dialog?.kind === "cancel") changeStatus("cancel")
   }
 
-  function openScorecard() {
-    restoreActiveMatch({ force: true }).finally(() => navigate(`/matches/${match.matchCode}`))
-  }
-
   let statusPill = <Pill tone="positive">Live</Pill>
 
   if (isPaused) statusPill = <Pill tone="warning">Pausiert</Pill>
@@ -714,7 +625,7 @@ export default function LiveScoringScreen() {
               ? "Die Pause ist länger als drei Tage. Das Match wird automatisch gelöscht."
               : `Ohne Fortsetzung wird das Match am ${formatDateTime(match.pauseExpiresAt)} gelöscht.`}
           </p>
-          {match.canControl && !match.isPauseExpired && (
+          {match.canControl && !match.isPauseExpired && !match.legacy && (
             <Button variant="primary" className="mt-4 w-full" disabled={busy} onClick={() => changeStatus("resume")}>
               Fortsetzen
             </Button>
@@ -827,7 +738,13 @@ export default function LiveScoringScreen() {
 
       {result && (
         <Section title="Scorecard">
-          <Scorecard match={match} activeHole={activeHole} onSelectHole={showEntry ? selectHole : null} />
+          <Scorecard
+            pars={match.course.pars}
+            rows={getScorecardRows(match)}
+            activeHole={activeHole}
+            onSelectHole={showEntry ? selectHole : null}
+            selectableUntil={holesPlayed + 1}
+          />
         </Section>
       )}
 
@@ -839,8 +756,8 @@ export default function LiveScoringScreen() {
 
       {isCompleted && (
         <div className="mt-8 grid gap-2">
-          <Button variant="primary" size="lg" onClick={openScorecard}>
-            Scorecard im Archiv
+          <Button variant="primary" size="lg" onClick={() => navigate(`/matches/${match.id}`)}>
+            Details und PayPal
           </Button>
           <Button variant="glass" onClick={() => navigate("/")}>
             Zu Home
@@ -850,7 +767,7 @@ export default function LiveScoringScreen() {
 
       {match.canControl && (
         <div className="mt-8 grid grid-cols-2 gap-2">
-          {match.status === "active" && (
+          {canPause && (
             <Button
               variant="glass"
               disabled={busy}
@@ -868,7 +785,7 @@ export default function LiveScoringScreen() {
           )}
           <Button
             variant="glass"
-            className={cn("text-red-600", match.status !== "active" && "col-span-2")}
+            className={cn("text-red-600", !canPause && "col-span-2")}
             disabled={busy}
             onClick={() =>
               setDialog({

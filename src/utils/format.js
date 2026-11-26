@@ -31,3 +31,14 @@ export function formatSkinz(count) {
 
   return amount === 1 ? "1 Skin" : `${amount} Skinz`
 }
+
+/** Datum im deutschen Format, z. B. "25.11.2026". */
+export function formatDate(isoString) {
+  if (!isoString) return ""
+
+  const date = new Date(isoString)
+
+  return Number.isNaN(date.getTime())
+    ? ""
+    : date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })
+}

@@ -29,6 +29,7 @@ function mapPlayerRow(player) {
     userId: player.user_id,
     displayOrder: Number(player.display_order),
     name: player.display_name_snapshot,
+    shortName: player.short_name || null,
     handicapIndex: toNumberOrNull(player.handicap_index_snapshot),
     homeClubId: player.home_club_id_snapshot || null,
     homeClubName: player.home_club_name_snapshot || null,
@@ -48,6 +49,7 @@ function mapSettlementRow(settlement) {
     payerName: settlement.payer_name,
     recipientUserId: settlement.recipient_user_id,
     recipientName: settlement.recipient_name,
+    recipientPayPalLink: settlement.recipient_paypal_link || null,
     amount: Number(settlement.amount),
   }
 }
@@ -156,8 +158,9 @@ async function listMatches(currentUserId) {
         mp.id, mp.match_id, mp.user_id, mp.display_order, mp.display_name_snapshot,
         mp.handicap_index_snapshot, mp.home_club_id_snapshot, mp.home_club_name_snapshot,
         mp.total_strokes, mp.total_to_par, mp.skinz_won, mp.skinz_winnings,
-        mp.oozle_winnings, mp.total_winnings
+        mp.oozle_winnings, mp.total_winnings, u.short_name
       FROM match_players AS mp
+      JOIN users AS u ON u.id = mp.user_id
       WHERE mp.match_id = ANY(${matchIds}::uuid[])
       ORDER BY mp.match_id, mp.display_order
     `,
@@ -177,12 +180,14 @@ async function listMatches(currentUserId) {
         payer.user_id AS payer_user_id,
         payer.display_name_snapshot AS payer_name,
         recipient.user_id AS recipient_user_id,
-        recipient.display_name_snapshot AS recipient_name
+        recipient.display_name_snapshot AS recipient_name,
+        recipient_user.paypal_link AS recipient_paypal_link
       FROM match_settlements AS ms
       JOIN match_players AS payer ON payer.id = ms.payer_match_player_id
       JOIN match_players AS recipient ON recipient.id = ms.recipient_match_player_id
+      JOIN users AS recipient_user ON recipient_user.id = recipient.user_id
       WHERE ms.match_id = ANY(${matchIds}::uuid[])
-      ORDER BY ms.match_id, payer.display_order, recipient.display_order
+      ORDER BY ms.match_id, ms.amount DESC, payer.display_order, recipient.display_order
     `,
   ])
 
