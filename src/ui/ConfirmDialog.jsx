@@ -39,7 +39,7 @@ export default function ConfirmDialog({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
-          className="fixed inset-0 z-[130] flex items-end justify-center bg-black/40 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-10 backdrop-blur-xl sm:items-center"
+          className="fixed inset-0 z-[130] flex items-end justify-center bg-black/40 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-10 backdrop-blur-md sm:items-center"
           role="dialog"
           aria-modal="true"
           aria-labelledby={titleId}
@@ -51,14 +51,14 @@ export default function ConfirmDialog({
             initial={{ opacity: 0, y: 28, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 300, damping: 26 }}
-            className="glass-strong w-full max-w-sm rounded-[36px] p-6"
+            transition={{ type: "spring", stiffness: 320, damping: 28 }}
+            className="glass-strong w-full max-w-sm rounded-[24px] p-6"
           >
-            <h2 id={titleId} className="text-[1.7rem] font-black leading-tight tracking-[-0.045em] text-ink">
+            <h2 id={titleId} className="text-[1.5rem] font-bold leading-tight tracking-[-0.035em] text-ink">
               {title}
             </h2>
             {description && (
-              <p className="mt-3 text-sm font-bold leading-relaxed text-ink-soft">{description}</p>
+              <p className="mt-2 text-[15px] font-medium leading-relaxed text-ink-soft">{description}</p>
             )}
             <div className="mt-6 grid gap-2">
               <Button

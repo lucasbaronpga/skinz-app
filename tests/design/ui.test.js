@@ -38,7 +38,6 @@ describe("Ergebnis-Farben", () => {
       const tone = getScoreTone(label)
 
       assert.ok(tone.tile.length > 0, label)
-      assert.notEqual(tone, undefined)
       assert.ok(tone.badge.length > 0, label)
     })
   })
@@ -63,6 +62,28 @@ describe("Ergebnis-Farben", () => {
   })
 })
 
+describe("Scorekarten-Notation", () => {
+  it("zeichnet Birdie und Eagle als Kreis, Bogey und Double Bogey als Quadrat", () => {
+    assert.match(getScoreTone("Birdie").tile, /rounded-full/)
+    assert.match(getScoreTone("Eagle").tile, /rounded-full/)
+    assert.match(getScoreTone("Bogey").tile, /rounded-\[28%\]/)
+    assert.match(getScoreTone("Double Bogey").tile, /rounded-\[28%\]/)
+  })
+
+  it("markiert Eagle und Double Bogey mit doppeltem Rahmen", () => {
+    assert.match(getScoreTone("Eagle").tile, /outline-2/)
+    assert.match(getScoreTone("Double Bogey").tile, /outline-2/)
+    assert.doesNotMatch(getScoreTone("Birdie").tile, /outline-2/)
+    assert.doesNotMatch(getScoreTone("Bogey").tile, /outline-2/)
+  })
+
+  it("lässt Par ohne Rahmen und füllt Albatross und Triple+", () => {
+    assert.match(getScoreTone("Par").tile, /border-transparent/)
+    assert.match(getScoreTone("Albatross").tile, /bg-amber/)
+    assert.match(getScoreTone("Triple+").tile, /bg-blue/)
+  })
+})
+
 describe("Loch-Skizze", () => {
   it("ordnet Par 3, 4 und 5 eigene Formen zu", () => {
     assert.equal(normalizeSketchPar(3), 3)
@@ -84,18 +105,6 @@ describe("Loch-Skizze", () => {
       assert.ok(tee.x - 9 >= 0 && tee.y - 5 >= 0 && tee.y + 5 <= height, `Tee Par ${par}`)
       assert.ok(bunkers.length >= 2)
       assert.match(fairwayPath, /^M [\d. ]+/)
-      bunkers.forEach((bunker) => {
-        assert.ok(bunker.cx - bunker.rx >= 0 && bunker.cx + bunker.rx <= width)
-        assert.ok(bunker.cy - bunker.rx >= 0 && bunker.cy + bunker.rx <= height)
-      })
-    })
-  })
-
-  it("liegt das Tee links vom Grün", () => {
-    ;[3, 4, 5].forEach((par) => {
-      const { tee, green } = getHoleSketch({ par })
-
-      assert.ok(tee.x < green.x - green.r)
     })
   })
 

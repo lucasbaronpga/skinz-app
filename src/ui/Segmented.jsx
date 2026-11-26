@@ -6,7 +6,7 @@ export default function Segmented({ options, value, onChange, label, className }
     <div
       role="radiogroup"
       aria-label={label}
-      className={cn("glass grid rounded-[22px] p-1", className)}
+      className={cn("grid gap-1 rounded-full bg-fill p-1", className)}
       style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
     >
       {options.map((option) => {
@@ -20,8 +20,8 @@ export default function Segmented({ options, value, onChange, label, className }
             aria-checked={isSelected}
             onClick={() => onChange(option.value)}
             className={cn(
-              "h-10 rounded-[18px] text-sm font-black transition-colors",
-              isSelected ? "bg-ink text-page shadow-sm" : "text-ink-mute"
+              "h-9 rounded-full text-sm font-bold transition-colors",
+              isSelected ? "bg-card text-ink shadow-[var(--shadow-chip)]" : "text-ink-mute"
             )}
           >
             {option.label}

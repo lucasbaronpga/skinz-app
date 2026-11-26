@@ -5,7 +5,7 @@ import tailwindConfig from "../../tailwind.config.js"
 
 const css = readFileSync(new URL("../../src/index.css", import.meta.url), "utf8")
 
-// Tailwind-v3-Standardfarben, die im Hellmodus unverändert bleiben müssen.
+// Tailwind-v3-Standardfarben, die im Hellmodus für bestehende Screens unverändert bleiben müssen.
 const TAILWIND_DEFAULTS = {
   white: { DEFAULT: [255, 255, 255] },
   slate: {

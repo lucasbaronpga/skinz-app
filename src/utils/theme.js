@@ -1,5 +1,5 @@
 const STORAGE_KEY = "skinz-theme"
-const THEME_COLORS = { light: "#e8ebe5", dark: "#06100d" }
+const THEME_COLORS = { light: "#fafafa", dark: "#090b0a" }
 const DARK_QUERY = "(prefers-color-scheme: dark)"
 
 export const THEME_PREFERENCES = ["auto", "light", "dark"]

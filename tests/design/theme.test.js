@@ -73,10 +73,10 @@ describe("Farbmodus", () => {
 
   it("setzt die Browser-Farbe passend zum Modus", () => {
     applyTheme("dark")
-    assert.equal(metaContent, "#06100d")
+    assert.equal(metaContent, "#090b0a")
 
     applyTheme("light")
-    assert.equal(metaContent, "#e8ebe5")
+    assert.equal(metaContent, "#fafafa")
   })
 
   it("ignoriert unbekannte gespeicherte Werte", () => {

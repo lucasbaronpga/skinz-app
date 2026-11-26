@@ -1,7 +1,7 @@
 /**
  * Farben, die sich im Dunkelmodus ändern, verweisen auf CSS-Variablen
- * (Definition in src/index.css). Im Hellmodus entsprechen die Werte exakt
- * den Tailwind-Standardfarben, bestehende Screens sehen also unverändert aus.
+ * (Definition in src/index.css). Im Hellmodus entsprechen die Legacy-Farben
+ * exakt den Tailwind-Standardfarben, bestehende Screens bleiben also lesbar.
  */
 const channel = (name) => `rgb(var(--${name}) / <alpha-value>)`
 
@@ -59,17 +59,24 @@ export default {
           "sans-serif",
         ],
       },
+      // font-black war bisher 900 und wirkte laut. 800 passt besser zum ruhigeren Stil.
+      fontWeight: {
+        black: "800",
+      },
       colors: {
         skinz: {
-          background: "#e8ebe5",
-          surface: "#f5f5f7",
+          background: "#fafafa",
+          surface: "#ffffff",
           hero: "#071819",
-          ink: "#020617",
-          muted: "#64748b",
-          emerald: "#10b981",
-          gold: "#fbbf24",
+          ink: "#0a0a0a",
+          muted: "#767676",
+          emerald: "#006847",
+          gold: "#d9a406",
         },
         page: channel("page"),
+        card: channel("card"),
+        fill: channel("fill"),
+        line: channel("line"),
         ink: {
           DEFAULT: channel("ink"),
           soft: channel("ink-soft"),
@@ -90,12 +97,8 @@ export default {
         soft: "0 20px 60px rgba(15, 23, 42, 0.10)",
         floating: "0 24px 70px rgba(15, 23, 42, 0.14)",
         emerald: "0 18px 45px rgba(16, 185, 129, 0.30)",
-        hero: "0 28px 70px rgba(7, 24, 25, 0.42)",
+        hero: "0 20px 50px rgba(7, 24, 25, 0.28)",
         glass: "var(--shadow-glass)",
-      },
-      borderRadius: {
-        "4xl": "2rem",
-        "5xl": "2.5rem",
       },
     },
   },

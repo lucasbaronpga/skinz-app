@@ -6,7 +6,7 @@ export default function ScoreBadge({ label, className }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center rounded-full px-3 py-1 text-[10px] font-black uppercase leading-none tracking-[0.18em]",
+        "inline-flex items-center justify-center rounded-full px-2.5 py-1 text-[11px] font-bold uppercase leading-none tracking-[0.06em]",
         getScoreTone(label).badge,
         className
       )}
