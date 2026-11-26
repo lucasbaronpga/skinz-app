@@ -51,6 +51,7 @@ const PROTECTED_ROUTES = [
   { path: "/round", element: <RoundSetupScreen /> },
   { path: "/flights/:id", element: <FlightScreen /> },
   { path: "/live", element: <LiveScoringScreen /> },
+  { path: "/live/:id", element: <LiveScoringScreen /> },
   { path: "/matches", element: <MatchArchiveScreen /> },
   { path: "/matches/:id", element: <MatchDetailsScreen /> },
   { path: "/leaderboard", element: <LeaderboardScreen /> },

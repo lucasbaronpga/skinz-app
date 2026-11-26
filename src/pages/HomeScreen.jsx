@@ -3,8 +3,10 @@ import { Link, useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
 import AppBackground from "../components/AppBackground"
 import HomeInvitations from "../components/HomeInvitations"
+import HomeLiveMatchCard from "../components/HomeLiveMatchCard"
 import { useAuth } from "../context/AuthContext"
 import { GAME_MODES, useGame } from "../context/GameContext"
+import useCurrentLiveMatch from "../hooks/useCurrentLiveMatch"
 
 function toNumber(value, fallback = 0) {
   const number = Number(value)
@@ -47,12 +49,6 @@ function formatMoney(value) {
   return "0€"
 }
 
-function formatLiveMoneyBalance(value) {
-  const amount = roundMoney(Math.abs(value))
-
-  return `${formatEuroAmount(amount)}€`
-}
-
 function formatToPar(value) {
   const amount = toNumber(value, 0)
 
@@ -81,13 +77,6 @@ function formatSkins(value) {
   return "0"
 }
 
-function formatLiveSkinBalance(value) {
-  const amount = Math.abs(toNumber(value, 0))
-  const label = amount === 1 ? "Skin" : "Skinz"
-
-  return `${amount} ${label}`
-}
-
 function getMoneyColor(value) {
   const amount = toNumber(value, 0)
 
@@ -100,20 +89,6 @@ function getMoneyColor(value) {
   }
 
   return "text-slate-950"
-}
-
-function getMoneyColorDark(value) {
-  const amount = toNumber(value, 0)
-
-  if (amount > 0) {
-    return "text-amber-300"
-  }
-
-  if (amount < 0) {
-    return "text-red-500"
-  }
-
-  return "text-slate-100"
 }
 
 function getSkinsColor(value) {
@@ -130,20 +105,6 @@ function getSkinsColor(value) {
   return "text-slate-950"
 }
 
-function getSkinsColorDark(value) {
-  const amount = toNumber(value, 0)
-
-  if (amount > 0) {
-    return "text-amber-300"
-  }
-
-  if (amount < 0) {
-    return "text-red-500"
-  }
-
-  return "text-slate-100"
-}
-
 function getToParColor(value) {
   const amount = toNumber(value, 0)
 
@@ -156,10 +117,6 @@ function getToParColor(value) {
   }
 
   return "text-slate-950"
-}
-
-function getCurrentCourseName(course) {
-  return course?.name || "Erster Golfclub Westpfalz"
 }
 
 function getRoundPlayers(round) {
@@ -266,77 +223,23 @@ function roundHasSpecialScoring(round) {
     return false
   }
 
-  if (
+  return Boolean(
     round?.gameMode === GAME_MODES.PROFESSIONAL ||
-    round?.gameModeLabel === "Skinz Professional" ||
-    round?.specialScoringEnabled ||
-    round?.bonusSkinsEnabled ||
-    round?.eagleBonusEnabled
-  ) {
-    return true
-  }
-
-  const historyHasSpecialScoring =
-    Array.isArray(round?.history) &&
-    round.history.some(
-      (playedHole) =>
-        !itemIsWolffn(playedHole) &&
-        (playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
-          playedHole?.gameModeLabel === "Skinz Professional" ||
-          playedHole?.specialScoringEnabled ||
-          playedHole?.specialScoringApplied ||
-          toNumber(playedHole?.bonusSkins, 0) > 0 ||
-          playedHole?.eagleBonusApplied)
-    )
-
-  if (historyHasSpecialScoring) {
-    return true
-  }
-
-  return getRoundPlayers(round).some(
-    (player) =>
-      Array.isArray(player?.holes) &&
-      player.holes.some(
-        (playedHole) =>
-          !itemIsWolffn(playedHole) &&
-          (playedHole?.gameMode === GAME_MODES.PROFESSIONAL ||
-            playedHole?.gameModeLabel === "Skinz Professional" ||
-            playedHole?.specialScoringEnabled ||
-            playedHole?.specialScoringApplied ||
-            toNumber(playedHole?.bonusSkins, 0) > 0 ||
-            playedHole?.eagleBonusApplied)
-      )
+      round?.gameModeLabel === "Skinz Professional" ||
+      round?.specialScoringEnabled
   )
 }
 
-function getModeLabel({ isWolffn, isProfessional }) {
-  if (isWolffn) {
+function getRoundModeLabel(round) {
+  if (roundIsWolffn(round)) {
     return "🐺 Wolffn"
   }
 
-  if (isProfessional) {
+  if (roundHasSpecialScoring(round)) {
     return "Pro"
   }
 
   return "Classic"
-}
-
-function getRoundModeLabel(round) {
-  const isWolffn = roundIsWolffn(round)
-  const isProfessional = !isWolffn && roundHasSpecialScoring(round)
-
-  return getModeLabel({
-    isWolffn,
-    isProfessional,
-  })
-}
-
-function getLiveUserPlayer(players, userName) {
-  const matchedPlayer = players.find((player) =>
-    isSamePlayerName(player?.name, userName)
-  )
-
-  return matchedPlayer || players[0] || null
 }
 
 function getRoundPar(round) {
@@ -443,60 +346,22 @@ function getRoundSortValue(round) {
   return Number.isFinite(parsedDate) ? parsedDate : 0
 }
 
-function DarkBadge({ children }) {
-  return (
-    <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-200 backdrop-blur-xl">
-      {children}
-    </span>
-  )
-}
-
 export default function HomeScreen() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const {
-    hole,
-    currentCourse,
-    players,
-    playerStats,
-    matchFinished,
-    completedRounds,
-    activeMatchId,
-    hasActiveMatch,
-    isWolffnMode,
-    specialScoringEnabled,
-    restoreMatchLoading,
-    restoreMatchError,
-    restoreActiveMatch,
-  } = useGame()
+  const { playerStats, completedRounds, restoreMatchError, restoreActiveMatch } = useGame()
+  const { match: liveMatch } = useCurrentLiveMatch()
 
+  // Lädt abgeschlossene Runden für "Last Round" und das Season Leaderboard.
   useEffect(() => {
     restoreActiveMatch()
   }, [restoreActiveMatch])
 
   const authenticatedPlayerName = getAuthenticatedPlayerName(user)
-  const safePlayers = Array.isArray(players) ? players : []
   const safePlayerStats = Array.isArray(playerStats) ? playerStats : []
   const safeCompletedRounds = Array.isArray(completedRounds)
     ? completedRounds
     : []
-  const liveUserPlayer = getLiveUserPlayer(safePlayers, authenticatedPlayerName)
-  const liveUserSkins = toNumber(liveUserPlayer?.skins, 0)
-  const liveUserWinnings = toNumber(liveUserPlayer?.winnings, 0)
-  const liveSortedPlayers = [...safePlayers].sort(
-    (a, b) =>
-      toNumber(b.winnings, 0) - toNumber(a.winnings, 0) ||
-      String(a?.name || "").localeCompare(String(b?.name || ""))
-  )
-  const liveLeader = liveSortedPlayers[0] || null
-  const liveRunnerUp = liveSortedPlayers[1] || null
-  const liveLeaderHasTie = Boolean(
-    liveLeader &&
-      liveRunnerUp &&
-      toNumber(liveLeader.winnings, 0) === toNumber(liveRunnerUp.winnings, 0)
-  )
-  const liveLeaderName =
-    liveLeader && !liveLeaderHasTie ? liveLeader.name : "All Square"
   const latestRound =
     [...safeCompletedRounds]
       .filter((round) =>
@@ -531,13 +396,9 @@ export default function HomeScreen() {
         String(a?.name || "").localeCompare(String(b?.name || ""))
     )
     .slice(0, 3)
-  const currentModeLabel = getModeLabel({
-    isWolffn: isWolffnMode,
-    isProfessional: !isWolffnMode && specialScoringEnabled,
-  })
 
   return (
-    <div className="relative min-h-[100dvh] overflow-x-hidden bg-[#e8ebe5] pb-[calc(10.5rem+env(safe-area-inset-bottom))] text-slate-950">
+    <div className="relative min-h-[100dvh] overflow-x-hidden pb-[calc(10.5rem+env(safe-area-inset-bottom))] text-slate-950">
       <AppBackground />
       <div className="relative px-5 pt-8 sm:pt-10">
         <div className="mx-auto w-full max-w-md">
@@ -554,12 +415,6 @@ export default function HomeScreen() {
 
           <HomeInvitations className="mt-6" />
 
-          {restoreMatchLoading && (
-            <div className="mt-5 rounded-[24px] border border-white/70 bg-white/[0.46] px-4 py-3 text-center text-sm font-bold text-slate-500 shadow-sm backdrop-blur-xl">
-              Laufendes Match wird geladen...
-            </div>
-          )}
-
           {restoreMatchError && (
             <button
               type="button"
@@ -570,91 +425,15 @@ export default function HomeScreen() {
             </button>
           )}
 
-          {hasActiveMatch ? (
-            <motion.button
-              type="button"
-              whileTap={{ scale: 0.985 }}
+          {liveMatch ? (
+            <motion.div
               initial={{ opacity: 0, y: 22 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05, duration: 0.35, ease: "easeOut" }}
-              onClick={() => navigate("/live")}
-              className="mt-8 w-full overflow-hidden rounded-[34px] border border-white/20 bg-[#071819] text-left text-white shadow-[0_24px_62px_rgba(7,24,25,0.40)]"
+              className="mt-8"
             >
-              <div className="relative p-6">
-                <div
-                  aria-hidden="true"
-                  className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-emerald-400/32 via-emerald-500/8 to-transparent"
-                />
-                <div
-                  aria-hidden="true"
-                  className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/8 blur-3xl"
-                />
-                <div className="relative">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-200/85">
-                        {currentModeLabel}
-                      </div>
-                      <div className="mt-6 break-words text-[clamp(2.75rem,14vw,3.2rem)] font-black uppercase leading-none tracking-[-0.045em]">
-                        Loch {hole}
-                      </div>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <DarkBadge>{matchFinished ? "Beendet" : "Live"}</DarkBadge>
-                    </div>
-                  </div>
-                  <div className="mt-6 grid grid-cols-2 items-end gap-3">
-                    <div className="min-w-0">
-                      <div
-                        className={`min-w-0 break-words text-[clamp(2.15rem,11vw,2.8rem)] font-black leading-none tracking-[-0.07em] tabular-nums ${getSkinsColorDark(
-                          liveUserSkins
-                        )}`}
-                      >
-                        {formatLiveSkinBalance(liveUserSkins)}
-                      </div>
-                      <div className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                        Deine Skinz
-                      </div>
-                    </div>
-                    <div className="min-w-0 text-right">
-                      <div
-                        className={`min-w-0 break-words text-[clamp(2.15rem,11vw,3.05rem)] font-black leading-none tracking-[-0.07em] tabular-nums ${getMoneyColorDark(
-                          liveUserWinnings
-                        )}`}
-                      >
-                        {formatLiveMoneyBalance(liveUserWinnings)}
-                      </div>
-                      <div className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                        Earnings
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-7 border-t border-white/10 pt-5">
-                    <div className="flex items-end justify-between gap-5">
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                          Leading
-                        </div>
-                        <div className="mt-2 break-words text-2xl font-black tracking-[-0.035em]">
-                          {liveLeaderName}
-                        </div>
-                      </div>
-                      <div className="min-w-0 shrink-0 text-right">
-                        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                          Match
-                        </div>
-                        <div className="mt-2 max-w-[9.5rem] break-words text-[11px] font-black uppercase leading-tight tracking-[0.2em] text-slate-400">
-                          {activeMatchId || "-"}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-4 break-words text-sm font-bold leading-relaxed text-slate-400">
-                      {getCurrentCourseName(currentCourse)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.button>
+              <HomeLiveMatchCard match={liveMatch} />
+            </motion.div>
           ) : (
             <motion.div
               initial={{ opacity: 0, y: 22 }}
@@ -675,8 +454,7 @@ export default function HomeScreen() {
                     Neue Runde
                   </div>
                   <div className="mt-4 max-w-xs text-[0.95rem] font-semibold leading-relaxed text-slate-400">
-                    Course, Flight und Einsatz wählen. Danach direkt zur
-                    Score-Eingabe.
+                    Platz, Spielmodus und Einsatz wählen, dann Mitspieler einladen.
                   </div>
                   <Link
                     to="/round"
@@ -687,7 +465,7 @@ export default function HomeScreen() {
                         Runde starten
                       </div>
                       <div className="mt-1 text-sm font-black text-slate-500">
-                        Setup öffnen
+                        Flight anlegen
                       </div>
                     </div>
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xl font-black text-white shadow-sm">
@@ -696,30 +474,6 @@ export default function HomeScreen() {
                   </Link>
                 </div>
               </div>
-            </motion.div>
-          )}
-
-          {hasActiveMatch && (
-            <motion.div
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08, duration: 0.35, ease: "easeOut" }}
-              className="mt-5"
-            >
-              <Link
-                to="/round"
-                className="flex items-center justify-between gap-4 rounded-[30px] border border-white/70 bg-white/[0.46] px-5 py-4 shadow-[0_16px_42px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
-              >
-                <div className="min-w-0">
-                  <div className="break-words text-[1.35rem] font-black tracking-[-0.035em]">
-                    Neue Runde
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-slate-500">
-                    Aktuelle Runde ersetzen
-                  </div>
-                </div>
-                <div className="shrink-0 text-2xl font-black">→</div>
-              </Link>
             </motion.div>
           )}
 
@@ -856,7 +610,7 @@ export default function HomeScreen() {
             </div>
           </motion.div>
 
-          {!hasActiveMatch && !latestRound && topPlayers.length === 0 && (
+          {!liveMatch && !latestRound && topPlayers.length === 0 && (
             <motion.div
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}

@@ -3,7 +3,6 @@ import { Check, Link2, QrCode, Search, UserPlus, X } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
 import AppBackground from "../components/AppBackground"
 import InviteQrCode from "../components/InviteQrCode"
-import { useGame } from "../context/GameContext"
 import { Button, Card, ConfirmDialog, EmptyState, Pill, ScreenHeader, StatTile } from "../ui/index.js"
 import cn from "../ui/cn.js"
 import { apiRequest, getErrorMessage } from "../utils/api.js"
@@ -78,7 +77,6 @@ function PlayerRow({ player, canRemove, onRemove, busy }) {
 export default function FlightScreen() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { restoreActiveMatch } = useGame()
   const [flight, setFlight] = useState(null)
   const [loadState, setLoadState] = useState("loading")
   const [actionError, setActionError] = useState("")
@@ -115,13 +113,13 @@ export default function FlightScreen() {
     return () => window.clearInterval(timer)
   }, [loadFlight])
 
-  // Gestartet: Der Scorer geht ins Live Scoring.
+  // Gestartet: Der Scorer geht direkt ins Live Scoring.
   useEffect(() => {
     if (flight?.status !== "active" || !flight.isScorer || redirectedRef.current) return
 
     redirectedRef.current = true
-    restoreActiveMatch({ force: true }).finally(() => navigate("/live", { replace: true }))
-  }, [flight, navigate, restoreActiveMatch])
+    navigate(`/live/${flight.id}`, { replace: true })
+  }, [flight, navigate])
 
   const isEditable = flight?.status === "open" && flight.isScorer && !flight.isExpired
 
@@ -272,7 +270,7 @@ export default function FlightScreen() {
       <div className="mt-4 flex flex-wrap gap-2">
         {flight.status === "open" && !flight.isExpired && <Pill tone="warning">Wartet auf Start</Pill>}
         {flight.status === "open" && flight.isExpired && <Pill tone="negative">Abgelaufen</Pill>}
-        {flight.status === "active" && <Pill tone="positive">Läuft · {flight.matchCode}</Pill>}
+        {flight.status !== "open" && <Pill tone="positive">Gestartet · {flight.matchCode}</Pill>}
       </div>
 
       <div className="mt-6 grid grid-cols-3 gap-2">
@@ -285,12 +283,15 @@ export default function FlightScreen() {
         />
       </div>
 
-      {flight.status === "active" && !flight.isScorer && (
+      {flight.status !== "open" && !flight.isScorer && (
         <Card className="mt-6 p-5">
-          <div className="font-bold text-ink">Das Match läuft.</div>
+          <div className="font-bold text-ink">Das Match ist gestartet.</div>
           <p className="mt-1 text-sm font-medium leading-relaxed text-ink-mute">
-            {scorer?.name ?? "Der Scorer"} erfasst die Scores. Ergebnisse siehst du nach jedem Loch in der App.
+            {scorer?.name ?? "Der Scorer"} erfasst die Scores. Du siehst Leaderboard und Scorecard live mit.
           </p>
+          <Button variant="primary" className="mt-4 w-full" onClick={() => navigate(`/live/${flight.id}`)}>
+            Live verfolgen
+          </Button>
         </Card>
       )}
 

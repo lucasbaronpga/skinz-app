@@ -1,1483 +1,944 @@
-import { useEffect, useRef, useState } from "react"
-
+import { useCallback, useEffect, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { useNavigate } from "react-router-dom"
-import { Check, ChevronRight, Crown, Sparkles, X } from "lucide-react"
-
+import { ChevronLeft } from "lucide-react"
+import { useNavigate, useParams } from "react-router-dom"
+import { getResultLabel, getTeeOrder } from "../../lib/engine/index.js"
 import AppBackground from "../components/AppBackground"
-import GameModeBadge from "../components/GameModeBadge"
-import { getOozleSettlementRows, useGame } from "../context/GameContext"
-import { getGameModeTheme } from "../utils/gameModeTheme"
+import { useGame } from "../context/GameContext"
+import {
+  Button,
+  Card,
+  Chip,
+  ConfirmDialog,
+  EmptyState,
+  LeaderboardHeader,
+  LeaderboardRow,
+  Pill,
+  ScoreTile,
+  ScreenHeader,
+} from "../ui/index.js"
+import cn from "../ui/cn.js"
+import { getScoreTone } from "../ui/scoreStyles.js"
+import { apiRequest, getErrorMessage } from "../utils/api.js"
+import { formatCents, formatSkinz } from "../utils/format.js"
+import {
+  formatDateTime,
+  getCourseTitle,
+  getHolesPlayed,
+  getModeTitle,
+  getStandings,
+} from "../utils/liveMatch.js"
 
-const HOLE_COUNT = 18
+const POLL_INTERVAL_MS = 5000
+const TOAST_DURATION_MS = 2600
+const MIN_SCORE = 1
+const MAX_SCORE = 20
+const PUTT_OPTIONS = [
+  { value: 1, label: "1 Putt" },
+  { value: 2, label: "2 Putts" },
+  { value: 3, label: "3+ Putts" },
+]
 
-function toNumber(value, fallback = 0) {
-  const number = Number(value)
-  return Number.isFinite(number) ? number : fallback
-}
+function createDraft(match, holeNumber) {
+  const input = match.inputs[holeNumber - 1]
+  const par = match.course.pars[holeNumber - 1]
+  const oozle = input?.oozle
 
-function roundMoney(value) {
-  return Math.round(toNumber(value, 0) * 100) / 100
-}
-
-function normalizeName(value) {
-  return String(value || "").trim().toLowerCase()
-}
-
-function formatEuroAmount(value) {
-  const amount = roundMoney(Math.abs(value))
-  const hasCents = Math.abs(amount % 1) > 0
-
-  if (hasCents) return amount.toFixed(2).replace(".", ",")
-  return amount.toFixed(0)
-}
-
-function formatMoney(value) {
-  const amount = roundMoney(value)
-
-  if (amount > 0) return `+${formatEuroAmount(amount)}€`
-  if (amount < 0) return `-${formatEuroAmount(amount)}€`
-  return "0€"
-}
-
-function formatPlainMoney(value) {
-  return `${formatEuroAmount(value)}€`
-}
-
-function formatCelebrationSpecialLabel(value) {
-  return String(value || "").replaceAll("Skins", "Skinz")
-}
-
-function getMoneyColor(value) {
-  const amount = toNumber(value, 0)
-
-  if (amount > 0) return "text-amber-500"
-  if (amount < 0) return "text-red-500"
-  return "text-slate-950"
-}
-
-function getDarkMoneyColor(value) {
-  const amount = toNumber(value, 0)
-
-  if (amount > 0) return "text-amber-300"
-  if (amount < 0) return "text-red-300"
-  return "text-white"
-}
-
-function getPlayerWonSkinz(player) {
-  if (!player) return 0
-  return Math.max(toNumber(player?.skins, 0), 0)
-}
-
-function getSettlementRows({ player, players, stake }) {
-  if (!player || !Array.isArray(players)) return []
-
-  const playerSkinz = getPlayerWonSkinz(player)
-  const safeStake = toNumber(stake, 0)
-
-  return players
-    .filter((opponent) => normalizeName(opponent?.name) !== normalizeName(player?.name))
-    .map((opponent) => {
-      const opponentSkinz = getPlayerWonSkinz(opponent)
-      const skinzDifference = playerSkinz - opponentSkinz
-      const amount = roundMoney(skinzDifference * safeStake)
-
-      return {
-        opponentName: opponent?.name || "Player",
-        opponentSkinz,
-        skinzDifference,
-        amount,
-      }
-    })
-}
-
-function formatSettlementAction(row) {
-  if (row.amount > 0) return `bekommt von ${row.opponentName}`
-  if (row.amount < 0) return `zahlt an ${row.opponentName}`
-  return `ausgeglichen mit ${row.opponentName}`
-}
-
-function getPlayerOozleSettlementRows(players, player) {
-  if (!player) return []
-  if (Array.isArray(player?.oozleSettlementRows) && player.oozleSettlementRows.length > 0) {
-    return player.oozleSettlementRows
+  return {
+    key: `${holeNumber}:${match.version}`,
+    scores: Object.fromEntries(
+      match.players.map((player) => [player.userId, input?.scores?.[player.userId] ?? par])
+    ),
+    wolffn: {
+      decision: input?.wolffn?.decision ?? null,
+      askedPlayerId: input?.wolffn?.askedPlayerId ?? null,
+    },
+    oozle: oozle?.noGreen
+      ? { noGreen: true, playerId: null, putts: null }
+      : { noGreen: false, playerId: oozle?.playerId ?? null, putts: oozle?.putts ?? null },
   }
-  return getOozleSettlementRows(players, player.name)
 }
 
-function getOozleAmountAgainstOpponent(players, player, opponentName) {
-  const row = getPlayerOozleSettlementRows(players, player).find(
-    (item) => normalizeName(item?.opponentName) === normalizeName(opponentName)
-  )
-  return roundMoney(row?.amount)
-}
+function buildHolePayload({ draft, isWolffn, oozleRequired }) {
+  const hole = { scores: draft.scores }
 
-function getFinalSettlementPayments(players, stake) {
-  if (!Array.isArray(players) || players.length < 2) return []
-
-  const safeStake = toNumber(stake, 0)
-  const payments = []
-
-  for (let playerIndex = 0; playerIndex < players.length; playerIndex += 1) {
-    const player = players[playerIndex]
-
-    for (let opponentIndex = playerIndex + 1; opponentIndex < players.length; opponentIndex += 1) {
-      const opponent = players[opponentIndex]
-      const skinzAmount = roundMoney(
-        (getPlayerWonSkinz(player) - getPlayerWonSkinz(opponent)) * safeStake
-      )
-      const oozleAmount = getOozleAmountAgainstOpponent(players, player, opponent?.name)
-      const combinedAmount = roundMoney(skinzAmount + oozleAmount)
-
-      if (combinedAmount > 0) {
-        payments.push({
-          from: opponent?.name || "Player",
-          to: player?.name || "Player",
-          amount: combinedAmount,
-        })
-      } else if (combinedAmount < 0) {
-        payments.push({
-          from: player?.name || "Player",
-          to: opponent?.name || "Player",
-          amount: Math.abs(combinedAmount),
-        })
-      }
-    }
+  if (isWolffn) {
+    hole.wolffn =
+      draft.wolffn.decision === "alone"
+        ? { decision: "alone" }
+        : { decision: draft.wolffn.decision, askedPlayerId: draft.wolffn.askedPlayerId }
   }
 
-  return payments
-}
-
-function formatToPar(value) {
-  const amount = toNumber(value, 0)
-
-  if (amount === 0) return "E"
-  if (amount > 0) return `+${amount}`
-  return amount
-}
-
-function getToParColor(value) {
-  const amount = toNumber(value, 0)
-
-  if (amount < 0) return "text-emerald-500"
-  if (amount > 0) return "text-red-500"
-  return "text-slate-950"
-}
-
-function getScoreTileStyle(label) {
-  if (label === "Albatross") return "bg-amber-300 text-black shadow-[0_18px_42px_rgba(251,191,36,0.34)]"
-  if (label === "Eagle") return "bg-orange-500 text-white shadow-[0_18px_42px_rgba(249,115,22,0.34)]"
-  if (label === "Birdie") return "bg-red-500 text-white shadow-[0_18px_42px_rgba(239,68,68,0.34)]"
-  if (label === "Bogey") return "bg-blue-500 text-white shadow-[0_18px_42px_rgba(59,130,246,0.32)]"
-  if (label === "Double Bogey") return "bg-blue-900 text-white shadow-[0_18px_42px_rgba(30,58,138,0.34)]"
-  if (label === "Triple+") return "bg-purple-600 text-white shadow-[0_18px_42px_rgba(147,51,234,0.32)]"
-  return "bg-slate-950 text-white shadow-[0_18px_42px_rgba(15,23,42,0.32)]"
-}
-
-function getResultBadgeStyle(label) {
-  if (label === "Albatross") return "bg-amber-300 text-black"
-  if (label === "Eagle") return "bg-orange-500 text-white"
-  if (label === "Birdie") return "bg-red-500 text-white"
-  if (label === "Bogey") return "bg-blue-500 text-white"
-  if (label === "Double Bogey") return "bg-blue-900 text-white"
-  if (label === "Triple+") return "bg-purple-600 text-white"
-  return "bg-white/[0.68] text-slate-400"
-}
-
-function getSpecialBadgeStyle(label) {
-  const safeLabel = String(label || "")
-
-  if (safeLabel.includes("Birdie")) return "bg-red-500 text-white"
-  if (safeLabel.includes("Eagle")) return "bg-orange-500 text-white"
-  if (safeLabel.includes("Albatross")) return "bg-amber-300 text-black"
-  return "bg-orange-500 text-white"
-}
-
-function getCourseName(course) {
-  return course?.name || "Erster Golfclub Westpfalz"
-}
-
-function getResultLabelFromScore(score, par) {
-  const safePar = toNumber(par, 4)
-  const scoreToPar = toNumber(score, safePar) - safePar
-
-  if (scoreToPar <= -3) return "Albatross"
-  if (scoreToPar === -2) return "Eagle"
-  if (scoreToPar === -1) return "Birdie"
-  if (scoreToPar === 0) return "Par"
-  if (scoreToPar === 1) return "Bogey"
-  if (scoreToPar === 2) return "Double Bogey"
-  return "Triple+"
-}
-
-function getHistoryScore(item) {
-  const possibleScores = [
-    item?.winningScore,
-    item?.winnerScore,
-    item?.lowestScore,
-    item?.bestScore,
-    item?.score,
-  ]
-
-  const foundScore = possibleScores.find((value) => Number.isFinite(Number(value)))
-  return foundScore === undefined ? null : toNumber(foundScore, null)
-}
-
-function getHistoryResultLabel(item) {
-  if (item?.result) return item.result
-  if (item?.golfResult?.label) return item.golfResult.label
-  if (item?.winningResult) return item.winningResult
-  if (item?.winnerResult) return item.winnerResult
-
-  const historyScore = getHistoryScore(item)
-  if (historyScore === null) return null
-
-  return getResultLabelFromScore(historyScore, item?.par || 4)
-}
-
-function getHistoryResultSummary(item) {
-  const resultLabel = getHistoryResultLabel(item)
-
-  if (item?.hasTie) return resultLabel ? `Mit ${resultLabel} geteilt` : "Loch geteilt"
-  return resultLabel ? `Mit ${resultLabel} gewonnen` : "Loch gewonnen"
-}
-
-function getSkinsLabel(value) {
-  const amount = toNumber(value, 0)
-  return amount === 1 ? "1 Skin" : `${amount} Skinz`
-}
-
-function getHistorySpecialLabel(item) {
-  if (!item?.specialScoringEnabled) return null
-  if (item.specialScoringLabel) return item.specialScoringLabel
-  if (item.bonusResult) return item.bonusResult
-  return null
-}
-
-function formatHoleListLabel(holes) {
-  if (!Array.isArray(holes) || holes.length === 0) return null
-  return holes.map((holeNumber) => String(holeNumber)).join(" + ")
-}
-
-function buildHistoryDisplayItems(history) {
-  const openCarryoverHoles = []
-  if (!Array.isArray(history)) return []
-
-  return history.map((item) => {
-    if (item?.hasTie) {
-      openCarryoverHoles.push(item.hole)
-      return {
-        ...item,
-        displayWonHoles: [],
-      }
-    }
-
-    const displayWonHoles = [...openCarryoverHoles, item.hole]
-    openCarryoverHoles.length = 0
-
-    return {
-      ...item,
-      displayWonHoles,
-    }
-  })
-}
-
-function getWolffnTeeOrder(players, hole) {
-  const playerNames = players.map((player) => player.name)
-
-  if (playerNames.length !== 4) return playerNames
-
-  const offset = (Math.max(toNumber(hole, 1), 1) - 1) % playerNames.length
-  return [...playerNames.slice(offset), ...playerNames.slice(0, offset)]
-}
-
-function getWolffnTeams({ teeOrder, decisionPlayer, askedPlayer, wolffnDecision }) {
-  if (!Array.isArray(teeOrder) || teeOrder.length !== 4 || !decisionPlayer) return null
-
-  if (wolffnDecision === "alone") {
-    return {
-      format: "1v3",
-      label: "Wolffn",
-      wolffnPlayer: decisionPlayer,
-      teamA: [decisionPlayer],
-      teamB: teeOrder.filter((playerName) => playerName !== decisionPlayer),
-    }
+  if (oozleRequired) {
+    hole.oozle = draft.oozle.noGreen
+      ? { noGreen: true }
+      : { playerId: draft.oozle.playerId, putts: draft.oozle.putts }
   }
 
-  if (!askedPlayer) return null
-
-  if (wolffnDecision === "accepted") {
-    const teamA = [decisionPlayer, askedPlayer]
-    const teamB = teeOrder.filter((playerName) => !teamA.includes(playerName))
-
-    return {
-      format: "2v2",
-      label: "2v2",
-      wolffnPlayer: null,
-      teamA,
-      teamB,
-    }
-  }
-
-  if (wolffnDecision === "declined") {
-    return {
-      format: "1v3",
-      label: "Wolffn",
-      wolffnPlayer: askedPlayer,
-      teamA: [askedPlayer],
-      teamB: teeOrder.filter((playerName) => playerName !== askedPlayer),
-    }
-  }
-
-  return null
+  return hole
 }
 
-function joinTeamNames(team) {
-  return Array.isArray(team) ? team.join(" + ") : "-"
+function getNames(match, ids) {
+  const names = new Map(match.players.map((player) => [player.userId, player.name]))
+
+  return ids.map((id) => names.get(id) ?? "Spieler").join(" + ")
 }
 
-function StatusPill({ children }) {
+function describeHole(match, hole) {
+  if (!hole) return ""
+
+  if (hole.tie) {
+    return hole.carryoverAfter > 0
+      ? `Loch ${hole.holeNumber} geteilt · ${formatSkinz(hole.carryoverAfter)} im Carryover`
+      : `Loch ${hole.holeNumber} geteilt`
+  }
+
+  return `${getNames(match, hole.winnerPlayerIds)} gewinnt ${formatSkinz(hole.potSkinz)} auf Loch ${hole.holeNumber}`
+}
+
+function Section({ title, action, children, className }) {
   return (
-    <span className="inline-flex min-h-7 items-center justify-center rounded-full border border-white/70 bg-white/[0.46] px-3 py-1 text-center text-[10px] font-black uppercase leading-none tracking-[0.2em] text-slate-600 backdrop-blur-xl">
+    <section className={cn("mt-9", className)}>
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <h2 className="text-[13px] font-semibold uppercase tracking-[0.06em] text-ink-mute">{title}</h2>
+        {action}
+      </div>
       {children}
-    </span>
+    </section>
   )
 }
 
-function ScoreInputTile({ disabled, golfResultLabel, onSwipe, onKeyDown, playerName, playerScore }) {
+function ScoreInput({ name, score, par, disabled, onChange }) {
+  const label = getResultLabel(score, par)
+
+  function step(delta) {
+    const next = Math.min(MAX_SCORE, Math.max(MIN_SCORE, score + delta))
+
+    if (next !== score) onChange(next)
+  }
+
+  function handleDragEnd(_event, info) {
+    if (info.offset.y < -24 || info.velocity.y < -400) step(1)
+    else if (info.offset.y > 24 || info.velocity.y > 400) step(-1)
+  }
+
+  function handleKeyDown(event) {
+    if (event.key === "ArrowUp" || event.key === "ArrowRight") {
+      event.preventDefault()
+      step(1)
+    } else if (event.key === "ArrowDown" || event.key === "ArrowLeft") {
+      event.preventDefault()
+      step(-1)
+    }
+  }
+
   return (
     <motion.div
-      role="button"
+      role="spinbutton"
       tabIndex={disabled ? -1 : 0}
+      aria-label={`Score von ${name}, nach oben wischen erhöht, nach unten verringert`}
+      aria-valuenow={score}
+      aria-valuemin={MIN_SCORE}
+      aria-valuemax={MAX_SCORE}
+      aria-disabled={disabled}
       drag={disabled ? false : "y"}
       dragConstraints={{ top: 0, bottom: 0 }}
-      dragElastic={0.16}
-      whileTap={{ scale: disabled ? 1 : 0.96 }}
-      onDragEnd={(event, info) => onSwipe(info)}
-      onKeyDown={onKeyDown}
-      aria-label={`Score von ${playerName} per Wisch ändern. Nach oben erhöht, nach unten verringert.`}
-      aria-disabled={disabled}
-      className={`grid h-[6.55rem] w-[6.55rem] shrink-0 touch-none select-none place-items-center rounded-[32px] text-center outline-none transition focus-visible:ring-4 focus-visible:ring-slate-200 ${
+      dragElastic={0.18}
+      dragSnapToOrigin
+      onDragEnd={handleDragEnd}
+      onKeyDown={disabled ? undefined : handleKeyDown}
+      whileTap={disabled ? undefined : { scale: 0.96 }}
+      className={cn(
+        "shrink-0 touch-none select-none rounded-full outline-none focus-visible:ring-4 focus-visible:ring-emerald-200",
         disabled ? "cursor-default" : "cursor-grab active:cursor-grabbing"
-      } ${getScoreTileStyle(golfResultLabel)}`}
+      )}
     >
-      <span className="flex h-full w-full -translate-y-[0.035em] items-center justify-center tabular-nums text-[4.8rem] font-black leading-none tracking-[-0.015em]">
-        {playerScore}
-      </span>
+      <ScoreTile score={score} label={label} size="lg" />
     </motion.div>
   )
 }
 
-export default function LiveScoringScreen() {
-  const navigate = useNavigate()
-  const scoreEntryRef = useRef(null)
+function WolffnSetup({ match, holeNumber, draft, onChange }) {
+  const playerIds = match.players.map((player) => player.userId)
+  const teeOrder = getTeeOrder(playerIds, holeNumber)
+  const decider = teeOrder[0]
+  const { decision, askedPlayerId } = draft.wolffn
+  let teamSummary = null
 
-  const {
-    hole,
-    currentPar,
-    currentCourse,
-    players,
-    history,
-    celebration,
-    matchFinished,
-    resetGame,
-    hasActiveMatch,
-    lowestScore,
-    gameMode,
-    isWolffnMode,
-    specialScoringEnabled,
-    oozleConfig,
-    oozleCarryover,
-    stake,
-    updateScore,
-    finishHole,
-    finishHoleLoading,
-    finishHoleError,
-    getGolfResult,
-  } = useGame()
+  if (decision === "alone") {
+    teamSummary = `${getNames(match, [decider])} spielt allein gegen drei (Pot ×2)`
+  } else if (askedPlayerId && decision === "accepted") {
+    teamSummary = `${getNames(match, [decider, askedPlayerId])} gegen ${getNames(
+      match,
+      teeOrder.filter((id) => id !== decider && id !== askedPlayerId)
+    )}`
+  } else if (askedPlayerId && decision === "declined") {
+    teamSummary = `${getNames(match, [askedPlayerId])} spielt allein gegen drei (Pot ×2)`
+  }
 
-  const safePlayers = Array.isArray(players) ? players : []
-  const safeHistory = Array.isArray(history) ? history : []
+  return (
+    <Card className="p-4">
+      <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-ink-mute">
+        Abschlag:
+        {teeOrder.map((id, index) => (
+          <span key={id} className={cn("font-bold", index === 0 ? "text-ink" : "text-ink-soft")}>
+            {index + 1}. {getNames(match, [id])}
+          </span>
+        ))}
+      </div>
+      <div className="mt-3 text-lg font-bold tracking-[-0.02em] text-ink">
+        🐺 {getNames(match, [decider])} entscheidet
+      </div>
 
-  const [showAbortModal, setShowAbortModal] = useState(false)
-  const [showSavedFeedback, setShowSavedFeedback] = useState(false)
-  const [selectedSettlementPlayer, setSelectedSettlementPlayer] = useState(null)
-  const [oozleSetup, setOozleSetup] = useState({
-    hole: null,
-    playerName: null,
-    putts: null,
-    noGreen: false,
-  })
-  const [wolffnSetup, setWolffnSetup] = useState({
-    hole: null,
-    gameMode: null,
-    askedPlayer: null,
-    decision: null,
-  })
+      <div className="mt-3 flex flex-wrap gap-2">
+        {teeOrder.slice(1).map((id) => (
+          <Chip
+            key={id}
+            selected={askedPlayerId === id}
+            onClick={() => onChange({ decision: null, askedPlayerId: id })}
+          >
+            fragt {getNames(match, [id])}
+          </Chip>
+        ))}
+        <Chip selected={decision === "alone"} onClick={() => onChange({ decision: "alone", askedPlayerId: null })}>
+          Allein spielen
+        </Chip>
+      </div>
 
-  const isProfessionalMode = !isWolffnMode && specialScoringEnabled
-  const modeTheme = getGameModeTheme({
-    gameMode,
-    isWolffn: isWolffnMode,
-    isProfessional: isProfessionalMode,
-  })
+      {askedPlayerId && (
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Button
+            variant={decision === "accepted" ? "primary" : "glass"}
+            onClick={() => onChange({ decision: "accepted", askedPlayerId })}
+          >
+            Angenommen
+          </Button>
+          <Button
+            variant={decision === "declined" ? "primary" : "glass"}
+            onClick={() => onChange({ decision: "declined", askedPlayerId })}
+          >
+            Abgelehnt
+          </Button>
+        </div>
+      )}
 
-  const sortedPlayers = [...safePlayers].sort(
-    (a, b) =>
-      toNumber(b.winnings, 0) - toNumber(a.winnings, 0) ||
-      toNumber(b.skins, 0) - toNumber(a.skins, 0) ||
-      toNumber(a.totalToPar, 0) - toNumber(b.totalToPar, 0)
+      {teamSummary && <p className="mt-4 text-sm font-semibold text-ink">{teamSummary}</p>}
+    </Card>
   )
+}
 
-  const champion = sortedPlayers[0] || null
-  const championWonSkinz = getPlayerWonSkinz(champion)
-  const showOozleSettlement = Boolean(oozleConfig?.enabled) || safePlayers.some((player) => Math.abs(toNumber(player?.oozleWinnings, 0)) > 0)
-  const historyDisplayItems = buildHistoryDisplayItems(safeHistory)
-  const safeHole = Math.min(Math.max(toNumber(hole, 1), 1), HOLE_COUNT)
-  const selectedSettlementRows = getSettlementRows({
-    player: selectedSettlementPlayer,
-    players: safePlayers,
-    stake,
-  })
-  const finalSettlementPayments = getFinalSettlementPayments(safePlayers, stake)
-  const selectedOozleSettlementRows = getPlayerOozleSettlementRows(
-    safePlayers,
-    selectedSettlementPlayer
-  )
+function OozleSetup({ match, draft, amountCents, unitsAtStake, onChange }) {
+  const { noGreen, playerId, putts } = draft.oozle
+  let summary = null
 
-  const wolffnSetupIsCurrent = wolffnSetup.hole === safeHole && wolffnSetup.gameMode === gameMode
-  const wolffnAskedPlayer = wolffnSetupIsCurrent ? wolffnSetup.askedPlayer : null
-  const wolffnDecision = wolffnSetupIsCurrent ? wolffnSetup.decision : null
-  const wolffnTeeOrder = getWolffnTeeOrder(safePlayers, safeHole)
-  const wolffnDecisionPlayer = wolffnTeeOrder[0] || null
-  const wolffnAvailablePartners = wolffnTeeOrder.filter((playerName) => playerName !== wolffnDecisionPlayer)
-  const wolffnTeams = getWolffnTeams({
-    teeOrder: wolffnTeeOrder,
-    decisionPlayer: wolffnDecisionPlayer,
-    askedPlayer: wolffnAskedPlayer,
-    wolffnDecision,
-  })
-  const wolffnSetupComplete = !isWolffnMode || Boolean(wolffnTeams)
-  const oozleEnabled = Boolean(oozleConfig?.enabled) && !isWolffnMode
-  const oozleRequired = oozleEnabled && currentPar === 3 && !matchFinished
-  const oozleSetupIsCurrent = oozleSetup.hole === safeHole
-  const oozlePlayerName = oozleSetupIsCurrent ? oozleSetup.playerName : null
-  const oozlePutts = oozleSetupIsCurrent ? oozleSetup.putts : null
-  const oozleNoGreen = oozleSetupIsCurrent ? oozleSetup.noGreen : false
-  const oozleSetupComplete =
-    !oozleRequired ||
-    oozleNoGreen ||
-    (Boolean(oozlePlayerName) && [1, 2, 3].includes(oozlePutts))
-  const holeSetupComplete = wolffnSetupComplete && oozleSetupComplete
-  const oozleUnitsAtStake = Math.max(toNumber(oozleCarryover, 0), 1)
-  const oozleAmountPerOpponent = roundMoney(
-    oozleUnitsAtStake * toNumber(oozleConfig?.value, 0)
-  )
-
-  useEffect(() => {
-    if (!hasActiveMatch || matchFinished) return undefined
-
-    const timeoutId = window.setTimeout(() => {
-      scoreEntryRef.current?.scrollIntoView({
-        block: "start",
-        behavior: "auto",
-      })
-    }, 120)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [hasActiveMatch, matchFinished, safeHole])
-
-  function handleCloseLive() {
-    navigate("/")
+  if (noGreen) summary = "Carryover: Einsatz wandert doppelt zum nächsten Par 3."
+  else if (playerId && putts) {
+    summary =
+      putts >= 3
+        ? `Foozle · ${getNames(match, [playerId])} zahlt jedem ${formatCents(amountCents)}`
+        : `Oozle · ${getNames(match, [playerId])} bekommt von jedem ${formatCents(amountCents)}`
   }
 
-  function handleAbortMatch() {
-    resetGame()
-    setShowAbortModal(false)
-    navigate("/")
-  }
-
-  function handleResetGame() {
-    resetGame()
-    navigate("/round")
-  }
-
-  function handleGoHome() {
-    navigate("/")
-  }
-
-  function handleSelectOozlePlayer(playerName) {
-    setOozleSetup({
-      hole: safeHole,
-      playerName,
-      putts: null,
-      noGreen: false,
-    })
-  }
-
-  function handleSelectOozlePutts(putts) {
-    if (!oozlePlayerName) return
-    setOozleSetup({
-      hole: safeHole,
-      playerName: oozlePlayerName,
-      putts,
-      noGreen: false,
-    })
-  }
-
-  function handleOozleNoGreen() {
-    setOozleSetup({
-      hole: safeHole,
-      playerName: null,
-      putts: null,
-      noGreen: true,
-    })
-  }
-
-  function handleAskPartner(playerName) {
-    setWolffnSetup({
-      hole: safeHole,
-      gameMode,
-      askedPlayer: playerName,
-      decision: null,
-    })
-  }
-
-  function handleScoreSwipe({ playerIndex, playerScore, offsetY, velocityY }) {
-    if (matchFinished) return
-
-    const shouldIncrease = offsetY < -28 || velocityY < -420
-    const shouldDecrease = offsetY > 28 || velocityY > 420
-
-    if (shouldIncrease) {
-      updateScore(playerIndex, playerScore + 1)
-      return
-    }
-
-    if (shouldDecrease) {
-      updateScore(playerIndex, Math.max(1, playerScore - 1))
-    }
-  }
-
-  function handleScoreKeyDown(event, playerIndex, playerScore) {
-    if (matchFinished) return
-
-    if (event.key === "ArrowUp" || event.key === "ArrowRight") {
-      event.preventDefault()
-      updateScore(playerIndex, playerScore + 1)
-      return
-    }
-
-    if (event.key === "ArrowDown" || event.key === "ArrowLeft") {
-      event.preventDefault()
-      updateScore(playerIndex, Math.max(1, playerScore - 1))
-    }
-  }
-
-  async function handleFinishHole() {
-    if (!holeSetupComplete || finishHoleLoading) return
-
-    let didFinish
-    if (isWolffnMode) {
-      didFinish = await finishHole(wolffnTeams)
-    } else if (oozleRequired) {
-      const oozleInput = oozleNoGreen
-        ? { outcome: "carryover" }
-        : {
-            outcome: oozlePutts >= 3 ? "foozle" : "oozle",
-            playerName: oozlePlayerName,
-            putts: oozlePutts,
-          }
-
-      didFinish = await finishHole(null, oozleInput)
-    } else {
-      didFinish = await finishHole()
-    }
-
-    if (didFinish) {
-      setShowSavedFeedback(true)
-      window.setTimeout(() => setShowSavedFeedback(false), 650)
-    }
-  }
-
-  if (!hasActiveMatch && !matchFinished) {
-    return (
-      <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#e8ebe5] px-6 text-slate-950">
-        <AppBackground />
-
-        <div className="relative w-full max-w-sm overflow-hidden rounded-[40px] border border-white/20 bg-[#071819] p-8 text-center text-white shadow-[0_28px_70px_rgba(7,24,25,0.42)]">
-          <div aria-hidden="true" className={`absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t ${modeTheme.glow}`} />
-
-          <div className="relative">
-            <div className={`text-[12px] font-black uppercase tracking-[0.24em] ${modeTheme.textDark}`}>
-              Live Scoring
-            </div>
-
-            <div className="mt-5 text-5xl font-black tracking-[-0.06em]">Keine Runde</div>
-
-            <div className="mt-4 text-sm font-semibold leading-relaxed text-slate-400">
-              Starte zuerst eine neue Runde, damit Scores geändert und Löcher abgeschlossen werden können.
-            </div>
-
-            <button
-              type="button"
-              onClick={() => navigate("/round")}
-              className="mt-8 w-full rounded-[28px] border border-white/90 bg-white py-5 text-lg font-black text-slate-950 shadow-[0_18px_55px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.95)]"
-            >
-              Runde starten
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigate("/")}
-              className="mt-3 w-full rounded-[28px] border border-white/15 bg-white/10 py-5 text-lg font-black text-slate-300 backdrop-blur-xl"
-            >
-              Home
-            </button>
+  return (
+    <Card className="p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-lg font-bold tracking-[-0.02em] text-ink">Oozle</div>
+          <p className="mt-1 text-sm font-medium text-ink-mute">Wer liegt nach dem Abschlag am nächsten zur Fahne?</p>
+        </div>
+        <div className="text-right">
+          <div className="text-lg font-bold tabular-nums text-ink">{formatCents(amountCents)}</div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-mute">
+            {unitsAtStake > 1 ? `je Gegner · ×${unitsAtStake}` : "je Gegner"}
           </div>
         </div>
       </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {match.players.map((player) => (
+          <Chip
+            key={player.userId}
+            selected={!noGreen && playerId === player.userId}
+            onClick={() => onChange({ noGreen: false, playerId: player.userId, putts: null })}
+          >
+            {player.name}
+          </Chip>
+        ))}
+        <Chip selected={noGreen} onClick={() => onChange({ noGreen: true, playerId: null, putts: null })}>
+          Niemand auf dem Grün
+        </Chip>
+      </div>
+
+      {!noGreen && playerId && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {PUTT_OPTIONS.map((option) => (
+            <Chip
+              key={option.value}
+              selected={putts === option.value}
+              onClick={() => onChange({ noGreen: false, playerId, putts: option.value })}
+            >
+              {option.label}
+            </Chip>
+          ))}
+        </div>
+      )}
+
+      {summary && <p className="mt-4 text-sm font-semibold text-ink">{summary}</p>}
+    </Card>
+  )
+}
+
+function Scorecard({ match, activeHole, onSelectHole }) {
+  const { holeCount, pars } = match.course
+  const holes = Array.from({ length: holeCount }, (_, index) => index + 1)
+  const holesPlayed = getHolesPlayed(match)
+  const cellClass = "min-w-[2.25rem] px-0.5 py-2 text-center"
+
+  return (
+    <div className="surface -mx-1 overflow-x-auto rounded-[18px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <table className="w-max border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-line/10 text-[11px] font-semibold uppercase tracking-[0.04em] text-ink-mute">
+            <th className="sticky left-0 z-10 bg-card px-3 py-2 text-left">Loch</th>
+            {holes.map((holeNumber) => {
+              const selectable = Boolean(onSelectHole) && holeNumber <= holesPlayed + 1
+
+              return (
+                <th key={holeNumber} className={cellClass}>
+                  {selectable ? (
+                    <button
+                      type="button"
+                      onClick={() => onSelectHole(holeNumber)}
+                      className={cn(
+                        "h-7 w-7 rounded-full font-bold",
+                        holeNumber === activeHole ? "bg-ink text-page" : "text-ink-soft"
+                      )}
+                    >
+                      {holeNumber}
+                    </button>
+                  ) : (
+                    <span className={cn(holeNumber === activeHole && "font-bold text-ink")}>{holeNumber}</span>
+                  )}
+                </th>
+              )
+            })}
+            <th className="px-3 py-2 text-right">Ges.</th>
+          </tr>
+          <tr className="border-b border-line/10 text-xs font-medium text-ink-mute">
+            <td className="sticky left-0 z-10 bg-card px-3 py-1.5">Par</td>
+            {holes.map((holeNumber) => (
+              <td key={holeNumber} className={cellClass}>
+                {pars[holeNumber - 1]}
+              </td>
+            ))}
+            <td className="px-3 py-1.5 text-right font-semibold">{match.course.par}</td>
+          </tr>
+        </thead>
+        <tbody>
+          {match.players.map((player) => {
+            let total = 0
+
+            return (
+              <tr key={player.userId} className="border-b border-line/10 last:border-b-0">
+                <th
+                  scope="row"
+                  className="sticky left-0 z-10 bg-card px-3 py-2 text-left font-bold text-ink"
+                >
+                  {player.shortName || player.name}
+                </th>
+                {holes.map((holeNumber) => {
+                  const score = match.inputs[holeNumber - 1]?.scores?.[player.userId]
+
+                  if (!score) {
+                    return (
+                      <td key={holeNumber} className={cn(cellClass, "text-ink-mute")}>
+                        –
+                      </td>
+                    )
+                  }
+
+                  total += score
+
+                  return (
+                    <td key={holeNumber} className={cellClass}>
+                      <span
+                        className={cn(
+                          "mx-auto grid h-7 w-7 place-items-center text-sm font-bold tabular-nums",
+                          getScoreTone(getResultLabel(score, pars[holeNumber - 1])).tile
+                        )}
+                      >
+                        {score}
+                      </span>
+                    </td>
+                  )
+                })}
+                <td className="px-3 py-2 text-right font-bold tabular-nums text-ink">{total || "–"}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function Standings({ match }) {
+  const holesPlayed = getHolesPlayed(match)
+  const thru = holesPlayed >= match.course.holeCount ? "F" : holesPlayed
+
+  return (
+    <>
+      <LeaderboardHeader />
+      {getStandings(match).map((player) => (
+        <LeaderboardRow
+          key={player.userId}
+          position={player.position}
+          name={player.name}
+          shortName={`${player.shortName ? `${player.shortName} · ` : ""}${formatSkinz(player.skinz)}`}
+          thru={thru}
+          toPar={player.totalToPar}
+          earningsCents={player.totalCents}
+          highlight={player.isMe}
+        />
+      ))}
+    </>
+  )
+}
+
+function Payments({ match }) {
+  const payments = match.result?.settlement?.payments ?? []
+
+  if (payments.length === 0) {
+    return (
+      <Card className="px-4 py-5 text-center text-sm font-semibold text-ink-mute">
+        Keine Zahlungen nötig, alle sind ausgeglichen.
+      </Card>
     )
   }
 
   return (
-    <div className="relative min-h-[100dvh] overflow-x-hidden bg-[#e8ebe5] pb-[calc(9.5rem+env(safe-area-inset-bottom))] text-slate-950">
+    <Card className="overflow-hidden">
+      {payments.map((payment) => (
+        <div
+          key={`${payment.fromPlayerId}-${payment.toPlayerId}`}
+          className="flex items-center justify-between gap-3 border-b border-line/10 px-4 py-3.5 last:border-b-0"
+        >
+          <span className="min-w-0 text-[15px] font-semibold text-ink">
+            {getNames(match, [payment.fromPlayerId])}
+            <span className="font-medium text-ink-mute"> zahlt </span>
+            {getNames(match, [payment.toPlayerId])}
+          </span>
+          <span className="shrink-0 text-lg font-bold tabular-nums text-ink">
+            {formatCents(payment.amountCents)}
+          </span>
+        </div>
+      ))}
+    </Card>
+  )
+}
+
+function Page({ children, withSaveBar = false }) {
+  return (
+    <div
+      className={cn(
+        "relative min-h-[100dvh] overflow-x-hidden text-ink",
+        withSaveBar ? "pb-[calc(8rem+env(safe-area-inset-bottom))]" : "pb-[calc(3rem+env(safe-area-inset-bottom))]"
+      )}
+    >
       <AppBackground />
+      <div className="relative mx-auto max-w-md px-5 pt-[calc(1rem+env(safe-area-inset-top))]">{children}</div>
+    </div>
+  )
+}
 
-      <div className="relative px-5 pt-9">
-        <div className="mx-auto max-w-md">
-          <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
-            className="pt-5"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <StatusPill>{matchFinished ? "Beendet" : "Live"}</StatusPill>
-                  <GameModeBadge gameMode={gameMode} isWolffn={isWolffnMode} isProfessional={isProfessionalMode} />
-                </div>
+function BackButton({ onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Zurück zu Home"
+      className="flex h-11 w-11 items-center justify-center rounded-full bg-card text-ink shadow-[var(--shadow-chip)]"
+    >
+      <ChevronLeft size={22} aria-hidden="true" />
+    </button>
+  )
+}
 
-                <h1 className="mt-4 text-[4rem] font-black leading-none tracking-[-0.075em] text-slate-950">
-                  Loch {safeHole}
-                </h1>
+export default function LiveScoringScreen() {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const { restoreActiveMatch } = useGame()
+  const [state, setState] = useState({ status: "loading", match: null, error: "" })
+  const [selectedHole, setSelectedHole] = useState(null)
+  const [draft, setDraft] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [actionError, setActionError] = useState("")
+  const [dialog, setDialog] = useState(null)
+  const [toast, setToast] = useState(null)
 
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <div className="text-[1.45rem] font-black leading-none tracking-[-0.055em] text-slate-600">
-                    Par {currentPar}
-                  </div>
-                  <div className={`h-1 w-1 rounded-full ${modeTheme.dot}`} />
-                  <div className="min-w-0 truncate text-sm font-bold text-slate-500">
-                    {getCourseName(currentCourse)}
-                  </div>
-                </div>
-              </div>
+  const load = useCallback(() => {
+    const path = id ? `/api/live/get?id=${encodeURIComponent(id)}` : "/api/live/current"
 
-              {!matchFinished && (
-                <motion.button
-                  type="button"
-                  whileTap={{ scale: 0.9 }}
-                  onClick={handleCloseLive}
-                  aria-label="Live-Ansicht schließen"
-                  className="mt-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-950 text-white shadow-[0_14px_34px_rgba(15,23,42,0.24)]"
-                >
-                  <X size={21} />
-                </motion.button>
-              )}
-            </div>
-          </motion.div>
+    return apiRequest(path)
+      .then((data) => {
+        setState(
+          data.match
+            ? { status: "ready", match: data.match, error: "" }
+            : { status: "none", match: null, error: "" }
+        )
+      })
+      .catch((error) => {
+        setState((current) =>
+          current.status === "ready"
+            ? current
+            : { status: error?.status === 404 ? "missing" : "error", match: null, error: getErrorMessage(error) }
+        )
+      })
+  }, [id])
 
-          {isWolffnMode && !matchFinished && (
-            <motion.div
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.06, duration: 0.3, ease: "easeOut" }}
-              className="mt-5 overflow-hidden rounded-[32px] border border-white/20 bg-[#071819] text-white shadow-[0_22px_55px_rgba(7,24,25,0.30)]"
-            >
-              <div className="relative p-5">
-                <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-slate-500/28 via-slate-500/8 to-transparent" />
+  useEffect(() => {
+    load()
+  }, [load])
 
-                <div className="relative">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="text-[11px] font-black uppercase tracking-[0.22em] text-white/70">
-                        Wolffn Setup
-                      </div>
-                      <div className="mt-2 truncate text-3xl font-black tracking-[-0.05em]">
-                        {wolffnDecisionPlayer || "-"} entscheidet
-                      </div>
-                    </div>
+  const match = state.match
+  const shouldPoll = Boolean(match) && !match.canScore && match.status !== "completed"
 
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-2xl shadow-sm" aria-hidden="true">
-                      🐺
-                    </div>
-                  </div>
+  // Mitspieler (und pausierte Matches) aktualisieren sich automatisch.
+  useEffect(() => {
+    if (!shouldPoll) return undefined
 
-                  <div className="mt-5 grid grid-cols-4 gap-2">
-                    {wolffnTeeOrder.map((playerName, index) => (
-                      <div
-                        key={`${playerName}-${index}`}
-                        className={`rounded-[18px] px-2 py-2.5 text-center ${index === 0 ? "bg-white text-slate-950" : "bg-white/10 text-white"}`}
-                      >
-                        <div className="text-[9px] font-black uppercase tracking-widest opacity-70">{index + 1}</div>
-                        <div className="mt-1 truncate text-xs font-black">{playerName}</div>
-                      </div>
-                    ))}
-                  </div>
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") load()
+    }, POLL_INTERVAL_MS)
 
-                  <div className="mt-4 grid grid-cols-3 gap-2">
-                    {wolffnAvailablePartners.map((playerName) => {
-                      const isSelected = wolffnAskedPlayer === playerName
+    return () => window.clearInterval(timer)
+  }, [load, shouldPoll])
 
-                      return (
-                        <button
-                          key={playerName}
-                          type="button"
-                          onClick={() => handleAskPartner(playerName)}
-                          className={`rounded-[20px] px-3 py-3 text-xs font-black transition ${isSelected ? "bg-white text-slate-950" : "bg-white/10 text-white"}`}
-                        >
-                          {playerName}
-                        </button>
-                      )
-                    })}
-                  </div>
+  useEffect(() => {
+    if (!toast) return undefined
 
-                  <button
-                    type="button"
-                    onClick={() => setWolffnSetup({ hole: safeHole, gameMode, askedPlayer: null, decision: "alone" })}
-                    className={`mt-2 w-full rounded-[20px] px-4 py-3 text-xs font-black transition ${wolffnDecision === "alone" ? "bg-white text-slate-950" : "bg-white/10 text-white"}`}
-                  >
-                    Alleine spielen
-                  </button>
+    const timer = window.setTimeout(() => setToast(null), TOAST_DURATION_MS)
 
-                  {wolffnAskedPlayer && (
-                    <div className="mt-4 rounded-[24px] border border-white/10 bg-white/10 p-3 backdrop-blur-xl">
-                      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                        Hat {wolffnAskedPlayer} angenommen?
-                      </div>
+    return () => window.clearTimeout(timer)
+  }, [toast])
 
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setWolffnSetup({ hole: safeHole, gameMode, askedPlayer: wolffnAskedPlayer, decision: "accepted" })}
-                          className={`rounded-[18px] px-4 py-3 text-xs font-black transition ${wolffnDecision === "accepted" ? "bg-emerald-500 text-white" : "bg-white/10 text-white"}`}
-                        >
-                          Ja
-                        </button>
+  if (state.status === "loading") {
+    return (
+      <Page>
+        <p className="pt-16 text-center text-sm font-medium text-ink-mute">Match wird geladen …</p>
+      </Page>
+    )
+  }
 
-                        <button
-                          type="button"
-                          onClick={() => setWolffnSetup({ hole: safeHole, gameMode, askedPlayer: wolffnAskedPlayer, decision: "declined" })}
-                          className={`rounded-[18px] px-4 py-3 text-xs font-black transition ${wolffnDecision === "declined" ? "bg-red-500 text-white" : "bg-white/10 text-white"}`}
-                        >
-                          Nein
-                        </button>
-                      </div>
-                    </div>
-                  )}
+  if (!match) {
+    const isNone = state.status === "none"
 
-                  {wolffnTeams && (
-                    <div className="mt-4 rounded-[24px] border border-white/70 bg-white p-4 text-slate-950 shadow-sm">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="truncate text-base font-black tracking-[-0.035em]">{joinTeamNames(wolffnTeams.teamA)}</div>
-                          <div className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">{wolffnTeams.label}</div>
-                        </div>
+    return (
+      <Page>
+        <BackButton onClick={() => navigate("/")} />
+        <EmptyState
+          className="mt-8"
+          title={isNone ? "Kein laufendes Match" : state.status === "missing" ? "Match nicht gefunden" : "Laden fehlgeschlagen"}
+          description={isNone ? "Lege eine neue Runde an und lade deine Mitspieler ein." : state.error}
+          action={
+            <Button variant="primary" onClick={() => navigate(isNone ? "/round" : "/")}>
+              {isNone ? "Neue Runde" : "Zu Home"}
+            </Button>
+          }
+        />
+      </Page>
+    )
+  }
 
-                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">vs</div>
+  const holeCount = match.course.holeCount
+  const holesPlayed = getHolesPlayed(match)
+  const isCompleted = match.status === "completed"
+  const isPaused = match.status === "paused"
+  const isWolffn = match.config.gameMode === "wolffn"
+  const nextHole = Math.min(holesPlayed + 1, holeCount)
+  const activeHole = Math.min(selectedHole ?? (isCompleted ? holeCount : nextHole), holeCount)
+  const isCorrection = activeHole <= holesPlayed
+  const par = match.course.pars[activeHole - 1]
+  const result = match.result
+  const holeResult = result?.holes?.[activeHole - 1] ?? null
+  const currentDraft =
+    draft && draft.key === `${activeHole}:${match.version}` ? draft : createDraft(match, activeHole)
+  const oozleRequired = match.config.oozle.enabled && par === 3
+  const oozleUnits = holeResult?.oozle
+    ? holeResult.oozle.unitsAtStake
+    : Math.max(result?.oozleCarryoverUnits ?? 0, 1)
+  const oozleAmountCents = oozleUnits * (match.config.oozle.valueCents ?? 0)
+  const carryoverBefore = holeResult ? holeResult.carryoverBefore : result?.carryoverSkinz ?? 0
+  const wolffnOk =
+    !isWolffn ||
+    currentDraft.wolffn.decision === "alone" ||
+    (Boolean(currentDraft.wolffn.askedPlayerId) &&
+      ["accepted", "declined"].includes(currentDraft.wolffn.decision))
+  const oozleOk =
+    !oozleRequired ||
+    currentDraft.oozle.noGreen ||
+    (Boolean(currentDraft.oozle.playerId) && [1, 2, 3].includes(currentDraft.oozle.putts))
+  const showEntry = match.canScore && !isCompleted
+  const completesMatch = !isCorrection && activeHole === holeCount
+  const scorer = match.players.find((player) => player.isScorer)
+  const lengths = match.course.lengths[activeHole - 1]
+  const handicap = match.course.handicapIndexes[activeHole - 1]
 
-                        <div className="min-w-0 text-right">
-                          <div className="truncate text-base font-black tracking-[-0.035em]">{joinTeamNames(wolffnTeams.teamB)}</div>
-                          <div className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Gegner</div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+  function updateDraft(changes) {
+    setDraft({ ...currentDraft, ...changes })
+  }
 
-                  {!wolffnSetupComplete && (
-                    <div className="mt-4 rounded-[20px] border border-red-400/20 bg-red-500/10 px-4 py-3 text-xs font-bold text-red-200">
-                      Partner-Antwort wählen oder alleine spielen.
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          )}
+  function selectHole(holeNumber) {
+    setSelectedHole(holeNumber === nextHole && !isCompleted ? null : holeNumber)
+    setActionError("")
+  }
 
-          {oozleRequired && (
-            <motion.div
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.06, duration: 0.3, ease: "easeOut" }}
-              className="mt-5 overflow-hidden rounded-[32px] border border-amber-200/70 bg-white/[0.56] shadow-[0_22px_55px_rgba(15,23,42,0.10)] backdrop-blur-2xl"
-            >
-              <div className="p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[11px] font-black uppercase tracking-[0.22em] text-amber-600">
-                      Par-3 Side Bet
-                    </div>
-                    <div className="mt-2 text-3xl font-black tracking-[-0.05em] text-slate-950">
-                      Oozle
-                    </div>
-                    <div className="mt-2 text-sm font-semibold leading-relaxed text-slate-500">
-                      Wer liegt nach dem Abschlag auf dem Grün am nächsten zur Fahne?
-                    </div>
-                  </div>
-                  <div className="shrink-0 rounded-[22px] bg-slate-950 px-4 py-3 text-right text-white shadow-sm">
-                    <div className="text-[9px] font-black uppercase tracking-widest text-white/50">
-                      Wert je Gegner
-                    </div>
-                    <div className="mt-1 text-2xl font-black tracking-[-0.04em] text-amber-300">
-                      {formatPlainMoney(oozleAmountPerOpponent)}
-                    </div>
-                  </div>
-                </div>
+  async function postAction(path, body) {
+    setBusy(true)
+    setActionError("")
 
-                {oozleCarryover > 0 && (
-                  <div className="mt-4 rounded-[20px] border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black uppercase tracking-widest text-amber-700">
-                    Carryover x{oozleUnitsAtStake} · {formatPlainMoney(oozleAmountPerOpponent)} je Gegner
-                  </div>
-                )}
+    try {
+      return await apiRequest(path, { method: "POST", body })
+    } catch (error) {
+      setActionError(getErrorMessage(error))
 
-                <div className="mt-5 grid grid-cols-2 gap-2">
-                  {safePlayers.map((player) => {
-                    const isSelected = oozlePlayerName === player.name && !oozleNoGreen
-                    return (
-                      <button
-                        key={`oozle-${player.name}`}
-                        type="button"
-                        onClick={() => handleSelectOozlePlayer(player.name)}
-                        className={`flex min-h-20 flex-col items-center justify-center rounded-[22px] border px-4 py-4 text-center transition ${
-                          isSelected
-                            ? "border-amber-400 bg-amber-300 text-slate-950 shadow-sm"
-                            : "border-white/70 bg-white/70 text-slate-950"
-                        }`}
-                      >
-                        <div className="truncate text-base font-black">{player.name}</div>
-                        <div className={`mt-1 text-[9px] font-black uppercase tracking-widest ${isSelected ? "text-slate-700" : "text-slate-400"}`}>
-                          Nächster Ball
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
+      if (error?.code === "VERSION_CONFLICT") load()
 
-                <button
-                  type="button"
-                  onClick={handleOozleNoGreen}
-                  className={`mt-2 w-full rounded-[22px] border px-4 py-4 text-sm font-black transition ${
-                    oozleNoGreen
-                      ? "border-slate-950 bg-slate-950 text-white"
-                      : "border-white/70 bg-white/70 text-slate-600"
-                  }`}
-                >
-                  Niemand auf dem Grün
-                </button>
+      return null
+    } finally {
+      setBusy(false)
+      setDialog(null)
+    }
+  }
 
-                {oozlePlayerName && !oozleNoGreen && (
-                  <div className="mt-5 rounded-[24px] border border-white/70 bg-white/70 p-4">
-                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                      Wie viele Putts benötigt {oozlePlayerName}?
-                    </div>
-                    <div className="mt-3 grid grid-cols-3 gap-2">
-                      {[
-                        { value: 1, label: "1 Putt" },
-                        { value: 2, label: "2 Putts" },
-                        { value: 3, label: "3+ Putts" },
-                      ].map((option) => {
-                        const isSelected = oozlePutts === option.value
-                        return (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => handleSelectOozlePutts(option.value)}
-                            className={`flex min-h-11 items-center justify-center rounded-[18px] px-3 py-3 text-center text-xs font-black leading-none transition ${
-                              isSelected
-                                ? option.value >= 3
-                                  ? "bg-red-500 text-white"
-                                  : "bg-amber-300 text-slate-950"
-                                : "bg-slate-100 text-slate-500"
-                            }`}
-                          >
-                            {option.label}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
+  async function saveHole() {
+    const data = await postAction("/api/live/score", {
+      matchId: match.id,
+      holeNumber: activeHole,
+      expectedVersion: match.version,
+      hole: buildHolePayload({ draft: currentDraft, isWolffn, oozleRequired }),
+    })
 
-                {oozleSetupComplete && (
-                  <div className={`mt-4 flex min-h-11 items-center justify-center rounded-[20px] px-4 py-3 text-center text-xs font-black uppercase leading-none tracking-widest ${
-                    oozleNoGreen
-                      ? "bg-slate-100 text-slate-600"
-                      : oozlePutts >= 3
-                        ? "bg-red-50 text-red-600"
-                        : "bg-amber-100 text-amber-700"
-                  }`}>
-                    {oozleNoGreen
-                      ? "Carryover zum nächsten Par 3"
-                      : oozlePutts >= 3
-                        ? `Foozle · ${oozlePlayerName} zahlt`
-                        : `Oozle · ${oozlePlayerName} gewinnt`}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
+    if (!data?.match) return
 
-          <div ref={scoreEntryRef} className="mt-5 space-y-4 scroll-mt-5">
-            {safePlayers.map((player, index) => {
-              const playerScore = toNumber(player.score, currentPar)
-              const isWinning = playerScore === lowestScore
-              const golfResult = getGolfResult(playerScore, currentPar)
+    setState({ status: "ready", match: data.match, error: "" })
+    setDraft(null)
+    setSelectedHole(null)
+    setToast({
+      id: Date.now(),
+      text: describeHole(data.match, data.match.result?.holes?.[activeHole - 1]),
+    })
+  }
 
-              return (
-                <motion.div
-                  key={player.name}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.025, duration: 0.22, ease: "easeOut" }}
-                  className={`rounded-[32px] border px-6 py-6 shadow-[0_18px_46px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition ${
-                    isWinning ? `${modeTheme.activeBorder} ${modeTheme.activeSoftBg}` : "border-white/70 bg-white/[0.46]"
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[2.15rem] font-black leading-none tracking-[-0.07em] text-slate-950">
-                        {player.name}
-                      </div>
+  async function changeStatus(action) {
+    const data = await postAction(`/api/live/${action}`, { matchId: match.id })
 
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <div className={`inline-flex min-h-7 items-center justify-center rounded-full px-3 py-1 text-center text-[10px] font-black uppercase leading-none tracking-[0.18em] shadow-sm ${getResultBadgeStyle(golfResult.label)}`}>
-                          {golfResult.label}
-                        </div>
-                      </div>
-                    </div>
+    if (!data) return
 
-                    <ScoreInputTile
-                      disabled={matchFinished}
-                      golfResultLabel={golfResult.label}
-                      playerName={player.name}
-                      playerScore={playerScore}
-                      onSwipe={(info) => handleScoreSwipe({ playerIndex: index, playerScore, offsetY: info.offset.y, velocityY: info.velocity.y })}
-                      onKeyDown={(event) => handleScoreKeyDown(event, index, playerScore)}
-                    />
-                  </div>
-                </motion.div>
-              )
-            })}
-          </div>
+    if (action === "cancel") {
+      restoreActiveMatch({ force: true })
+      navigate("/", { replace: true })
+      return
+    }
 
-          <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.32, ease: "easeOut" }}
-            className="mt-7 rounded-[32px] border border-white/70 bg-white/[0.48] p-5 shadow-[0_16px_48px_rgba(15,23,42,0.09)] backdrop-blur-2xl"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-600">Scorecard</div>
-              <GameModeBadge gameMode={gameMode} isWolffn={isWolffnMode} isProfessional={isProfessionalMode} className="px-3" />
-            </div>
+    setState({ status: "ready", match: data.match, error: "" })
+  }
 
-            <div className="mt-2 text-xs font-black uppercase tracking-[0.18em] text-slate-400">
-              {safeHistory.length}/{HOLE_COUNT}
-            </div>
+  function handleSaveClick() {
+    if (completesMatch) {
+      setDialog({
+        kind: "complete",
+        title: "Match abschließen?",
+        description: "Das letzte Loch wird gespeichert und die Endabrechnung erstellt. Danach sind keine Korrekturen mehr möglich.",
+        confirmLabel: "Abschließen",
+      })
+      return
+    }
 
-            <div className="mt-5 space-y-2.5">
-              {safeHistory.length === 0 && (
-                <div className="rounded-[24px] border border-white/70 bg-white/[0.40] p-4 text-center text-sm font-bold text-slate-500 backdrop-blur-xl">
-                  Noch kein Score auf der Karte.
-                </div>
-              )}
+    saveHole()
+  }
 
-              {historyDisplayItems.slice().reverse().map((item, index) => {
-                const historySpecialLabel = getHistorySpecialLabel(item)
-                const historyResultSummary = getHistoryResultSummary(item)
-                const wonHolesLabel = formatHoleListLabel(item.displayWonHoles)
+  function handleConfirm() {
+    if (dialog?.kind === "complete") saveHole()
+    else if (dialog?.kind === "pause") changeStatus("pause")
+    else if (dialog?.kind === "cancel") changeStatus("cancel")
+  }
 
-                return (
-                  <div
-                    key={`${item.hole}-${item.winner || "carryover"}-${index}`}
-                    className="rounded-[24px] border border-white/70 bg-white/[0.42] px-4 py-3 shadow-sm backdrop-blur-xl"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="text-lg font-black tracking-[-0.035em] text-slate-950">Loch {item.hole}</div>
+  function openScorecard() {
+    restoreActiveMatch({ force: true }).finally(() => navigate(`/matches/${match.matchCode}`))
+  }
 
-                          {historySpecialLabel && (
-                            <div className={`inline-flex min-h-7 items-center justify-center gap-1 rounded-full px-2 py-1 text-center text-[8px] font-black uppercase leading-none tracking-widest shadow-sm ${getSpecialBadgeStyle(historySpecialLabel)}`}>
-                              <Sparkles size={9} />
-                              {historySpecialLabel}
-                            </div>
-                          )}
-                        </div>
+  let statusPill = <Pill tone="positive">Live</Pill>
 
-                        <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-500">Par {item.par}</div>
+  if (isPaused) statusPill = <Pill tone="warning">Pausiert</Pill>
+  if (isCompleted) statusPill = <Pill tone="dark">Beendet</Pill>
 
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <div className="inline-flex min-h-7 items-center justify-center rounded-full bg-white/[0.62] px-2.5 py-1 text-center text-[9px] font-black uppercase leading-none tracking-[0.16em] text-slate-600 shadow-sm">
-                            {historyResultSummary}
-                          </div>
-
-                          {item?.oozle?.enabled && (
-                            <div className={`inline-flex min-h-7 w-fit max-w-full items-center justify-center rounded-full px-3 py-1 text-center text-[9px] font-black uppercase leading-none tracking-widest shadow-sm ${
-                              item.oozle.outcome === "oozle"
-                                ? "bg-amber-300 text-slate-950"
-                                : item.oozle.outcome === "foozle"
-                                  ? "bg-red-500 text-white"
-                                  : "bg-slate-950 text-white"
-                            }`}>
-                              {item.oozle.outcome === "oozle"
-                                ? `Oozle · ${item.oozle.playerName}`
-                                : item.oozle.outcome === "foozle"
-                                  ? `Foozle · ${item.oozle.playerName}`
-                                  : item.oozle.expired
-                                    ? "Oozle Carryover verfallen"
-                                    : "Oozle Carryover"}
-                            </div>
-                          )}
-
-                          {!item.hasTie && wonHolesLabel && (
-                            <div className="inline-flex min-h-7 w-fit max-w-full items-center justify-center rounded-full bg-slate-950 px-3 py-1 text-center text-[9px] font-black uppercase leading-none tracking-widest text-white shadow-sm">
-                              Holes: {wonHolesLabel}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="shrink-0 text-right">
-                        <div className="text-lg font-black tracking-[-0.035em] text-slate-950">
-                          {item.hasTie ? "Carryover" : item.winner}
-                        </div>
-
-                        <div className={`mt-1 text-[9px] font-black uppercase tracking-widest ${item.hasTie ? "text-slate-950" : "text-amber-500"}`}>
-                          {getSkinsLabel(item.skins || 0)} · {formatPlainMoney(item.pot || 0)}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </motion.div>
-
-          {!matchFinished && (
-            <motion.button
-              type="button"
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setShowAbortModal(true)}
-              className="mt-5 w-full rounded-[28px] border border-red-100 bg-white/[0.46] py-4 text-sm font-black text-red-500 shadow-sm backdrop-blur-xl"
-            >
-              Match abbrechen
-            </motion.button>
-          )}
+  return (
+    <Page withSaveBar={showEntry}>
+      <div className="flex items-center justify-between gap-3">
+        <BackButton onClick={() => navigate("/")} />
+        <div className="flex items-center gap-2">
+          {statusPill}
+          <Pill>{match.matchCode}</Pill>
         </div>
       </div>
 
-      {!matchFinished && finishHoleError && (
-        <div className="fixed bottom-[calc(7.7rem+env(safe-area-inset-bottom))] left-0 right-0 z-40 flex justify-center px-5">
-          <div className="w-full max-w-md rounded-[24px] border border-red-200 bg-red-50 px-4 py-3 text-center text-sm font-bold text-red-600 shadow-lg">
-            {finishHoleError}
-          </div>
+      <ScreenHeader
+        className="mt-5"
+        eyebrow={`${getModeTitle(match)} · ${getCourseTitle(match)}`}
+        title={isCompleted ? "Match beendet" : `Loch ${activeHole}`}
+        subtitle={
+          isCompleted
+            ? `${holeCount} Löcher · ${formatCents(match.config.stakeCents)} pro Skin`
+            : [`Par ${par}`, handicap ? `HCP ${handicap}` : null, lengths ? `${lengths} m` : null]
+                .filter(Boolean)
+                .join(" · ")
+        }
+      />
+
+      {match.legacy && (
+        <Card className="mt-6 p-5">
+          <div className="font-bold text-ink">Altes Match</div>
+          <p className="mt-1 text-sm font-medium leading-relaxed text-ink-mute">
+            Dieses Match wurde mit der vorherigen App-Version gestartet und kann hier nicht weitergespielt
+            werden. Du kannst es abbrechen und eine neue Runde anlegen.
+          </p>
+        </Card>
+      )}
+
+      {isPaused && (
+        <Card className="mt-6 p-5">
+          <div className="font-bold text-ink">Match pausiert</div>
+          <p className="mt-1 text-sm font-medium leading-relaxed text-ink-mute">
+            {match.isPauseExpired
+              ? "Die Pause ist länger als drei Tage. Das Match wird automatisch gelöscht."
+              : `Ohne Fortsetzung wird das Match am ${formatDateTime(match.pauseExpiresAt)} gelöscht.`}
+          </p>
+          {match.canControl && !match.isPauseExpired && (
+            <Button variant="primary" className="mt-4 w-full" disabled={busy} onClick={() => changeStatus("resume")}>
+              Fortsetzen
+            </Button>
+          )}
+        </Card>
+      )}
+
+      {!match.canScore && !isCompleted && !isPaused && !match.legacy && (
+        <Card className="mt-6 p-4 text-sm font-medium leading-relaxed text-ink-mute">
+          {scorer?.name ?? "Der Scorer"} erfasst die Scores. Die Ansicht aktualisiert sich automatisch.
+        </Card>
+      )}
+
+      {showEntry && (
+        <>
+          {holesPlayed > 0 && (
+            <div className="-mx-5 mt-6 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {Array.from({ length: Math.min(holesPlayed + 1, holeCount) }, (_, index) => index + 1).map((holeNumber) => (
+                <Chip
+                  key={holeNumber}
+                  selected={holeNumber === activeHole}
+                  onClick={() => selectHole(holeNumber)}
+                  className="min-w-[2.75rem] px-3"
+                >
+                  {holeNumber}
+                </Chip>
+              ))}
+            </div>
+          )}
+
+          {isCorrection && (
+            <Card className="mt-4 p-4 text-sm font-medium leading-relaxed text-ink-mute">
+              <span className="font-bold text-ink">Korrektur Loch {activeHole}.</span> Beim Speichern wird das ganze
+              Match neu berechnet. Aktuell: {describeHole(match, holeResult)}.
+            </Card>
+          )}
+
+          <p className="mt-5 text-sm font-medium text-ink-mute">
+            Im Topf: <span className="font-bold text-ink">{formatSkinz(carryoverBefore + 1)}</span>
+            {carryoverBefore > 0 && ` (inkl. ${formatSkinz(carryoverBefore)} Carryover)`}
+            {isWolffn && " · ×2 bei 1 gegen 3, Birdie ×2, Eagle ×4"}
+          </p>
+
+          {isWolffn && (
+            <Section title="Wolffn" className="mt-5">
+              <WolffnSetup
+                match={match}
+                holeNumber={activeHole}
+                draft={currentDraft}
+                onChange={(wolffn) => updateDraft({ wolffn })}
+              />
+            </Section>
+          )}
+
+          {oozleRequired && (
+            <Section title="Nebenwette" className="mt-5">
+              <OozleSetup
+                match={match}
+                draft={currentDraft}
+                amountCents={oozleAmountCents}
+                unitsAtStake={oozleUnits}
+                onChange={(oozle) => updateDraft({ oozle })}
+              />
+            </Section>
+          )}
+
+          <Section title="Scores" className="mt-5" action={<span className="text-xs font-medium text-ink-mute">Wischen ↑ mehr · ↓ weniger</span>}>
+            <Card className="overflow-hidden">
+              {match.players.map((player) => {
+                const score = currentDraft.scores[player.userId]
+
+                return (
+                  <div
+                    key={player.userId}
+                    className="flex items-center justify-between gap-4 border-b border-line/10 px-4 py-3 last:border-b-0"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-[1.15rem] font-bold tracking-[-0.025em] text-ink">
+                        {player.name}
+                        {player.isMe && <span className="font-medium text-ink-mute"> (du)</span>}
+                      </div>
+                      <div className="mt-0.5 text-sm font-medium text-ink-mute">{getResultLabel(score, par)}</div>
+                    </div>
+                    <ScoreInput
+                      name={player.name}
+                      score={score}
+                      par={par}
+                      disabled={busy}
+                      onChange={(value) => updateDraft({ scores: { ...currentDraft.scores, [player.userId]: value } })}
+                    />
+                  </div>
+                )
+              })}
+            </Card>
+          </Section>
+        </>
+      )}
+
+      {isCompleted && (
+        <Section title="Endabrechnung">
+          <Payments match={match} />
+        </Section>
+      )}
+
+      {result && (
+        <Section title={isCompleted ? "Ergebnis" : "Leaderboard"}>
+          <Standings match={match} />
+        </Section>
+      )}
+
+      {result && (
+        <Section title="Scorecard">
+          <Scorecard match={match} activeHole={activeHole} onSelectHole={showEntry ? selectHole : null} />
+        </Section>
+      )}
+
+      {actionError && (
+        <div role="alert" className="mt-6 rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          {actionError}
         </div>
       )}
-      {!matchFinished && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center px-5 pb-[calc(1.35rem+env(safe-area-inset-bottom))]">
-          <div className="relative w-full max-w-md">
-            <AnimatePresence>
-              {showSavedFeedback && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.6, y: 12 }}
-                  animate={{ opacity: 1, scale: 1, y: -18 }}
-                  exit={{ opacity: 0, scale: 0.7, y: -34 }}
-                  transition={{ duration: 0.24, ease: "easeOut" }}
-                  className={`absolute left-1/2 top-0 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-full items-center justify-center rounded-full text-white shadow-[0_18px_40px_rgba(16,185,129,0.35)] ${modeTheme.button}`}
-                >
-                  <Check size={30} strokeWidth={3.4} />
-                </motion.div>
-              )}
-            </AnimatePresence>
 
-            <motion.button
-              type="button"
-              whileTap={{ scale: holeSetupComplete && !finishHoleLoading ? 0.98 : 1 }}
-              disabled={!holeSetupComplete || finishHoleLoading}
-              onClick={handleFinishHole}
-              className={`flex w-full items-center justify-between rounded-[32px] px-6 py-5 text-xl font-black text-white shadow-[0_20px_55px_rgba(15,23,42,0.22)] transition disabled:cursor-not-allowed disabled:opacity-45 ${modeTheme.button} ${modeTheme.buttonHover}`}
+      {isCompleted && (
+        <div className="mt-8 grid gap-2">
+          <Button variant="primary" size="lg" onClick={openScorecard}>
+            Scorecard im Archiv
+          </Button>
+          <Button variant="glass" onClick={() => navigate("/")}>
+            Zu Home
+          </Button>
+        </div>
+      )}
+
+      {match.canControl && (
+        <div className="mt-8 grid grid-cols-2 gap-2">
+          {match.status === "active" && (
+            <Button
+              variant="glass"
+              disabled={busy}
+              onClick={() =>
+                setDialog({
+                  kind: "pause",
+                  title: "Match pausieren?",
+                  description: "Du kannst es später fortsetzen. Nach drei Tagen Pause wird es automatisch gelöscht.",
+                  confirmLabel: "Pausieren",
+                })
+              }
             >
-              <span>
-                {!wolffnSetupComplete
-                  ? "Wolffn Setup wählen"
-                  : !oozleSetupComplete
+              Pausieren
+            </Button>
+          )}
+          <Button
+            variant="glass"
+            className={cn("text-red-600", match.status !== "active" && "col-span-2")}
+            disabled={busy}
+            onClick={() =>
+              setDialog({
+                kind: "cancel",
+                title: "Match abbrechen?",
+                description: "Das Match wird beendet und nicht gewertet. Das lässt sich nicht rückgängig machen.",
+                confirmLabel: "Match abbrechen",
+                tone: "danger",
+              })
+            }
+          >
+            Abbrechen
+          </Button>
+        </div>
+      )}
+
+      {showEntry && (
+        <div className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-5 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <div className="nav-glass w-full max-w-md rounded-full p-1.5">
+            <Button
+              variant="primary"
+              size="lg"
+              className="w-full"
+              disabled={busy || !wolffnOk || !oozleOk}
+              onClick={handleSaveClick}
+            >
+              {busy
+                ? "Wird gespeichert …"
+                : !wolffnOk
+                  ? "Wolffn-Entscheidung wählen"
+                  : !oozleOk
                     ? "Oozle vervollständigen"
-                    : finishHoleLoading
-                      ? "Loch wird gespeichert..."
-                      : "Loch abschließen"}
-              </span>
-
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
-                <ChevronRight size={23} />
-              </span>
-            </motion.button>
+                    : isCorrection
+                      ? `Korrektur Loch ${activeHole} speichern`
+                      : completesMatch
+                        ? "Letztes Loch speichern"
+                        : `Loch ${activeHole} speichern`}
+            </Button>
           </div>
         </div>
       )}
 
       <AnimatePresence>
-        {celebration && (
+        {toast && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-xl"
+            key={toast.id}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 16 }}
+            transition={{ duration: 0.2 }}
+            role="status"
+            className="fixed inset-x-0 bottom-[calc(6.5rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-5"
           >
-            <motion.div
-              initial={{ scale: 0.85, opacity: 0, y: 40 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 220, damping: 18 }}
-              className="relative w-full max-w-sm overflow-hidden rounded-[42px] border border-white/20 bg-[#071819] p-10 text-center text-white shadow-2xl"
-            >
-              <div aria-hidden="true" className={`absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t ${modeTheme.glow}`} />
-
-              <div className="relative">
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  <div className={`inline-flex h-11 items-center justify-center rounded-2xl px-5 text-sm font-black leading-none ${celebration.color}`}>
-                    {celebration.result}
-                  </div>
-
-                  {celebration.specialScoringApplied && celebration.specialScoringLabel && (
-                    <div className={`inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-4 text-xs font-black uppercase tracking-widest ${getSpecialBadgeStyle(celebration.specialScoringLabel)}`}>
-                      <Sparkles size={13} />
-                      {formatCelebrationSpecialLabel(celebration.specialScoringLabel)}
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-6 text-6xl font-black tracking-[-0.06em]">{celebration.player}</div>
-
-                <div className="mt-4 text-lg font-bold text-slate-400">
-                  holt {celebration.skins || 1} {(celebration.skins || 1) === 1 ? "Skin" : "Skinz"}
-                </div>
-
-                <div className="mt-6 text-7xl font-black tracking-[-0.07em] text-amber-300">
-                  {formatMoney(celebration.pot)}
-                </div>
-              </div>
-            </motion.div>
+            <div className="max-w-md rounded-full bg-ink px-5 py-3 text-center text-sm font-semibold text-page shadow-lg">
+              {toast.text}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {matchFinished && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] overflow-y-auto bg-black/50 px-4 py-10 backdrop-blur-xl"
-          >
-            <motion.div
-              initial={{ scale: 0.88, opacity: 0, y: 40 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              className="mx-auto w-full max-w-md overflow-hidden rounded-[44px] border border-white/70 bg-white/[0.82] p-8 text-center shadow-2xl backdrop-blur-2xl"
-            >
-              <div className="inline-flex min-h-9 items-center justify-center rounded-full border border-white/70 bg-white/[0.52] px-4 py-2 text-center text-[13px] font-black uppercase leading-none tracking-[0.12em] text-slate-600 shadow-sm backdrop-blur-xl">
-                Match complete
-              </div>
-
-              <h2 className="mt-6 text-5xl font-black tracking-[-0.06em] text-slate-950">
-                {champion?.name || "Winner"}
-              </h2>
-
-              <div className="mt-4 inline-flex min-h-9 max-w-full items-center justify-center rounded-full border border-white/70 bg-white/[0.46] px-4 py-2 text-center text-xs font-black uppercase leading-none tracking-widest text-slate-500 shadow-sm backdrop-blur-xl">
-                <span className="truncate">{getCourseName(currentCourse)}</span>
-              </div>
-
-              <div className={`mt-7 text-5xl font-black tracking-[-0.06em] ${getMoneyColor(champion?.winnings)}`}>
-                {formatMoney(champion?.winnings)}
-              </div>
-
-              <div className="mt-8 grid grid-cols-3 gap-2">
-                <div className="grid min-h-28 grid-rows-[1.25rem_2.5rem] place-items-center content-center rounded-[24px] border border-white/70 bg-white/[0.48] px-2 py-4 text-center shadow-sm backdrop-blur-xl">
-                  <div className="flex h-5 items-center justify-center text-sm font-bold leading-none text-slate-500">Skinz</div>
-                  <div className="flex h-10 items-center justify-center whitespace-nowrap text-[2rem] font-black leading-none tracking-[-0.045em] text-slate-950 tabular-nums">{championWonSkinz}</div>
-                </div>
-                <div className="grid min-h-28 grid-rows-[1.25rem_2.5rem] place-items-center content-center rounded-[24px] border border-white/70 bg-white/[0.48] px-2 py-4 text-center shadow-sm backdrop-blur-xl">
-                  <div className="flex h-5 items-center justify-center text-sm font-bold leading-none text-slate-500">Gesamt</div>
-                  <div className={`flex h-10 items-center justify-center whitespace-nowrap text-[1.85rem] font-black leading-none tracking-[-0.045em] tabular-nums ${getMoneyColor(champion?.winnings)}`}>{formatMoney(champion?.winnings)}</div>
-                </div>
-                <div className="grid min-h-28 grid-rows-[1.25rem_2.5rem] place-items-center content-center rounded-[24px] border border-white/70 bg-white/[0.48] px-2 py-4 text-center shadow-sm backdrop-blur-xl">
-                  <div className="flex h-5 items-center justify-center text-sm font-bold leading-none text-slate-500">To Par</div>
-                  <div className={`flex h-10 items-center justify-center whitespace-nowrap text-[2rem] font-black leading-none tracking-[-0.045em] tabular-nums ${getToParColor(champion?.totalToPar)}`}>{formatToPar(champion?.totalToPar)}</div>
-                </div>
-              </div>
-
-              <div className="mt-8 rounded-[32px] border border-white/70 bg-white/[0.42] p-4 text-left shadow-sm backdrop-blur-xl">
-                <div className="flex items-center justify-between px-1">
-                  <div>
-                    <div className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Final Scores</div>
-                    <div className="mt-1 text-2xl font-black tracking-[-0.045em] text-slate-950">Leaderboard</div>
-                  </div>
-                  <div className="text-3xl" aria-hidden="true">🏆</div>
-                </div>
-
-                <div className="mt-4 space-y-3">
-                  {sortedPlayers.map((player, index) => {
-                    const isChampion = player.name === champion?.name
-                    const playerWonSkinz = getPlayerWonSkinz(player)
-
-                    return (
-                      <button
-                        key={player.name}
-                        type="button"
-                        onClick={() => setSelectedSettlementPlayer(player)}
-                        className={`w-full rounded-[26px] border p-4 text-left shadow-sm transition active:scale-[0.99] ${isChampion ? `${modeTheme.activeBorder} ${modeTheme.activeSoftBg}` : "border-white/70 bg-white/[0.54]"}`}
-                      >
-                        <div className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3">
-                          <div className={`flex h-10 w-10 items-center justify-center self-start rounded-full text-sm font-black leading-none ${index === 0 ? "bg-amber-300 text-black" : index === 1 ? "border border-slate-200 bg-white text-slate-900" : index === 2 ? "bg-orange-400 text-white" : "border border-slate-200 bg-white text-slate-900"}`}>
-                            {index + 1}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                              <div className="min-w-0 break-words text-xl font-black leading-tight text-slate-950">{player.name}</div>
-                              {isChampion && <div className="inline-flex min-h-7 shrink-0 items-center justify-center gap-1 rounded-full bg-amber-300 px-2 py-1 text-center text-[10px] font-black uppercase leading-none tracking-widest text-black"><Crown size={10} />Winner</div>}
-                            </div>
-                            <div className="mt-3 grid grid-cols-3 gap-2">
-                              <div className="flex min-h-16 flex-col items-center justify-center rounded-[18px] bg-white/70 px-1.5 py-2 text-center"><div className="text-[8px] font-black uppercase leading-none tracking-widest text-slate-400">Skinz</div><div className="mt-2 text-lg font-black leading-none text-slate-950 tabular-nums">{playerWonSkinz}</div></div>
-                              <div className="flex min-h-16 flex-col items-center justify-center rounded-[18px] bg-white/70 px-1.5 py-2 text-center"><div className="text-[8px] font-black uppercase leading-none tracking-widest text-slate-400">Gesamt</div><div className={`mt-2 whitespace-nowrap text-lg font-black leading-none tabular-nums ${getMoneyColor(player.winnings)}`}>{formatMoney(player.winnings)}</div></div>
-                              <div className="flex min-h-16 flex-col items-center justify-center rounded-[18px] bg-white/70 px-1.5 py-2 text-center"><div className="text-[8px] font-black uppercase leading-none tracking-widest text-slate-400">To Par</div><div className={`mt-2 text-lg font-black leading-none tabular-nums ${getToParColor(player.totalToPar)}`}>{formatToPar(player.totalToPar)}</div></div>
-                            </div>
-                            <div className="mt-3 space-y-2 border-t border-slate-200/80 pt-3">
-                              <div className="flex min-h-8 items-center justify-between gap-3 rounded-[14px] bg-white/55 px-3 py-2"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Skinz-Abrechnung</span><span className={`shrink-0 text-sm font-black tabular-nums ${getMoneyColor(player.skinzWinnings)}`}>{formatMoney(player.skinzWinnings)}</span></div>
-                              {showOozleSettlement && <div className="flex min-h-8 items-center justify-between gap-3 rounded-[14px] bg-amber-50/80 px-3 py-2"><span className="text-[10px] font-black uppercase tracking-widest text-amber-700">Oozle-Abrechnung</span><span className={`shrink-0 text-sm font-black tabular-nums ${getMoneyColor(player.oozleWinnings)}`}>{formatMoney(player.oozleWinnings)}</span></div>}
-                            </div>
-                            <div className="mt-3 flex items-center justify-end gap-1 text-[10px] font-black uppercase tracking-widest text-slate-500">Abrechnung anzeigen<ChevronRight size={13} strokeWidth={3} /></div>
-                          </div>
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <div className="mt-6 rounded-[32px] border border-white/70 bg-white/[0.42] p-4 shadow-sm backdrop-blur-xl">
-                <div className="text-center text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Endabrechnung</div>
-                <div className="mx-auto mt-2 max-w-xs text-center text-sm font-bold leading-relaxed text-slate-500">
-                  Skinz und Oozle sind im Gesamtbetrag bereits verrechnet.
-                </div>
-
-                <div className="mt-4 space-y-2">
-                  {finalSettlementPayments.length > 0 ? (
-                    finalSettlementPayments.map((payment, index) => (
-                      <div
-                        key={`${payment.from}-${payment.to}-${index}`}
-                        className="rounded-[24px] border border-white/70 bg-white/[0.72] px-4 py-4 text-center shadow-sm"
-                      >
-                        <div className="break-words text-sm font-black leading-relaxed text-slate-950 sm:text-base">
-                          {payment.from} zahlt {payment.to}
-                        </div>
-                        <div className="mt-1 text-2xl font-black tracking-tight text-slate-950 tabular-nums">
-                          {formatPlainMoney(payment.amount)}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="rounded-[24px] border border-emerald-200/80 bg-emerald-50/80 px-4 py-4 text-center text-sm font-black text-emerald-700 shadow-sm">
-                      Keine Zahlungen erforderlich.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-8 space-y-3">
-                <motion.button
-                  type="button"
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleResetGame}
-                  className={`w-full rounded-[30px] py-5 text-lg font-black text-white shadow-[0_18px_45px_rgba(15,23,42,0.25)] ${modeTheme.button} ${modeTheme.buttonHover}`}
-                >
-                  Neue Runde starten
-                </motion.button>
-
-                <motion.button
-                  type="button"
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleGoHome}
-                  className="w-full rounded-[30px] border border-white/70 bg-white/[0.58] py-5 text-lg font-black text-slate-500 shadow-sm backdrop-blur-xl"
-                >
-                  Home
-                </motion.button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {selectedSettlementPlayer && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-end justify-center bg-black/45 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-10 backdrop-blur-xl sm:items-center"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="settlement-title"
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 44, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 34, scale: 0.98 }}
-              transition={{ duration: 0.22, ease: "easeOut" }}
-              className="w-full max-w-md overflow-hidden rounded-[38px] border border-white/70 bg-white/[0.88] p-5 shadow-2xl backdrop-blur-2xl"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Abrechnung</div>
-                  <h3 id="settlement-title" className="mt-1 truncate text-4xl font-black tracking-[-0.06em] text-slate-950">
-                    {selectedSettlementPlayer.name}
-                  </h3>
-                  <div className="mt-2 text-sm font-black uppercase tracking-widest text-slate-500">
-                    {getPlayerWonSkinz(selectedSettlementPlayer)} Skinz
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedSettlementPlayer(null)}
-                  aria-label="Abrechnung schließen"
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-950 text-white shadow-sm"
-                >
-                  <X size={19} />
-                </button>
-              </div>
-
-              <div className="mt-5 text-left">
-                <div className="px-1 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
-                  Skinz-Abrechnung
-                </div>
-                <div className="mt-2 rounded-[28px] border border-white/70 bg-white/[0.48] p-3 shadow-sm backdrop-blur-xl">
-                  <div className="space-y-2">
-                    {selectedSettlementRows.map((row) => (
-                      <div
-                        key={`skinz-${selectedSettlementPlayer.name}-${row.opponentName}`}
-                        className="rounded-[22px] border border-white/70 bg-white/[0.62] px-4 py-3 shadow-sm"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="text-sm font-black text-slate-950">{formatSettlementAction(row)}</div>
-                            <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                              Diff. {row.skinzDifference > 0 ? "+" : ""}{row.skinzDifference} Skinz
-                            </div>
-                          </div>
-                          <div className={`shrink-0 text-xl font-black ${getMoneyColor(row.amount)}`}>
-                            {formatMoney(row.amount)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {showOozleSettlement && (
-                <div className="mt-4 text-left">
-                  <div className="px-1 text-[10px] font-black uppercase tracking-[0.22em] text-amber-600">
-                    Oozle-Abrechnung
-                  </div>
-                  <div className="mt-2 rounded-[28px] border border-amber-200/70 bg-amber-50/70 p-3 shadow-sm backdrop-blur-xl">
-                    <div className="space-y-2">
-                      {selectedOozleSettlementRows.map((row) => (
-                        <div
-                          key={`oozle-${selectedSettlementPlayer.name}-${row.opponentName}`}
-                          className="rounded-[22px] border border-amber-100 bg-white/80 px-4 py-3 shadow-sm"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="text-sm font-black text-slate-950">{formatSettlementAction(row)}</div>
-                              <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-amber-600/70">
-                                Oozle / Foozle
-                              </div>
-                            </div>
-                            <div className={`shrink-0 text-xl font-black ${getMoneyColor(row.amount)}`}>
-                              {formatMoney(row.amount)}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div className="mt-4 rounded-[28px] border border-white/70 bg-slate-950 px-5 py-4 text-white shadow-[0_18px_45px_rgba(15,23,42,0.22)]">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <div className="text-[10px] font-black uppercase tracking-[0.22em] text-white/55">Gesamt</div>
-                    <div className="mt-1 text-sm font-bold text-white/70">{toNumber(selectedSettlementPlayer.winnings, 0) < 0 ? "Gesamtschuld" : "Gesamtgewinn"}</div>
-                  </div>
-
-                  <div className={`text-4xl font-black tracking-[-0.06em] ${getDarkMoneyColor(selectedSettlementPlayer.winnings)}`}>
-                    {formatMoney(selectedSettlementPlayer.winnings)}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showAbortModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4 backdrop-blur-xl"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="abort-match-title"
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 40 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-sm overflow-hidden rounded-[40px] border border-white/70 bg-white/[0.78] shadow-2xl backdrop-blur-2xl"
-            >
-              <div className="p-7 text-center">
-                <div id="abort-match-title" className="text-3xl font-black tracking-[-0.045em] text-slate-950">
-                  Match abbrechen?
-                </div>
-                <div className="mt-3 text-sm font-bold leading-relaxed text-slate-500">
-                  Dieses Match wird gelöscht und nicht gespeichert.
-                </div>
-              </div>
-
-              <div className="border-t border-white/70">
-                <button
-                  type="button"
-                  onClick={() => setShowAbortModal(false)}
-                  className="w-full py-4 text-sm font-black text-slate-500"
-                >
-                  Abbrechen
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleAbortMatch}
-                  className="w-full border-t border-white/70 py-5 text-sm font-black text-red-500"
-                >
-                  Match löschen
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+      <ConfirmDialog
+        open={Boolean(dialog)}
+        title={dialog?.title}
+        description={dialog?.description}
+        confirmLabel={dialog?.confirmLabel}
+        tone={dialog?.tone}
+        loading={busy}
+        onConfirm={handleConfirm}
+        onCancel={() => setDialog(null)}
+      />
+    </Page>
   )
 }
