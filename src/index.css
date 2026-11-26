@@ -2,31 +2,247 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Skinz Design-System (Block 3)
+ *
+ * 1. Farb-Tokens: Hell ist identisch mit den bisherigen Tailwind-Farben,
+ *    Dunkel wird über <html data-theme="dark"> aktiviert (siehe src/utils/theme.js).
+ *    tailwind.config.js verweist für white/slate/emerald/red/amber/orange
+ *    auf diese Variablen, deshalb passen sich auch bestehende Screens an.
+ * 2. Dunkle Flächen (bg-[#071819]) setzen die Tokens auf Hell zurück,
+ *    damit Hero-Karten in beiden Modi unverändert aussehen.
+ * 3. Komponenten-Klassen: Glas, Buttons, Navigation, Hintergrund.
+ */
+
+:root,
+[class*="bg-[#071819]"] {
+  --tx-slate-300: 203 213 225;
+  --tx-slate-400: 148 163 184;
+  --tx-slate-500: 100 116 139;
+  --tx-slate-600: 71 85 105;
+  --tx-slate-700: 51 65 85;
+  --tx-slate-800: 30 41 59;
+  --tx-slate-900: 15 23 42;
+  --tx-slate-950: 2 6 23;
+
+  --tx-emerald-600: 5 150 105;
+  --tx-emerald-700: 4 120 87;
+  --tx-emerald-800: 6 95 70;
+  --tx-emerald-900: 6 78 59;
+  --tx-emerald-950: 2 44 34;
+
+  --tx-red-600: 220 38 38;
+  --tx-red-700: 185 28 28;
+
+  --tx-amber-600: 217 119 6;
+  --tx-amber-700: 180 83 9;
+
+  --tx-orange-600: 234 88 12;
+
+  --bg-white: 255 255 255;
+
+  --bg-slate-50: 248 250 252;
+  --bg-slate-100: 241 245 249;
+  --bg-slate-200: 226 232 240;
+
+  --bg-emerald-50: 236 253 245;
+  --bg-emerald-100: 209 250 229;
+  --bg-emerald-200: 167 243 208;
+
+  --bg-red-50: 254 242 242;
+  --bg-red-100: 254 226 226;
+  --bg-red-200: 254 202 202;
+
+  --bg-amber-50: 255 251 235;
+  --bg-amber-100: 254 243 199;
+  --bg-amber-200: 253 230 138;
+
+  --bg-orange-50: 255 247 237;
+  --bg-orange-100: 255 237 213;
+
+  --bd-white: 255 255 255;
+
+  --bd-slate-100: 241 245 249;
+  --bd-slate-200: 226 232 240;
+  --bd-slate-300: 203 213 225;
+
+  --bd-emerald-200: 167 243 208;
+  --bd-emerald-300: 110 231 183;
+
+  --bd-red-200: 254 202 202;
+
+  --bd-amber-200: 253 230 138;
+
+  --bd-orange-200: 254 215 170;
+  --bd-orange-300: 253 186 116;
+
+  --rg-emerald-100: 209 250 229;
+  --rg-emerald-200: 167 243 208;
+}
+
+:root {
+  --page: 232 235 229;
+  --ink: 2 6 23;
+  --ink-soft: 71 85 105;
+  --ink-mute: 100 116 139;
+  --fw: 16 185 129;
+  --fw-deep: 6 78 59;
+  --on-accent: 255 255 255;
+  --sand: 233 224 196;
+  --gold: 251 191 36;
+  --hero: 7 24 25;
+
+  --glass-rgb: 255 255 255;
+  --glass-a: 0.5;
+  --glass-strong-a: 0.74;
+  --glass-line-rgb: 255 255 255;
+  --glass-line-a: 0.72;
+  --glass-hi: 0.85;
+  --shadow-glass: 0 18px 50px rgba(15, 23, 42, 0.1);
+
+  --aura-1: 255 255 255;
+  --aura-1-a: 0.96;
+  --aura-2: 16 185 129;
+  --aura-2-a: 0.2;
+  --aura-3: 234 179 8;
+  --aura-3-a: 0.15;
+  --stripe: 16 120 80;
+  --stripe-a: 0.05;
+  --contour-a: 0.55;
+  --contour-img: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600' fill='none' stroke='%23167a55' stroke-width='1.2' stroke-opacity='0.55'%3E%3Cpath d='M-20 90C80 40 190 130 300 90S510 30 620 90'/%3E%3Cpath d='M-20 160C90 110 200 200 310 160S520 100 620 160'/%3E%3Cpath d='M-20 230C100 180 210 270 320 230S530 170 620 230'/%3E%3Cpath d='M-20 380C70 330 180 420 290 380S500 320 620 380'/%3E%3Cpath d='M-20 450C80 400 190 490 300 450S510 390 620 450'/%3E%3Cpath d='M-20 520C90 470 200 560 310 520S520 460 620 520'/%3E%3C/svg%3E");
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --tx-slate-300: 100 126 117;
+  --tx-slate-400: 118 142 134;
+  --tx-slate-500: 148 170 162;
+  --tx-slate-600: 176 196 188;
+  --tx-slate-700: 203 220 213;
+  --tx-slate-800: 222 234 229;
+  --tx-slate-900: 232 241 237;
+  --tx-slate-950: 238 245 242;
+
+  --tx-emerald-600: 45 190 140;
+  --tx-emerald-700: 52 211 153;
+  --tx-emerald-800: 110 231 183;
+  --tx-emerald-900: 167 243 208;
+  --tx-emerald-950: 209 250 229;
+
+  --tx-red-600: 248 113 113;
+  --tx-red-700: 252 165 165;
+
+  --tx-amber-600: 251 191 36;
+  --tx-amber-700: 252 211 77;
+
+  --tx-orange-600: 251 146 60;
+
+  --bg-white: 44 70 62;
+
+  --bg-slate-50: 20 36 32;
+  --bg-slate-100: 28 46 41;
+  --bg-slate-200: 40 62 56;
+
+  --bg-emerald-50: 14 52 42;
+  --bg-emerald-100: 16 66 52;
+  --bg-emerald-200: 22 92 70;
+
+  --bg-red-50: 58 24 28;
+  --bg-red-100: 76 30 34;
+  --bg-red-200: 110 42 46;
+
+  --bg-amber-50: 56 44 14;
+  --bg-amber-100: 76 58 14;
+  --bg-amber-200: 112 84 18;
+
+  --bg-orange-50: 62 36 14;
+  --bg-orange-100: 84 46 16;
+
+  --bd-white: 78 112 102;
+
+  --bd-slate-100: 36 54 49;
+  --bd-slate-200: 52 74 68;
+  --bd-slate-300: 68 94 87;
+
+  --bd-emerald-200: 24 98 74;
+  --bd-emerald-300: 30 130 96;
+
+  --bd-red-200: 130 48 52;
+
+  --bd-amber-200: 130 98 22;
+
+  --bd-orange-200: 140 80 26;
+  --bd-orange-300: 170 98 30;
+
+  --rg-emerald-100: 20 78 60;
+  --rg-emerald-200: 30 110 82;
+}
+
+:root[data-theme="dark"] {
+  --page: 6 15 13;
+  --ink: 238 245 242;
+  --ink-soft: 176 196 188;
+  --ink-mute: 148 170 162;
+  --fw: 52 211 153;
+  --fw-deep: 20 120 90;
+  --on-accent: 3 28 20;
+  --sand: 196 178 134;
+  --gold: 251 191 36;
+  --hero: 7 24 25;
+
+  --glass-rgb: 44 70 62;
+  --glass-a: 0.5;
+  --glass-strong-a: 0.74;
+  --glass-line-rgb: 110 150 138;
+  --glass-line-a: 0.26;
+  --glass-hi: 0.1;
+  --shadow-glass: 0 18px 50px rgba(0, 0, 0, 0.45);
+
+  --aura-1: 52 211 153;
+  --aura-1-a: 0.13;
+  --aura-2: 30 140 100;
+  --aura-2-a: 0.16;
+  --aura-3: 251 191 36;
+  --aura-3-a: 0.06;
+  --stripe: 52 211 153;
+  --stripe-a: 0.035;
+  --contour-a: 0.5;
+  --contour-img: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600' fill='none' stroke='%2334d399' stroke-width='1.2' stroke-opacity='0.4'%3E%3Cpath d='M-20 90C80 40 190 130 300 90S510 30 620 90'/%3E%3Cpath d='M-20 160C90 110 200 200 310 160S520 100 620 160'/%3E%3Cpath d='M-20 230C100 180 210 270 320 230S530 170 620 230'/%3E%3Cpath d='M-20 380C70 330 180 420 290 380S500 320 620 380'/%3E%3Cpath d='M-20 450C80 400 190 490 300 450S510 390 620 450'/%3E%3Cpath d='M-20 520C90 470 200 560 310 520S520 460 620 520'/%3E%3C/svg%3E");
+  color-scheme: dark;
+}
+
+/* Dunkle Flächen (Hero-Karten) nutzen für neue Komponenten immer die dunklen semantischen Tokens. */
+[class*="bg-[#071819]"] {
+  --page: 6 15 13;
+  --ink: 238 245 242;
+  --ink-soft: 176 196 188;
+  --ink-mute: 148 170 162;
+  --fw: 52 211 153;
+  --fw-deep: 20 120 90;
+  --on-accent: 3 28 20;
+  --glass-rgb: 44 70 62;
+  --glass-a: 0.5;
+  --glass-strong-a: 0.74;
+  --glass-line-rgb: 110 150 138;
+  --glass-line-a: 0.26;
+  --glass-hi: 0.1;
+}
+
 :root {
   font-family:
-    Inter,
-    "SF Pro Display",
-    "SF Pro Text",
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
-
-  color: #020617;
-  background: #e8ebe5;
-
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter,
+    ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  color: rgb(var(--ink));
+  background: rgb(var(--page));
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 html {
   min-height: 100%;
-  background: #e8ebe5;
+  background: rgb(var(--page));
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
 }
@@ -34,14 +250,13 @@ html {
 body {
   min-height: 100%;
   margin: 0;
-  background: #e8ebe5;
+  background: rgb(var(--page));
   overscroll-behavior-y: none;
   -webkit-tap-highlight-color: transparent;
 }
 
 #root {
   min-height: 100vh;
-  background: #e8ebe5;
 }
 
 * {
@@ -87,12 +302,231 @@ svg {
 }
 
 ::selection {
-  background: rgba(16, 185, 129, 0.22);
-  color: #020617;
+  background: rgb(var(--fw) / 0.28);
+  color: rgb(var(--ink));
 }
 
 @supports (height: 100dvh) {
   #root {
     min-height: 100dvh;
+  }
+}
+
+/* ---------- Hintergrund: Fairway mit Mähstreifen und Höhenlinien ---------- */
+
+.skinz-bg {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: rgb(var(--page));
+}
+
+.skinz-bg::before {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  background:
+    radial-gradient(
+      58% 44% at 12% 6%,
+      rgb(var(--aura-1) / var(--aura-1-a)),
+      transparent 70%
+    ),
+    radial-gradient(
+      50% 40% at 92% 16%,
+      rgb(var(--aura-2) / var(--aura-2-a)),
+      transparent 70%
+    ),
+    radial-gradient(
+      72% 50% at 50% 102%,
+      rgb(var(--aura-3) / var(--aura-3-a)),
+      transparent 72%
+    );
+}
+
+.skinz-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgb(var(--page) / 0) 50%,
+    rgb(var(--page) / 0.5)
+  );
+}
+
+.skinz-bg__stripes {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    98deg,
+    rgb(var(--stripe) / var(--stripe-a)) 0,
+    rgb(var(--stripe) / var(--stripe-a)) 48px,
+    transparent 48px,
+    transparent 96px
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgb(0 0 0 / 0.95),
+    rgb(0 0 0 / 0.2) 55%,
+    rgb(0 0 0 / 0.75)
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    rgb(0 0 0 / 0.95),
+    rgb(0 0 0 / 0.2) 55%,
+    rgb(0 0 0 / 0.75)
+  );
+}
+
+.skinz-bg__contours {
+  position: absolute;
+  inset: 0;
+  background-image: var(--contour-img);
+  background-size: 600px 600px;
+  opacity: var(--contour-a);
+  -webkit-mask-image: radial-gradient(
+    120% 90% at 100% 0%,
+    rgb(0 0 0 / 0.9),
+    transparent 70%
+  );
+  mask-image: radial-gradient(
+    120% 90% at 100% 0%,
+    rgb(0 0 0 / 0.9),
+    transparent 70%
+  );
+}
+
+/* Dunkelmodus: dunkle Flächen bekommen eine feine Kontur, damit sie sich vom Hintergrund lösen. */
+:root[data-theme="dark"] [class*="bg-[#071819]"],
+:root[data-theme="dark"] [class*="bg-slate-950"]:not([class*="bg-slate-950/"]) {
+  outline: 1px solid rgb(255 255 255 / 0.14);
+  outline-offset: -1px;
+}
+
+/* ---------- Komponenten ---------- */
+
+@layer components {
+  .glass {
+    background: rgb(var(--glass-rgb) / var(--glass-a));
+    border: 1px solid rgb(var(--glass-line-rgb) / var(--glass-line-a));
+    -webkit-backdrop-filter: blur(28px) saturate(170%);
+    backdrop-filter: blur(28px) saturate(170%);
+    box-shadow:
+      var(--shadow-glass),
+      inset 0 1px 0 rgb(255 255 255 / var(--glass-hi));
+  }
+
+  .glass-strong {
+    background: rgb(var(--glass-rgb) / var(--glass-strong-a));
+    border: 1px solid rgb(var(--glass-line-rgb) / var(--glass-line-a));
+    -webkit-backdrop-filter: blur(36px) saturate(180%);
+    backdrop-filter: blur(36px) saturate(180%);
+    box-shadow:
+      var(--shadow-glass),
+      inset 0 1px 0 rgb(255 255 255 / var(--glass-hi));
+  }
+
+  .nav-glass {
+    background: rgb(var(--glass-rgb) / 0.62);
+    border: 1px solid rgb(var(--glass-line-rgb) / var(--glass-line-a));
+    -webkit-backdrop-filter: blur(32px) saturate(190%);
+    backdrop-filter: blur(32px) saturate(190%);
+    box-shadow:
+      0 20px 56px rgb(0 0 0 / 0.14),
+      inset 0 1px 0 rgb(255 255 255 / var(--glass-hi));
+  }
+
+  .nav-primary {
+    background: linear-gradient(
+      155deg,
+      rgb(var(--fw)) 0%,
+      rgb(var(--fw-deep)) 130%
+    );
+    color: rgb(var(--on-accent));
+    box-shadow:
+      0 14px 34px rgb(var(--fw) / 0.38),
+      inset 0 1px 0 rgb(255 255 255 / 0.35);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 3rem;
+    padding: 0 1.25rem;
+    border-radius: 1.25rem;
+    font-size: 0.9375rem;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+    transition:
+      transform 0.15s ease,
+      opacity 0.15s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .btn:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .btn:disabled {
+    opacity: 0.45;
+  }
+
+  .btn:focus-visible {
+    outline: 3px solid rgb(var(--fw) / 0.45);
+    outline-offset: 2px;
+  }
+
+  .btn-lg {
+    min-height: 3.5rem;
+    padding: 0 1.5rem;
+    border-radius: 1.5rem;
+    font-size: 1.0625rem;
+  }
+
+  .btn-primary {
+    background: rgb(var(--ink));
+    color: rgb(var(--page));
+    box-shadow: 0 12px 30px rgb(var(--ink) / 0.18);
+  }
+
+  .btn-accent {
+    background: linear-gradient(
+      160deg,
+      rgb(var(--fw)),
+      rgb(var(--fw-deep)) 140%
+    );
+    color: rgb(var(--on-accent));
+    box-shadow: 0 14px 34px rgb(var(--fw) / 0.32);
+  }
+
+  .btn-glass {
+    background: rgb(var(--glass-rgb) / var(--glass-a));
+    border: 1px solid rgb(var(--glass-line-rgb) / var(--glass-line-a));
+    color: rgb(var(--ink));
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+  }
+
+  .btn-danger {
+    background: rgb(220 38 38);
+    color: #fff;
+    box-shadow: 0 14px 34px rgb(220 38 38 / 0.28);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

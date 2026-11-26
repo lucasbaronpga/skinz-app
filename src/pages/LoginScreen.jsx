@@ -1,41 +1,47 @@
 import { useMemo, useState } from "react"
-import { motion } from "framer-motion"
+import { ArrowRight, CheckCircle2, LoaderCircle } from "lucide-react"
+import { Link, useLocation, useNavigate } from "react-router-dom"
+import AuthCard from "../components/AuthCard"
+import AuthField from "../components/AuthField"
+import PasswordField from "../components/PasswordField"
 import {
-  ArrowRight,
-  CheckCircle2,
-  Eye,
-  EyeOff,
-  Flag,
-  LoaderCircle,
-} from "lucide-react"
-import { useLocation, useNavigate } from "react-router-dom"
-import AppBackground from "../components/AppBackground"
+  AUTH_ERROR_CLASS_NAME,
+  AUTH_LINK_CLASS_NAME,
+  AUTH_NOTICE_CLASS_NAME,
+  AUTH_PRIMARY_BUTTON_CLASS_NAME,
+  AUTH_SECONDARY_BUTTON_CLASS_NAME,
+} from "../components/authStyles"
 import { useAuth } from "../context/AuthContext"
+import { SHORT_NAME_PATTERN, suggestShortName } from "../utils/shortName"
+
+const MINIMUM_PASSWORD_LENGTH = 12
 
 function getRedirectPath(location) {
   const pathname = location?.state?.from?.pathname
+
   return typeof pathname === "string" && pathname.length > 0 ? pathname : "/"
 }
 
 function getErrorMessage(error, fallback) {
-  return error instanceof Error && error.message.trim()
-    ? error.message
-    : fallback
+  return error instanceof Error && error.message.trim() ? error.message : fallback
 }
 
 export default function LoginScreen() {
   const [mode, setMode] = useState("login")
   const [displayName, setDisplayName] = useState("")
+  const [shortName, setShortName] = useState("")
+  const [isShortNameEdited, setIsShortNameEdited] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [passwordConfirmation, setPasswordConfirmation] = useState("")
   const [handicapIndex, setHandicapIndex] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const [successMessage, setSuccessMessage] = useState("")
-
-  const { login, register } = useAuth()
+  const [needsVerification, setNeedsVerification] = useState(false)
+  const [resendMessage, setResendMessage] = useState("")
+  const { login, register, resendVerification } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const redirectPath = getRedirectPath(location)
@@ -49,29 +55,54 @@ export default function LoginScreen() {
     return (
       hasCredentials &&
       displayName.trim().length >= 2 &&
-      password.length >= 12 &&
+      SHORT_NAME_PATTERN.test(shortName) &&
+      password.length >= MINIMUM_PASSWORD_LENGTH &&
       password === passwordConfirmation
     )
-  }, [
-    displayName,
-    email,
-    isRegistration,
-    password,
-    passwordConfirmation,
-  ])
+  }, [displayName, email, isRegistration, password, passwordConfirmation, shortName])
 
   function changeMode(nextMode) {
     setMode(nextMode)
     setErrorMessage("")
     setSuccessMessage("")
+    setNeedsVerification(false)
+    setResendMessage("")
     setPassword("")
     setPasswordConfirmation("")
+  }
+
+  function handleDisplayNameChange(value) {
+    setDisplayName(value)
+
+    if (!isShortNameEdited) setShortName(suggestShortName(value))
+  }
+
+  function handleShortNameChange(value) {
+    setIsShortNameEdited(true)
+    setShortName(value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4))
+  }
+
+  async function handleResendVerification() {
+    setResendMessage("")
+    setIsSubmitting(true)
+
+    try {
+      const result = await resendVerification(email)
+
+      setResendMessage(result.message || "Wir haben dir eine neue E-Mail gesendet.")
+    } catch (error) {
+      setResendMessage(getErrorMessage(error, "Die E-Mail konnte nicht gesendet werden."))
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   async function handleSubmit(event) {
     event.preventDefault()
     setErrorMessage("")
     setSuccessMessage("")
+    setNeedsVerification(false)
+    setResendMessage("")
 
     if (!email.trim() || !password) {
       setErrorMessage("Bitte E-Mail-Adresse und Passwort eingeben.")
@@ -84,8 +115,13 @@ export default function LoginScreen() {
         return
       }
 
-      if (password.length < 12) {
-        setErrorMessage("Das Passwort muss mindestens 12 Zeichen enthalten.")
+      if (!SHORT_NAME_PATTERN.test(shortName)) {
+        setErrorMessage("Das Kürzel muss aus 2 bis 4 Buchstaben oder Ziffern bestehen.")
+        return
+      }
+
+      if (password.length < MINIMUM_PASSWORD_LENGTH) {
+        setErrorMessage(`Das Passwort muss mindestens ${MINIMUM_PASSWORD_LENGTH} Zeichen enthalten.`)
         return
       }
 
@@ -101,6 +137,7 @@ export default function LoginScreen() {
       if (isRegistration) {
         const result = await register({
           displayName,
+          shortName,
           email,
           password,
           handicapIndex: handicapIndex === "" ? null : Number(handicapIndex),
@@ -108,17 +145,17 @@ export default function LoginScreen() {
         })
 
         setSuccessMessage(
-          result.message ||
-            "Dein Benutzerkonto wurde erstellt und wartet auf Freigabe."
+          result.message || "Wir senden dir eine E-Mail mit einem Bestätigungslink."
         )
         setPassword("")
         setPasswordConfirmation("")
         return
       }
 
-      await login({ email, password })
+      await login({ email, password, rememberMe })
       navigate(redirectPath, { replace: true })
     } catch (error) {
+      setNeedsVerification(error?.code === "EMAIL_NOT_VERIFIED")
       setErrorMessage(
         getErrorMessage(
           error,
@@ -132,219 +169,190 @@ export default function LoginScreen() {
     }
   }
 
-  const inputClassName =
-    "mt-2 h-14 w-full min-w-0 rounded-[22px] border border-white/70 bg-white/[0.72] px-5 text-base font-bold text-slate-950 shadow-sm outline-none backdrop-blur-xl transition-all placeholder:font-medium placeholder:text-slate-300 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
-
   return (
-    <>
-      <AppBackground />
-      <main className="relative z-10 flex min-h-screen items-center justify-center px-4 py-8 sm:px-6">
-        <motion.section
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, ease: "easeOut" }}
-          className="w-full max-w-md overflow-hidden rounded-[36px] border border-white/70 bg-white/45 p-5 shadow-2xl shadow-slate-900/10 backdrop-blur-3xl sm:p-7"
+    <AuthCard>
+      <div className="mt-5 grid grid-cols-2 rounded-[22px] bg-slate-950/5 p-1">
+        {[
+          ["login", "Anmelden"],
+          ["register", "Registrieren"],
+        ].map(([tabMode, label]) => (
+          <button
+            key={tabMode}
+            type="button"
+            onClick={() => changeMode(tabMode)}
+            className={`h-11 rounded-[18px] text-sm font-black transition-all ${
+              mode === tabMode ? "bg-white text-slate-950 shadow-sm" : "text-slate-500"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {successMessage ? (
+        <div
+          role="status"
+          className="mt-5 rounded-[24px] border border-emerald-200 bg-emerald-50/90 p-5 text-center"
         >
-          <div className="rounded-[30px] bg-[#071819] px-6 py-7 text-white shadow-xl shadow-emerald-950/20">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-400 text-[#071819]">
-              <Flag size={22} strokeWidth={2.5} />
+          <CheckCircle2 className="mx-auto text-emerald-600" size={30} />
+          <h2 className="mt-3 text-lg font-black text-emerald-950">Bestätige deine E-Mail</h2>
+          <p className="mt-2 text-sm font-semibold leading-6 text-emerald-800">
+            {successMessage}
+          </p>
+          <p className="mt-2 text-xs font-bold leading-5 text-emerald-700/80">
+            Schau auch im Spam-Ordner nach. Danach kannst du dich sofort anmelden.
+          </p>
+          <button
+            type="button"
+            onClick={() => changeMode("login")}
+            className={`mt-5 ${AUTH_SECONDARY_BUTTON_CLASS_NAME}`}
+          >
+            Zur Anmeldung
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4" noValidate>
+          {isRegistration && (
+            <>
+              <AuthField
+                label="Name"
+                type="text"
+                value={displayName}
+                onChange={(event) => handleDisplayNameChange(event.target.value)}
+                placeholder="Lucas Baron"
+                autoComplete="name"
+                disabled={isSubmitting}
+              />
+              <AuthField
+                label="Kürzel"
+                hint="2–4 Zeichen, z. B. LB"
+                type="text"
+                value={shortName}
+                onChange={(event) => handleShortNameChange(event.target.value)}
+                placeholder="LB"
+                maxLength={4}
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
+                disabled={isSubmitting}
+              />
+            </>
+          )}
+
+          <AuthField
+            label="E-Mail-Adresse"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="name@beispiel.de"
+            autoComplete="email"
+            inputMode="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            autoFocus
+            disabled={isSubmitting}
+          />
+
+          <PasswordField
+            label="Passwort"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder={isRegistration ? "Mindestens 12 Zeichen" : "Passwort"}
+            autoComplete={isRegistration ? "new-password" : "current-password"}
+            disabled={isSubmitting}
+          />
+
+          {isRegistration ? (
+            <>
+              <PasswordField
+                label="Passwort wiederholen"
+                value={passwordConfirmation}
+                onChange={(event) => setPasswordConfirmation(event.target.value)}
+                placeholder="Passwort wiederholen"
+                autoComplete="new-password"
+                disabled={isSubmitting}
+              />
+              <AuthField
+                label="Handicap"
+                hint="optional"
+                type="number"
+                value={handicapIndex}
+                onChange={(event) => setHandicapIndex(event.target.value)}
+                placeholder="z. B. 12,4"
+                min="-10"
+                max="54"
+                step="0.1"
+                inputMode="decimal"
+                disabled={isSubmitting}
+              />
+            </>
+          ) : (
+            <div className="flex items-center justify-between gap-3 px-1">
+              <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(event) => setRememberMe(event.target.checked)}
+                  disabled={isSubmitting}
+                  className="h-5 w-5 rounded-md accent-emerald-600"
+                />
+                Angemeldet bleiben
+              </label>
+              <Link to="/forgot-password" className={AUTH_LINK_CLASS_NAME}>
+                Passwort vergessen?
+              </Link>
             </div>
-            <p className="mt-6 text-sm font-bold uppercase tracking-[0.2em] text-emerald-300">
-              Welcome to
-            </p>
-            <h1 className="mt-1 text-[clamp(2.8rem,14vw,4.4rem)] font-black leading-none tracking-[-0.07em]">
-              Skinz
-            </h1>
-            <p className="mt-4 max-w-sm text-sm font-medium leading-6 text-white/65">
-              Premium Livescoring für moderne Golf Matches.
-            </p>
-          </div>
+          )}
 
-          <div className="mt-5 grid grid-cols-2 rounded-[22px] bg-slate-950/5 p-1">
-            <button
-              type="button"
-              onClick={() => changeMode("login")}
-              className={`h-11 rounded-[18px] text-sm font-black transition-all ${
-                !isRegistration
-                  ? "bg-white text-slate-950 shadow-sm"
-                  : "text-slate-500"
-              }`}
-            >
-              Anmelden
-            </button>
-            <button
-              type="button"
-              onClick={() => changeMode("register")}
-              className={`h-11 rounded-[18px] text-sm font-black transition-all ${
-                isRegistration
-                  ? "bg-white text-slate-950 shadow-sm"
-                  : "text-slate-500"
-              }`}
-            >
-              Registrieren
-            </button>
-          </div>
+          {errorMessage && (
+            <div role="alert" className={AUTH_ERROR_CLASS_NAME}>
+              {errorMessage}
+            </div>
+          )}
 
-          {successMessage ? (
-            <div
-              role="status"
-              className="mt-5 rounded-[24px] border border-emerald-200 bg-emerald-50/90 p-5 text-center"
-            >
-              <CheckCircle2 className="mx-auto text-emerald-600" size={30} />
-              <h2 className="mt-3 text-lg font-black text-emerald-950">
-                Registrierung erfolgreich
-              </h2>
-              <p className="mt-2 text-sm font-semibold leading-6 text-emerald-800">
-                {successMessage}
-              </p>
-              <p className="mt-2 text-xs font-bold leading-5 text-emerald-700/80">
-                Eine Anmeldung ist möglich, sobald dein Konto freigegeben wurde.
-              </p>
+          {needsVerification && (
+            <div className="space-y-3">
               <button
                 type="button"
-                onClick={() => changeMode("login")}
-                className="mt-5 h-12 w-full rounded-[20px] bg-[#071819] px-5 text-sm font-black text-white transition-transform active:scale-[0.98]"
+                onClick={handleResendVerification}
+                disabled={isSubmitting}
+                className={`${AUTH_SECONDARY_BUTTON_CLASS_NAME} disabled:opacity-60`}
               >
-                Zur Anmeldung
+                Bestätigungs-E-Mail erneut senden
               </button>
+              {resendMessage && (
+                <div role="status" className={AUTH_NOTICE_CLASS_NAME}>
+                  {resendMessage}
+                </div>
+              )}
             </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="mt-5 space-y-4" noValidate>
-              {isRegistration && (
-                <label className="block text-sm font-black text-slate-800">
-                  Name
-                  <input
-                    type="text"
-                    value={displayName}
-                    onChange={(event) => setDisplayName(event.target.value)}
-                    placeholder="Lucas Baron"
-                    autoComplete="name"
-                    disabled={isSubmitting}
-                    className={inputClassName}
-                  />
-                </label>
-              )}
-
-              <label className="block text-sm font-black text-slate-800">
-                E-Mail-Adresse
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="name@beispiel.de"
-                  autoComplete="email"
-                  inputMode="email"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  autoFocus
-                  disabled={isSubmitting}
-                  className={inputClassName}
-                />
-              </label>
-
-              <label className="block text-sm font-black text-slate-800">
-                Passwort
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    placeholder={
-                      isRegistration ? "Mindestens 12 Zeichen" : "Passwort"
-                    }
-                    autoComplete={
-                      isRegistration ? "new-password" : "current-password"
-                    }
-                    disabled={isSubmitting}
-                    className={`${inputClassName} pr-14`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((current) => !current)}
-                    className="absolute bottom-0 right-1 flex h-14 w-12 items-center justify-center rounded-[18px] text-slate-500"
-                    aria-label={
-                      showPassword ? "Passwort ausblenden" : "Passwort anzeigen"
-                    }
-                  >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
-                </div>
-              </label>
-
-              {isRegistration && (
-                <>
-                  <label className="block text-sm font-black text-slate-800">
-                    Passwort wiederholen
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={passwordConfirmation}
-                      onChange={(event) =>
-                        setPasswordConfirmation(event.target.value)
-                      }
-                      placeholder="Passwort wiederholen"
-                      autoComplete="new-password"
-                      disabled={isSubmitting}
-                      className={inputClassName}
-                    />
-                  </label>
-
-                  <label className="block text-sm font-black text-slate-800">
-                    Handicap
-                    <span className="ml-2 text-xs font-bold text-slate-400">
-                      optional
-                    </span>
-                    <input
-                      type="number"
-                      value={handicapIndex}
-                      onChange={(event) => setHandicapIndex(event.target.value)}
-                      placeholder="z. B. 12,4"
-                      min="-10"
-                      max="54"
-                      step="0.1"
-                      inputMode="decimal"
-                      disabled={isSubmitting}
-                      className={inputClassName}
-                    />
-                  </label>
-                </>
-              )}
-
-              {errorMessage && (
-                <div
-                  role="alert"
-                  className="rounded-[20px] border border-red-200 bg-red-50/90 px-4 py-3 text-center text-sm font-bold leading-5 text-red-700"
-                >
-                  {errorMessage}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={!canSubmit || isSubmitting}
-                className="flex h-14 w-full items-center justify-center gap-2 rounded-[22px] bg-[#071819] px-5 text-base font-black text-white shadow-lg shadow-emerald-950/15 transition-all enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45"
-              >
-                {isSubmitting ? (
-                  <>
-                    <LoaderCircle className="animate-spin" size={20} />
-                    Bitte warten
-                  </>
-                ) : (
-                  <>
-                    {isRegistration ? "Konto erstellen" : "Anmelden"}
-                    <ArrowRight size={20} strokeWidth={2.5} />
-                  </>
-                )}
-              </button>
-
-              <p className="px-2 text-center text-xs font-semibold leading-5 text-slate-500">
-                {isRegistration
-                  ? "Neue Konten werden nach einer kurzen Prüfung freigegeben."
-                  : "Melde dich mit deiner registrierten E-Mail-Adresse an."}
-              </p>
-            </form>
           )}
-        </motion.section>
-      </main>
-    </>
+
+          <button
+            type="submit"
+            disabled={!canSubmit || isSubmitting}
+            className={AUTH_PRIMARY_BUTTON_CLASS_NAME}
+          >
+            {isSubmitting ? (
+              <>
+                <LoaderCircle className="animate-spin" size={20} />
+                Bitte warten
+              </>
+            ) : (
+              <>
+                {isRegistration ? "Konto erstellen" : "Anmelden"}
+                <ArrowRight size={20} strokeWidth={2.5} />
+              </>
+            )}
+          </button>
+
+          <p className="px-2 text-center text-xs font-semibold leading-5 text-slate-500">
+            {isRegistration
+              ? "Nach der Registrierung bestätigst du deine E-Mail-Adresse per Link."
+              : "Melde dich mit deiner registrierten E-Mail-Adresse an."}
+          </p>
+        </form>
+      )}
+    </AuthCard>
   )
 }

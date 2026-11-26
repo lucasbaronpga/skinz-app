@@ -1,3 +1,4 @@
+import { Suspense, lazy } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import {
   BrowserRouter,
@@ -15,6 +16,7 @@ import AdminRoute from "./components/AdminRoute"
 import AppBackground from "./components/AppBackground"
 import BottomNav from "./components/BottomNav"
 import { useAuth } from "./context/AuthContext"
+import ForgotPasswordScreen from "./pages/ForgotPasswordScreen"
 import HomeScreen from "./pages/HomeScreen"
 import LeaderboardScreen from "./pages/LeaderboardScreen"
 import LiveScoringScreen from "./pages/LiveScoringScreen"
@@ -22,7 +24,40 @@ import LoginScreen from "./pages/LoginScreen"
 import MatchArchiveScreen from "./pages/MatchArchiveScreen"
 import MatchDetailsScreen from "./pages/MatchDetailsScreen"
 import ProfileScreen from "./pages/ProfileScreen"
+import ResetPasswordScreen from "./pages/ResetPasswordScreen"
 import RoundSetupScreen from "./pages/RoundSetupScreen"
+import VerifyEmailScreen from "./pages/VerifyEmailScreen"
+
+// Die Design-Galerie gibt es nur in der Entwicklung (npm run dev / vercel dev).
+const DesignGallery = import.meta.env.DEV
+  ? lazy(() => import("./pages/DesignGallery"))
+  : null
+
+const AUTH_PATHS = ["/login", "/forgot-password", "/reset-password", "/verify-email"]
+
+const PUBLIC_ROUTES = [
+  { path: "/forgot-password", element: <ForgotPasswordScreen /> },
+  { path: "/reset-password", element: <ResetPasswordScreen /> },
+  { path: "/verify-email", element: <VerifyEmailScreen /> },
+]
+
+const PROTECTED_ROUTES = [
+  { path: "/", element: <HomeScreen /> },
+  { path: "/round", element: <RoundSetupScreen /> },
+  { path: "/live", element: <LiveScoringScreen /> },
+  { path: "/matches", element: <MatchArchiveScreen /> },
+  { path: "/matches/:id", element: <MatchDetailsScreen /> },
+  { path: "/leaderboard", element: <LeaderboardScreen /> },
+  { path: "/profile", element: <ProfileScreen /> },
+]
+
+const ADMIN_ROUTES = [
+  { path: "/admin", element: <AdminDashboard /> },
+  { path: "/admin/users", element: <AdminUsersScreen /> },
+  { path: "/admin/courses", element: <AdminCoursesScreen /> },
+  { path: "/admin/courses/:clubId", element: <AdminGolfClubScreen /> },
+  { path: "/admin/courses/:clubId/:courseId", element: <AdminGolfCourseScreen /> },
+]
 
 export default function App() {
   return (
@@ -35,8 +70,9 @@ export default function App() {
 function AppShell() {
   const location = useLocation()
   const { isAuthenticated, isLoading } = useAuth()
+  const isDesignPreview = Boolean(DesignGallery) && location.pathname === "/design"
   const hideBottomNav =
-    location.pathname === "/login" ||
+    AUTH_PATHS.includes(location.pathname) ||
     location.pathname.startsWith("/live") ||
     location.pathname.startsWith("/admin")
 
@@ -47,7 +83,7 @@ function AppShell() {
   return (
     <>
       <AnimatedRoutes isAuthenticated={isAuthenticated} />
-      {isAuthenticated && !hideBottomNav && <BottomNav />}
+      {(isAuthenticated || isDesignPreview) && !hideBottomNav && <BottomNav />}
     </>
   )
 }
@@ -71,116 +107,42 @@ function AnimatedRoutes({ isAuthenticated }) {
             )
           }
         />
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <PageTransition>
-                <HomeScreen />
-              </PageTransition>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/round"
-          element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <PageTransition>
-                <RoundSetupScreen />
-              </PageTransition>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/live"
-          element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <PageTransition>
-                <LiveScoringScreen />
-              </PageTransition>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/matches"
-          element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <PageTransition>
-                <MatchArchiveScreen />
-              </PageTransition>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/matches/:id"
-          element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <PageTransition>
-                <MatchDetailsScreen />
-              </PageTransition>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/leaderboard"
-          element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <PageTransition>
-                <LeaderboardScreen />
-              </PageTransition>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <PageTransition>
-                <ProfileScreen />
-              </PageTransition>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin"
-          element={
-            <AdminRoute>
-              <AdminDashboard />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/users"
-          element={
-            <AdminRoute>
-              <AdminUsersScreen />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/courses"
-          element={
-            <AdminRoute>
-              <AdminCoursesScreen />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/courses/:clubId"
-          element={
-            <AdminRoute>
-              <AdminGolfClubScreen />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/courses/:clubId/:courseId"
-          element={
-            <AdminRoute>
-              <AdminGolfCourseScreen />
-            </AdminRoute>
-          }
-        />
+
+        {PUBLIC_ROUTES.map(({ path, element }) => (
+          <Route
+            key={path}
+            path={path}
+            element={<PageTransition>{element}</PageTransition>}
+          />
+        ))}
+
+        {DesignGallery && (
+          <Route
+            path="/design"
+            element={
+              <Suspense fallback={null}>
+                <DesignGallery />
+              </Suspense>
+            }
+          />
+        )}
+
+        {PROTECTED_ROUTES.map(({ path, element }) => (
+          <Route
+            key={path}
+            path={path}
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <PageTransition>{element}</PageTransition>
+              </ProtectedRoute>
+            }
+          />
+        ))}
+
+        {ADMIN_ROUTES.map(({ path, element }) => (
+          <Route key={path} path={path} element={<AdminRoute>{element}</AdminRoute>} />
+        ))}
+
         <Route
           path="*"
           element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />}
@@ -217,7 +179,7 @@ function SplashScreen() {
   const loadingDots = [0, 1, 2]
 
   return (
-    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#e8ebe5] text-slate-950">
+    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden text-ink">
       <AppBackground />
       <div className="relative text-center">
         <div className="text-[10px] font-black uppercase tracking-[0.28em] text-emerald-700">
@@ -227,7 +189,7 @@ function SplashScreen() {
           {loadingDots.map((dot) => (
             <motion.span
               key={dot}
-              className="h-2.5 w-2.5 rounded-full bg-[#071819]"
+              className="h-2.5 w-2.5 rounded-full bg-ink"
               animate={{ opacity: [0.25, 1, 0.25], y: [0, -5, 0] }}
               transition={{
                 duration: 0.9,

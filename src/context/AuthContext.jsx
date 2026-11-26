@@ -14,6 +14,10 @@ const AUTH_ENDPOINTS = {
   logout: "/api/auth/logout",
   register: "/api/auth/register",
   session: "/api/auth/session",
+  verifyEmail: "/api/auth/verify-email",
+  resendVerification: "/api/auth/resend-verification",
+  forgotPassword: "/api/auth/forgot-password",
+  resetPassword: "/api/auth/reset-password",
 }
 
 function normalizeUser(user) {
@@ -30,6 +34,10 @@ function normalizeUser(user) {
     displayName,
     name: displayName,
   }
+}
+
+function normalizeEmail(value) {
+  return String(value ?? "").trim().toLowerCase()
 }
 
 async function readJson(response) {
@@ -57,12 +65,22 @@ async function requestJson(url, options = {}) {
         ? data.error
         : "Die Anfrage konnte nicht verarbeitet werden."
     )
+
     error.status = response.status
+    error.code = typeof data.code === "string" ? data.code : null
     error.data = data
+
     throw error
   }
 
   return data
+}
+
+function postJson(url, payload) {
+  return requestJson(url, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
 }
 
 export function AuthProvider({ children }) {
@@ -79,6 +97,7 @@ export function AuthProvider({ children }) {
         data.authenticated && sessionUser ? sessionUser : null
 
       setUser(authenticatedUser)
+
       return authenticatedUser
     } catch (error) {
       setUser(null)
@@ -103,6 +122,7 @@ export function AuthProvider({ children }) {
         if (isCancelled) return
 
         const sessionUser = normalizeUser(data.user)
+
         setUser(data.authenticated && sessionUser ? sessionUser : null)
       })
       .catch((error) => {
@@ -125,13 +145,11 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  const login = useCallback(async ({ email, password }) => {
-    const data = await requestJson(AUTH_ENDPOINTS.login, {
-      method: "POST",
-      body: JSON.stringify({
-        email: String(email ?? "").trim().toLowerCase(),
-        password: String(password ?? ""),
-      }),
+  const login = useCallback(async ({ email, password, rememberMe = true }) => {
+    const data = await postJson(AUTH_ENDPOINTS.login, {
+      email: normalizeEmail(email),
+      password: String(password ?? ""),
+      rememberMe: Boolean(rememberMe),
     })
     const authenticatedUser = normalizeUser(data.user)
 
@@ -140,6 +158,7 @@ export function AuthProvider({ children }) {
     }
 
     setUser(authenticatedUser)
+
     return authenticatedUser
   }, [])
 
@@ -148,18 +167,43 @@ export function AuthProvider({ children }) {
       email,
       password,
       displayName,
+      shortName,
       handicapIndex = null,
       homeClubId = null,
     }) =>
-      requestJson(AUTH_ENDPOINTS.register, {
-        method: "POST",
-        body: JSON.stringify({
-          email: String(email ?? "").trim().toLowerCase(),
-          password: String(password ?? ""),
-          displayName: String(displayName ?? "").trim(),
-          handicapIndex,
-          homeClubId,
-        }),
+      postJson(AUTH_ENDPOINTS.register, {
+        email: normalizeEmail(email),
+        password: String(password ?? ""),
+        displayName: String(displayName ?? "").trim(),
+        shortName: String(shortName ?? "").trim().toUpperCase(),
+        handicapIndex,
+        homeClubId,
+      }),
+    []
+  )
+
+  const verifyEmail = useCallback(
+    (token) => postJson(AUTH_ENDPOINTS.verifyEmail, { token }),
+    []
+  )
+
+  const resendVerification = useCallback(
+    (email) =>
+      postJson(AUTH_ENDPOINTS.resendVerification, { email: normalizeEmail(email) }),
+    []
+  )
+
+  const forgotPassword = useCallback(
+    (email) =>
+      postJson(AUTH_ENDPOINTS.forgotPassword, { email: normalizeEmail(email) }),
+    []
+  )
+
+  const resetPassword = useCallback(
+    ({ token, password }) =>
+      postJson(AUTH_ENDPOINTS.resetPassword, {
+        token,
+        password: String(password ?? ""),
       }),
     []
   )
@@ -180,11 +224,26 @@ export function AuthProvider({ children }) {
       login,
       register,
       logout,
+      verifyEmail,
+      resendVerification,
+      forgotPassword,
+      resetPassword,
       checkSession,
       isLoading,
       isAuthenticated: Boolean(user),
     }),
-    [user, login, register, logout, checkSession, isLoading]
+    [
+      user,
+      login,
+      register,
+      logout,
+      verifyEmail,
+      resendVerification,
+      forgotPassword,
+      resetPassword,
+      checkSession,
+      isLoading,
+    ]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
