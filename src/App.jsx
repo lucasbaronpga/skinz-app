@@ -1,4 +1,4 @@
-import { Suspense, lazy } from "react"
+import { Suspense, lazy, useEffect } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import {
   BrowserRouter,
@@ -6,6 +6,7 @@ import {
   Route,
   Routes,
   useLocation,
+  useNavigate,
 } from "react-router-dom"
 import AdminCoursesScreen from "./admin/AdminCoursesScreen"
 import AdminDashboard from "./admin/AdminDashboard"
@@ -16,8 +17,10 @@ import AdminRoute from "./components/AdminRoute"
 import AppBackground from "./components/AppBackground"
 import BottomNav from "./components/BottomNav"
 import { useAuth } from "./context/AuthContext"
+import FlightScreen from "./pages/FlightScreen"
 import ForgotPasswordScreen from "./pages/ForgotPasswordScreen"
 import HomeScreen from "./pages/HomeScreen"
+import JoinScreen from "./pages/JoinScreen"
 import LeaderboardScreen from "./pages/LeaderboardScreen"
 import LiveScoringScreen from "./pages/LiveScoringScreen"
 import LoginScreen from "./pages/LoginScreen"
@@ -27,6 +30,7 @@ import ProfileScreen from "./pages/ProfileScreen"
 import ResetPasswordScreen from "./pages/ResetPasswordScreen"
 import RoundSetupScreen from "./pages/RoundSetupScreen"
 import VerifyEmailScreen from "./pages/VerifyEmailScreen"
+import { takePendingInvite } from "./utils/invite"
 
 // Die Design-Galerie gibt es nur in der Entwicklung (npm run dev / vercel dev).
 const DesignGallery = import.meta.env.DEV
@@ -39,11 +43,13 @@ const PUBLIC_ROUTES = [
   { path: "/forgot-password", element: <ForgotPasswordScreen /> },
   { path: "/reset-password", element: <ResetPasswordScreen /> },
   { path: "/verify-email", element: <VerifyEmailScreen /> },
+  { path: "/join", element: <JoinScreen /> },
 ]
 
 const PROTECTED_ROUTES = [
   { path: "/", element: <HomeScreen /> },
   { path: "/round", element: <RoundSetupScreen /> },
+  { path: "/flights/:id", element: <FlightScreen /> },
   { path: "/live", element: <LiveScoringScreen /> },
   { path: "/matches", element: <MatchArchiveScreen /> },
   { path: "/matches/:id", element: <MatchDetailsScreen /> },
@@ -67,6 +73,20 @@ export default function App() {
   )
 }
 
+/** Öffnet eine gemerkte Einladung, sobald der Nutzer angemeldet ist. */
+function usePendingInviteRedirect(isAuthenticated) {
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!isAuthenticated || location.pathname === "/join") return
+
+    const token = takePendingInvite()
+
+    if (token) navigate(`/join#token=${token}`, { replace: true })
+  }, [isAuthenticated, location.pathname, navigate])
+}
+
 function AppShell() {
   const location = useLocation()
   const { isAuthenticated, isLoading } = useAuth()
@@ -75,6 +95,8 @@ function AppShell() {
     AUTH_PATHS.includes(location.pathname) ||
     location.pathname.startsWith("/live") ||
     location.pathname.startsWith("/admin")
+
+  usePendingInviteRedirect(isAuthenticated)
 
   if (isLoading) {
     return <SplashScreen />
