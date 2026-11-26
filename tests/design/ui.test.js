@@ -3,7 +3,6 @@ import { describe, it } from "node:test"
 import { RESULT_LABELS } from "../../lib/engine/constants.js"
 import { formatCents, formatSkinz, formatToPar } from "../../src/utils/format.js"
 import cn from "../../src/ui/cn.js"
-import { HOLE_SKETCH_VIEWBOX, getHoleSketch, normalizeSketchPar } from "../../src/ui/holeSketch.js"
 import { getMoneyTextClass, getScoreTone, getToParTextClass } from "../../src/ui/scoreStyles.js"
 
 describe("Formatierung", () => {
@@ -81,36 +80,6 @@ describe("Scorekarten-Notation", () => {
     assert.match(getScoreTone("Par").tile, /border-transparent/)
     assert.match(getScoreTone("Albatross").tile, /bg-amber/)
     assert.match(getScoreTone("Triple+").tile, /bg-blue/)
-  })
-})
-
-describe("Loch-Skizze", () => {
-  it("ordnet Par 3, 4 und 5 eigene Formen zu", () => {
-    assert.equal(normalizeSketchPar(3), 3)
-    assert.equal(normalizeSketchPar(4), 4)
-    assert.equal(normalizeSketchPar(5), 5)
-    assert.equal(normalizeSketchPar(6), 5)
-    assert.equal(normalizeSketchPar("abc"), 3)
-    assert.equal(normalizeSketchPar(2), 3)
-  })
-
-  it("hält alle Elemente innerhalb der Zeichenfläche", () => {
-    const { width, height } = HOLE_SKETCH_VIEWBOX
-
-    ;[3, 4, 5].forEach((par) => {
-      const { tee, green, bunkers, fairwayPath } = getHoleSketch({ par })
-
-      assert.ok(green.x + green.r <= width && green.x - green.r >= 0, `Grün Par ${par}`)
-      assert.ok(green.y - 22 >= 0 && green.y + green.r <= height, `Fahne Par ${par}`)
-      assert.ok(tee.x - 9 >= 0 && tee.y - 5 >= 0 && tee.y + 5 <= height, `Tee Par ${par}`)
-      assert.ok(bunkers.length >= 2)
-      assert.match(fairwayPath, /^M [\d. ]+/)
-    })
-  })
-
-  it("spiegelt nur auf Wunsch", () => {
-    assert.equal(getHoleSketch({ par: 4 }).mirrored, false)
-    assert.equal(getHoleSketch({ par: 4, mirrored: true }).mirrored, true)
   })
 })
 

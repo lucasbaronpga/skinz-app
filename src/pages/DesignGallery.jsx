@@ -7,7 +7,6 @@ import {
   Chip,
   ConfirmDialog,
   EmptyState,
-  HoleSketch,
   LeaderboardHeader,
   LeaderboardRow,
   ListRow,
@@ -159,34 +158,27 @@ export default function DesignGallery() {
           </Card>
         </Section>
 
-        <Section title="Liste mit Vorschau">
+        <Section title="Liste">
           <div className="border-t border-line/10">
             <ListRow
               eyebrow="Gestern · Classic"
               title="Weiherhof A-Kurs: 3 Skinz Vorsprung im letzten Loch"
               meta="4 Spieler · 1 € pro Skin"
-              thumbnail={<HoleSketch par={4} holeNumber={9} />}
             />
             <ListRow
               eyebrow="Vor 3 Tagen · Wolffn"
               title="Doppeltes Birdie sorgt für den Tagessieg"
               meta="4 Spieler · 2 € pro Skin"
-              thumbnail={<HoleSketch par={5} holeNumber={4} />}
             />
           </div>
         </Section>
 
-        <Section title="Loch-Ansicht">
-          <Card className="overflow-hidden">
-            <div className="h-36 px-2 pt-2">
-              <HoleSketch par={4} holeNumber={7} />
-            </div>
-            <div className="grid grid-cols-3 gap-2 p-3">
-              <StatTile label="Par" value="4" className="p-3" />
-              <StatTile label="Länge" value="352 m" className="p-3" valueClassName="text-[1.3rem]" />
-              <StatTile label="HCP" value="5" className="p-3" />
-            </div>
-          </Card>
+        <Section title="Kennzahlen">
+          <div className="grid grid-cols-3 gap-2">
+            <StatTile label="Runden" value="12" />
+            <StatTile label="Siege" value="5" />
+            <StatTile label="Ø Score" value="+6" />
+          </div>
         </Section>
 
         <Section title="Leaderboard">

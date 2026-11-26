@@ -47,6 +47,7 @@ describe("Stil-Leitplanken", () => {
       assert.match(index, new RegExp(`as ${name} `), `${name} fehlt`)
     )
     assert.ok(!index.includes("GlassCard"))
+    assert.ok(!index.includes("HoleSketch"))
   })
 
   it("importiert in jeder Datei nur vorhandene Bausteine", () => {
