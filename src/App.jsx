@@ -26,6 +26,8 @@ import LiveScoringScreen from "./pages/LiveScoringScreen"
 import LoginScreen from "./pages/LoginScreen"
 import MatchArchiveScreen from "./pages/MatchArchiveScreen"
 import MatchDetailsScreen from "./pages/MatchDetailsScreen"
+import PlayerScreen from "./pages/PlayerScreen"
+import ProfileEditScreen from "./pages/ProfileEditScreen"
 import ProfileScreen from "./pages/ProfileScreen"
 import ResetPasswordScreen from "./pages/ResetPasswordScreen"
 import RoundSetupScreen from "./pages/RoundSetupScreen"
@@ -55,7 +57,9 @@ const PROTECTED_ROUTES = [
   { path: "/matches", element: <MatchArchiveScreen /> },
   { path: "/matches/:id", element: <MatchDetailsScreen /> },
   { path: "/leaderboard", element: <LeaderboardScreen /> },
+  { path: "/players/:id", element: <PlayerScreen /> },
   { path: "/profile", element: <ProfileScreen /> },
+  { path: "/profile/edit", element: <ProfileEditScreen /> },
 ]
 
 const ADMIN_ROUTES = [
