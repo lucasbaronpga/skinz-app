@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs"
 import { describe, it } from "node:test"
 import tailwindConfig from "../../tailwind.config.js"
 
-const css = readFileSync(new URL("../../src/index.css", import.meta.url), "utf8")
+const css = readFileSync(new URL("../../src/index.css", import.meta.url), "utf8").replace(/\r\n/g, "\n")
 
 // Tailwind-v3-Standardfarben, die im Hellmodus für bestehende Screens unverändert bleiben müssen.
 const TAILWIND_DEFAULTS = {
