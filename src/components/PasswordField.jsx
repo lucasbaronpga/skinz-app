@@ -6,21 +6,21 @@ export default function PasswordField({ label, ...inputProps }) {
   const [isVisible, setIsVisible] = useState(false)
 
   return (
-    <label className="block text-sm font-black text-slate-800">
+    <label className="block text-sm font-semibold text-ink">
       {label}
       <div className="relative">
         <input
           {...inputProps}
           type={isVisible ? "text" : "password"}
-          className={`${AUTH_INPUT_CLASS_NAME} pr-14`}
+          className={`${AUTH_INPUT_CLASS_NAME} pr-12`}
         />
         <button
           type="button"
           onClick={() => setIsVisible((current) => !current)}
-          className="absolute bottom-0 right-1 flex h-14 w-12 items-center justify-center rounded-[18px] text-slate-500"
+          className="absolute bottom-0 right-0 flex h-12 w-12 items-center justify-center rounded-2xl text-ink-mute"
           aria-label={isVisible ? "Passwort ausblenden" : "Passwort anzeigen"}
         >
-          {isVisible ? <EyeOff size={20} /> : <Eye size={20} />}
+          {isVisible ? <EyeOff size={20} aria-hidden="true" /> : <Eye size={20} aria-hidden="true" />}
         </button>
       </div>
     </label>

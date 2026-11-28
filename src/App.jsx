@@ -8,10 +8,6 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom"
-import AdminCoursesScreen from "./admin/AdminCoursesScreen"
-import AdminDashboard from "./admin/AdminDashboard"
-import AdminGolfClubScreen from "./admin/AdminGolfClubScreen"
-import AdminGolfCourseScreen from "./admin/AdminGolfCourseScreen"
 import AdminUsersScreen from "./admin/AdminUsersScreen"
 import AdminRoute from "./components/AdminRoute"
 import AppBackground from "./components/AppBackground"
@@ -66,12 +62,10 @@ const PROTECTED_ROUTES = [
   { path: "/profile/delete", element: <DeleteAccountScreen /> },
 ]
 
+// In der App gibt es nur die Benutzerverwaltung. Golfplätze und Matches pflegt die Admin-App am PC.
 const ADMIN_ROUTES = [
-  { path: "/admin", element: <AdminDashboard /> },
+  { path: "/admin", element: <Navigate to="/admin/users" replace /> },
   { path: "/admin/users", element: <AdminUsersScreen /> },
-  { path: "/admin/courses", element: <AdminCoursesScreen /> },
-  { path: "/admin/courses/:clubId", element: <AdminGolfClubScreen /> },
-  { path: "/admin/courses/:clubId/:courseId", element: <AdminGolfCourseScreen /> },
 ]
 
 export default function App() {

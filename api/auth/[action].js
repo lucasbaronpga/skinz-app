@@ -1,15 +1,16 @@
 import { accountActions } from "../../lib/accountActions.js"
+import { adminActions } from "../../lib/adminActions.js"
 import { setNoStoreHeaders } from "../../lib/auth.js"
 import { authActions } from "../../lib/authActions.js"
 import { getQueryValue, sendError } from "../../lib/http.js"
 
-const actions = Object.freeze({ ...authActions, ...accountActions })
+const actions = Object.freeze({ ...authActions, ...accountActions, ...adminActions })
 
 /**
- * Eine Vercel-Function für Konto, Anmeldung, Push und das tägliche Aufräumen:
+ * Eine Vercel-Function für Konto, Anmeldung, Push, Benutzerverwaltung und das tägliche Aufräumen:
  * /api/auth/login, /register, /session, /logout, /verify-email, /resend-verification,
  * /forgot-password, /reset-password, /push-config, /push-subscribe, /push-unsubscribe,
- * /delete-account und /cleanup (Vercel Cron).
+ * /delete-account, /cleanup (Vercel Cron), /admin-users und /admin-user-status (nur Admins).
  */
 export default async function handler(request, response) {
   setNoStoreHeaders(response)

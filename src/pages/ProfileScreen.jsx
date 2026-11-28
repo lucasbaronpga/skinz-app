@@ -29,7 +29,7 @@ function Section({ title, children }) {
   )
 }
 
-function LinkRow({ to, icon: Icon, label, danger = false }) {
+function LinkRow({ to, icon: Icon, label, badge = null, danger = false }) {
   return (
     <Link
       to={to}
@@ -42,8 +42,37 @@ function LinkRow({ to, icon: Icon, label, danger = false }) {
         <Icon size={18} aria-hidden="true" />
         {label}
       </span>
-      <ChevronRight size={18} className="text-ink-mute" aria-hidden="true" />
+      <span className="flex items-center gap-2">
+        {badge}
+        <ChevronRight size={18} className="text-ink-mute" aria-hidden="true" />
+      </span>
     </Link>
+  )
+}
+
+/** Platzhalter in der Größe der Statistik, damit die Seite beim Laden nicht springt. */
+function StatsSkeleton() {
+  return (
+    <div aria-hidden="true" className="animate-pulse">
+      <div className="mt-6 grid grid-cols-2 gap-2">
+        <div className="h-[6.6rem] rounded-[18px] bg-fill" />
+        <div className="h-[6.6rem] rounded-[18px] bg-fill" />
+      </div>
+      <div className="mt-9 h-3 w-28 rounded bg-fill" />
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {Array.from({ length: 6 }, (_, index) => (
+          <div key={index} className="h-[5.2rem] rounded-2xl bg-fill" />
+        ))}
+      </div>
+      <div className="mt-9 h-3 w-32 rounded bg-fill" />
+      <div className="mt-3 h-[11rem] rounded-[18px] bg-fill" />
+      <div className="mt-9 h-3 w-24 rounded bg-fill" />
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {Array.from({ length: 3 }, (_, index) => (
+          <div key={index} className="h-[5.2rem] rounded-2xl bg-fill" />
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -53,9 +82,11 @@ export default function ProfileScreen() {
   const [season, setSeason] = useState(null)
   const [theme, setTheme] = useState(getThemePreference)
   const { data, error } = useApi(`/api/stats/me${season ? `?season=${season}` : ""}`)
+  const isAdmin = user?.role === "admin"
+  const { data: adminData } = useApi(isAdmin ? "/api/auth/admin-users" : null)
   const profile = data?.profile
   const stats = data?.stats
-  const isAdmin = user?.role === "admin"
+  const pendingCount = (adminData?.users ?? []).filter((entry) => entry.status === "pending").length
 
   async function handleLogout() {
     await logout()
@@ -78,7 +109,7 @@ export default function ProfileScreen() {
           {profile?.displayName ?? user?.displayName}
         </h1>
         <p className="mt-2 text-[15px] font-medium text-ink-mute">
-          {[profile?.shortName, profile?.homeClubName].filter(Boolean).join(" · ") || "Skinz-Spieler"}
+          {[profile?.shortName ?? user?.shortName, profile?.homeClubName].filter(Boolean).join(" · ") || "Skinz-Spieler"}
         </p>
 
         {error && (
@@ -86,6 +117,8 @@ export default function ProfileScreen() {
             {error}
           </div>
         )}
+
+        {!stats && !error && <StatsSkeleton />}
 
         {stats && (
           <div className="mt-6 grid grid-cols-2 gap-2">
@@ -180,7 +213,20 @@ export default function ProfileScreen() {
 
         <Section title="Konto">
           <Card className="overflow-hidden">
-            {isAdmin && <LinkRow to="/admin" icon={ShieldCheck} label="Administration" />}
+            {isAdmin && (
+              <LinkRow
+                to="/admin/users"
+                icon={ShieldCheck}
+                label="Benutzer verwalten"
+                badge={
+                  pendingCount > 0 ? (
+                    <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold leading-none text-amber-700">
+                      {pendingCount} wartend
+                    </span>
+                  ) : null
+                }
+              />
+            )}
             <LinkRow to="/privacy" icon={FileText} label="Datenschutz" />
             {!isAdmin && <LinkRow to="/profile/delete" icon={Trash2} label="Konto löschen" danger />}
           </Card>

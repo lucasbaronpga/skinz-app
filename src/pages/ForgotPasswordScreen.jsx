@@ -1,14 +1,11 @@
 import { useState } from "react"
-import { ArrowRight, CheckCircle2, LoaderCircle } from "lucide-react"
+import { CheckCircle2, LoaderCircle } from "lucide-react"
 import { Link } from "react-router-dom"
 import AuthCard from "../components/AuthCard"
 import AuthField from "../components/AuthField"
-import {
-  AUTH_ERROR_CLASS_NAME,
-  AUTH_LINK_CLASS_NAME,
-  AUTH_PRIMARY_BUTTON_CLASS_NAME,
-} from "../components/authStyles"
+import { AUTH_ERROR_CLASS_NAME, AUTH_LINK_CLASS_NAME } from "../components/authStyles"
 import { useAuth } from "../context/AuthContext"
+import { Button, Card } from "../ui/index.js"
 
 export default function ForgotPasswordScreen() {
   const { forgotPassword } = useAuth()
@@ -40,77 +37,65 @@ export default function ForgotPasswordScreen() {
     }
   }
 
+  const footer = (
+    <Link to="/login" className={AUTH_LINK_CLASS_NAME}>
+      Zurück zur Anmeldung
+    </Link>
+  )
+
+  if (successMessage) {
+    return (
+      <AuthCard title="E-Mail unterwegs" subtitle="Schau auch im Spam-Ordner nach." footer={footer}>
+        <Card className="p-5">
+          <CheckCircle2 className="text-fairway" size={28} aria-hidden="true" />
+          <p className="mt-3 text-[15px] font-semibold leading-relaxed text-ink">{successMessage}</p>
+          <p className="mt-2 text-sm font-medium text-ink-mute">Der Link ist eine Stunde gültig.</p>
+        </Card>
+      </AuthCard>
+    )
+  }
+
   return (
-    <AuthCard subtitle="Passwort vergessen? Kein Problem.">
-      {successMessage ? (
-        <div
-          role="status"
-          className="mt-5 rounded-[24px] border border-emerald-200 bg-emerald-50/90 p-5 text-center"
-        >
-          <CheckCircle2 className="mx-auto text-emerald-600" size={30} />
-          <h2 className="mt-3 text-lg font-black text-emerald-950">E-Mail unterwegs</h2>
-          <p className="mt-2 text-sm font-semibold leading-6 text-emerald-800">
-            {successMessage}
-          </p>
-          <p className="mt-2 text-xs font-bold leading-5 text-emerald-700/80">
-            Der Link ist eine Stunde gültig. Schau auch im Spam-Ordner nach.
-          </p>
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4" noValidate>
-          <h2 className="text-xl font-black tracking-tight text-slate-950">
-            Passwort zurücksetzen
-          </h2>
-          <p className="text-sm font-semibold leading-6 text-slate-500">
-            Gib deine E-Mail-Adresse ein. Wir senden dir einen Link zum Festlegen eines
-            neuen Passworts.
-          </p>
+    <AuthCard
+      title="Passwort zurücksetzen"
+      subtitle="Gib deine E-Mail-Adresse ein. Wir senden dir einen Link zum Festlegen eines neuen Passworts."
+      footer={footer}
+    >
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        <AuthField
+          label="E-Mail-Adresse"
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          placeholder="name@beispiel.de"
+          autoComplete="email"
+          inputMode="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          disabled={isSubmitting}
+        />
 
-          <AuthField
-            label="E-Mail-Adresse"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="name@beispiel.de"
-            autoComplete="email"
-            inputMode="email"
-            autoCapitalize="none"
-            autoCorrect="off"
-            autoFocus
-            disabled={isSubmitting}
-          />
+        {errorMessage && (
+          <div role="alert" className={AUTH_ERROR_CLASS_NAME}>
+            {errorMessage}
+          </div>
+        )}
 
-          {errorMessage && (
-            <div role="alert" className={AUTH_ERROR_CLASS_NAME}>
-              {errorMessage}
-            </div>
+        <Button type="submit" variant="primary" size="lg" className="w-full" disabled={!email.trim() || isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <LoaderCircle className="animate-spin" size={20} aria-hidden="true" />
+              Bitte warten
+            </>
+          ) : (
+            "Link anfordern"
           )}
+        </Button>
 
-          <button
-            type="submit"
-            disabled={!email.trim() || isSubmitting}
-            className={AUTH_PRIMARY_BUTTON_CLASS_NAME}
-          >
-            {isSubmitting ? (
-              <>
-                <LoaderCircle className="animate-spin" size={20} />
-                Bitte warten
-              </>
-            ) : (
-              <>
-                Link anfordern
-                <ArrowRight size={20} strokeWidth={2.5} />
-              </>
-            )}
-          </button>
-        </form>
-      )}
-
-      <div className="mt-5 text-center">
-        <Link to="/login" className={AUTH_LINK_CLASS_NAME}>
-          Zurück zur Anmeldung
-        </Link>
-      </div>
+        <p className="text-center text-xs font-medium leading-relaxed text-ink-mute">
+          Der E-Mail-Versand startet in Kürze. Bis dahin schreib dem Admin, er setzt dein Passwort zurück.
+        </p>
+      </form>
     </AuthCard>
   )
 }

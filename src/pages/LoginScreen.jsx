@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { ArrowRight, CheckCircle2, LoaderCircle } from "lucide-react"
+import { CheckCircle2, LoaderCircle } from "lucide-react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import AuthCard from "../components/AuthCard"
 import AuthField from "../components/AuthField"
@@ -8,13 +8,17 @@ import {
   AUTH_ERROR_CLASS_NAME,
   AUTH_LINK_CLASS_NAME,
   AUTH_NOTICE_CLASS_NAME,
-  AUTH_PRIMARY_BUTTON_CLASS_NAME,
-  AUTH_SECONDARY_BUTTON_CLASS_NAME,
 } from "../components/authStyles"
 import { useAuth } from "../context/AuthContext"
+import { Button, Card, Segmented } from "../ui/index.js"
 import { SHORT_NAME_PATTERN, suggestShortName } from "../utils/shortName"
 
 const MINIMUM_PASSWORD_LENGTH = 12
+
+const MODE_OPTIONS = [
+  { value: "login", label: "Anmelden" },
+  { value: "register", label: "Registrieren" },
+]
 
 function getRedirectPath(location) {
   const pathname = location?.state?.from?.pathname
@@ -38,7 +42,7 @@ export default function LoginScreen() {
   const [rememberMe, setRememberMe] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
-  const [successMessage, setSuccessMessage] = useState("")
+  const [isRegistered, setIsRegistered] = useState(false)
   const [needsVerification, setNeedsVerification] = useState(false)
   const [resendMessage, setResendMessage] = useState("")
   const { login, register, resendVerification } = useAuth()
@@ -64,7 +68,7 @@ export default function LoginScreen() {
   function changeMode(nextMode) {
     setMode(nextMode)
     setErrorMessage("")
-    setSuccessMessage("")
+    setIsRegistered(false)
     setNeedsVerification(false)
     setResendMessage("")
     setPassword("")
@@ -100,7 +104,6 @@ export default function LoginScreen() {
   async function handleSubmit(event) {
     event.preventDefault()
     setErrorMessage("")
-    setSuccessMessage("")
     setNeedsVerification(false)
     setResendMessage("")
 
@@ -135,7 +138,7 @@ export default function LoginScreen() {
 
     try {
       if (isRegistration) {
-        const result = await register({
+        await register({
           displayName,
           shortName,
           email,
@@ -144,9 +147,7 @@ export default function LoginScreen() {
           homeClubId: null,
         })
 
-        setSuccessMessage(
-          result.message || "Wir senden dir eine E-Mail mit einem Bestätigungslink."
-        )
+        setIsRegistered(true)
         setPassword("")
         setPasswordConfirmation("")
         return
@@ -155,204 +156,186 @@ export default function LoginScreen() {
       await login({ email, password, rememberMe })
       navigate(redirectPath, { replace: true })
     } catch (error) {
-      setNeedsVerification(error?.code === "EMAIL_NOT_VERIFIED")
+      const notVerified = error?.code === "EMAIL_NOT_VERIFIED"
+
+      setNeedsVerification(notVerified)
       setErrorMessage(
-        getErrorMessage(
-          error,
-          isRegistration
-            ? "Die Registrierung ist derzeit nicht möglich."
-            : "Die Anmeldung ist derzeit nicht möglich."
-        )
+        notVerified
+          ? "Dein Konto ist noch nicht freigeschaltet. Bitte warte auf die Freigabe oder bestätige deine E-Mail, falls du eine bekommen hast."
+          : getErrorMessage(
+              error,
+              isRegistration
+                ? "Die Registrierung ist derzeit nicht möglich."
+                : "Die Anmeldung ist derzeit nicht möglich."
+            )
       )
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  const footer = (
+    <Link to="/privacy" className="text-xs font-semibold text-ink-mute underline underline-offset-4">
+      Datenschutz
+    </Link>
+  )
+
+  if (isRegistered) {
+    return (
+      <AuthCard title="Konto angelegt" subtitle="Fast geschafft." footer={footer}>
+        <Card className="p-5">
+          <CheckCircle2 className="text-fairway" size={28} aria-hidden="true" />
+          <p className="mt-3 text-[15px] font-semibold leading-relaxed text-ink">
+            Du kannst dich anmelden, sobald dein Konto freigeschaltet ist. Das passiert über den Link in der
+            Bestätigungs-E-Mail oder durch den Admin.
+          </p>
+          <p className="mt-2 text-sm font-medium leading-relaxed text-ink-mute">
+            Wenn du keine E-Mail bekommst, melde dich kurz beim Admin.
+          </p>
+        </Card>
+        <Button variant="primary" size="lg" className="mt-4 w-full" onClick={() => changeMode("login")}>
+          Zur Anmeldung
+        </Button>
+      </AuthCard>
+    )
+  }
+
   return (
-    <AuthCard>
-      <div className="mt-5 grid grid-cols-2 rounded-[22px] bg-slate-950/5 p-1">
-        {[
-          ["login", "Anmelden"],
-          ["register", "Registrieren"],
-        ].map(([tabMode, label]) => (
-          <button
-            key={tabMode}
-            type="button"
-            onClick={() => changeMode(tabMode)}
-            className={`h-11 rounded-[18px] text-sm font-black transition-all ${
-              mode === tabMode ? "bg-white text-slate-950 shadow-sm" : "text-slate-500"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+    <AuthCard
+      title={isRegistration ? "Konto erstellen" : "Willkommen zurück"}
+      subtitle={
+        isRegistration
+          ? "Registrieren, Runden spielen und im Leaderboard dabei sein."
+          : "Melde dich an, um deine Runden und Einladungen zu sehen."
+      }
+      footer={footer}
+    >
+      <Segmented label="Anmelden oder registrieren" options={MODE_OPTIONS} value={mode} onChange={changeMode} />
 
-      {successMessage ? (
-        <div
-          role="status"
-          className="mt-5 rounded-[24px] border border-emerald-200 bg-emerald-50/90 p-5 text-center"
-        >
-          <CheckCircle2 className="mx-auto text-emerald-600" size={30} />
-          <h2 className="mt-3 text-lg font-black text-emerald-950">Bestätige deine E-Mail</h2>
-          <p className="mt-2 text-sm font-semibold leading-6 text-emerald-800">
-            {successMessage}
-          </p>
-          <p className="mt-2 text-xs font-bold leading-5 text-emerald-700/80">
-            Schau auch im Spam-Ordner nach. Danach kannst du dich sofort anmelden.
-          </p>
-          <button
-            type="button"
-            onClick={() => changeMode("login")}
-            className={`mt-5 ${AUTH_SECONDARY_BUTTON_CLASS_NAME}`}
-          >
-            Zur Anmeldung
-          </button>
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4" noValidate>
-          {isRegistration && (
-            <>
-              <AuthField
-                label="Name"
-                type="text"
-                value={displayName}
-                onChange={(event) => handleDisplayNameChange(event.target.value)}
-                placeholder="Lucas Baron"
-                autoComplete="name"
+      <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
+        {isRegistration && (
+          <>
+            <AuthField
+              label="Name"
+              type="text"
+              value={displayName}
+              onChange={(event) => handleDisplayNameChange(event.target.value)}
+              placeholder="Lucas Baron"
+              autoComplete="name"
+              disabled={isSubmitting}
+            />
+            <AuthField
+              label="Kürzel"
+              hint="2–4 Zeichen, z. B. LB"
+              type="text"
+              value={shortName}
+              onChange={(event) => handleShortNameChange(event.target.value)}
+              placeholder="LB"
+              maxLength={4}
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              disabled={isSubmitting}
+            />
+          </>
+        )}
+
+        <AuthField
+          label="E-Mail-Adresse"
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          placeholder="name@beispiel.de"
+          autoComplete="email"
+          inputMode="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          disabled={isSubmitting}
+        />
+
+        <PasswordField
+          label="Passwort"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          placeholder={isRegistration ? "Mindestens 12 Zeichen" : "Passwort"}
+          autoComplete={isRegistration ? "new-password" : "current-password"}
+          disabled={isSubmitting}
+        />
+
+        {isRegistration ? (
+          <>
+            <PasswordField
+              label="Passwort wiederholen"
+              value={passwordConfirmation}
+              onChange={(event) => setPasswordConfirmation(event.target.value)}
+              placeholder="Passwort wiederholen"
+              autoComplete="new-password"
+              disabled={isSubmitting}
+            />
+            <AuthField
+              label="Handicap"
+              hint="optional"
+              type="number"
+              value={handicapIndex}
+              onChange={(event) => setHandicapIndex(event.target.value)}
+              placeholder="z. B. 12,4"
+              min="-10"
+              max="54"
+              step="0.1"
+              inputMode="decimal"
+              disabled={isSubmitting}
+            />
+          </>
+        ) : (
+          <div className="flex items-center justify-between gap-3">
+            <label className="flex items-center gap-2 text-sm font-semibold text-ink-soft">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(event) => setRememberMe(event.target.checked)}
                 disabled={isSubmitting}
+                className="h-5 w-5 rounded-md"
               />
-              <AuthField
-                label="Kürzel"
-                hint="2–4 Zeichen, z. B. LB"
-                type="text"
-                value={shortName}
-                onChange={(event) => handleShortNameChange(event.target.value)}
-                placeholder="LB"
-                maxLength={4}
-                autoCapitalize="characters"
-                autoCorrect="off"
-                spellCheck={false}
-                disabled={isSubmitting}
-              />
-            </>
-          )}
+              Angemeldet bleiben
+            </label>
+            <Link to="/forgot-password" className={AUTH_LINK_CLASS_NAME}>
+              Passwort vergessen?
+            </Link>
+          </div>
+        )}
 
-          <AuthField
-            label="E-Mail-Adresse"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="name@beispiel.de"
-            autoComplete="email"
-            inputMode="email"
-            autoCapitalize="none"
-            autoCorrect="off"
-            autoFocus
-            disabled={isSubmitting}
-          />
+        {errorMessage && (
+          <div role="alert" className={AUTH_ERROR_CLASS_NAME}>
+            {errorMessage}
+          </div>
+        )}
 
-          <PasswordField
-            label="Passwort"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder={isRegistration ? "Mindestens 12 Zeichen" : "Passwort"}
-            autoComplete={isRegistration ? "new-password" : "current-password"}
-            disabled={isSubmitting}
-          />
-
-          {isRegistration ? (
-            <>
-              <PasswordField
-                label="Passwort wiederholen"
-                value={passwordConfirmation}
-                onChange={(event) => setPasswordConfirmation(event.target.value)}
-                placeholder="Passwort wiederholen"
-                autoComplete="new-password"
-                disabled={isSubmitting}
-              />
-              <AuthField
-                label="Handicap"
-                hint="optional"
-                type="number"
-                value={handicapIndex}
-                onChange={(event) => setHandicapIndex(event.target.value)}
-                placeholder="z. B. 12,4"
-                min="-10"
-                max="54"
-                step="0.1"
-                inputMode="decimal"
-                disabled={isSubmitting}
-              />
-            </>
-          ) : (
-            <div className="flex items-center justify-between gap-3 px-1">
-              <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(event) => setRememberMe(event.target.checked)}
-                  disabled={isSubmitting}
-                  className="h-5 w-5 rounded-md accent-emerald-600"
-                />
-                Angemeldet bleiben
-              </label>
-              <Link to="/forgot-password" className={AUTH_LINK_CLASS_NAME}>
-                Passwort vergessen?
-              </Link>
-            </div>
-          )}
-
-          {errorMessage && (
-            <div role="alert" className={AUTH_ERROR_CLASS_NAME}>
-              {errorMessage}
-            </div>
-          )}
-
-          {needsVerification && (
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={handleResendVerification}
-                disabled={isSubmitting}
-                className={`${AUTH_SECONDARY_BUTTON_CLASS_NAME} disabled:opacity-60`}
-              >
-                Bestätigungs-E-Mail erneut senden
-              </button>
-              {resendMessage && (
-                <div role="status" className={AUTH_NOTICE_CLASS_NAME}>
-                  {resendMessage}
-                </div>
-              )}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={!canSubmit || isSubmitting}
-            className={AUTH_PRIMARY_BUTTON_CLASS_NAME}
-          >
-            {isSubmitting ? (
-              <>
-                <LoaderCircle className="animate-spin" size={20} />
-                Bitte warten
-              </>
-            ) : (
-              <>
-                {isRegistration ? "Konto erstellen" : "Anmelden"}
-                <ArrowRight size={20} strokeWidth={2.5} />
-              </>
+        {needsVerification && (
+          <div className="space-y-3">
+            <Button variant="glass" className="w-full" disabled={isSubmitting} onClick={handleResendVerification}>
+              Bestätigungs-E-Mail erneut senden
+            </Button>
+            {resendMessage && (
+              <div role="status" className={AUTH_NOTICE_CLASS_NAME}>
+                {resendMessage}
+              </div>
             )}
-          </button>
+          </div>
+        )}
 
-          <p className="px-2 text-center text-xs font-semibold leading-5 text-slate-500">
-            {isRegistration
-              ? "Nach der Registrierung bestätigst du deine E-Mail-Adresse per Link."
-              : "Melde dich mit deiner registrierten E-Mail-Adresse an."}
-          </p>
-        </form>
-      )}
+        <Button type="submit" variant="primary" size="lg" className="w-full" disabled={!canSubmit || isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <LoaderCircle className="animate-spin" size={20} aria-hidden="true" />
+              Bitte warten
+            </>
+          ) : isRegistration ? (
+            "Konto erstellen"
+          ) : (
+            "Anmelden"
+          )}
+        </Button>
+      </form>
     </AuthCard>
   )
 }

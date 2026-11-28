@@ -1,184 +1,140 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import {
-  CheckCircle2,
-  LoaderCircle,
-  RefreshCw,
-  Search,
-  ShieldCheck,
-  UserCheck,
-  UserRoundCog,
-  UserX,
-  X,
-} from "lucide-react"
-import AdminLayout from "./AdminLayout"
-import { useAuth } from "../context/AuthContext"
+import { ChevronLeft, Search } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+import AppBackground from "../components/AppBackground"
+import Avatar from "../components/Avatar"
+import { Button, Card, Chip, ConfirmDialog, EmptyState, Pill, ScreenHeader, StatTile } from "../ui/index.js"
+import { apiRequest, getErrorMessage } from "../utils/api.js"
+import { formatDate } from "../utils/format.js"
 
-const STATUS_OPTIONS = [
-  { value: "all", label: "Alle Status" },
-  { value: "pending", label: "Ausstehend" },
+const STATUS_PILLS = {
+  pending: { tone: "warning", label: "Wartet" },
+  active: { tone: "positive", label: "Aktiv" },
+  blocked: { tone: "negative", label: "Gesperrt" },
+}
+
+const FILTERS = [
+  { value: "all", label: "Alle" },
+  { value: "pending", label: "Wartend" },
   { value: "active", label: "Aktiv" },
   { value: "blocked", label: "Gesperrt" },
 ]
 
-async function readJson(response) {
-  try {
-    return await response.json()
-  } catch {
-    return {}
-  }
+const ACTION_COPY = {
+  approve: {
+    title: "Benutzer freigeben?",
+    description: (name) => `${name} kann sich danach anmelden und mitspielen.`,
+    confirmLabel: "Freigeben",
+    done: (name) => `${name} wurde freigegeben.`,
+    tone: "default",
+  },
+  block: {
+    title: "Benutzer sperren?",
+    description: (name) =>
+      `${name} wird sofort abgemeldet und kann sich nicht mehr anmelden. Gespielte Matches bleiben erhalten.`,
+    confirmLabel: "Sperren",
+    done: (name) => `${name} wurde gesperrt.`,
+    tone: "danger",
+  },
+  reactivate: {
+    title: "Benutzer reaktivieren?",
+    description: (name) => `${name} kann sich danach wieder anmelden.`,
+    confirmLabel: "Reaktivieren",
+    done: (name) => `${name} wurde reaktiviert.`,
+    tone: "default",
+  },
 }
 
-function normalizeIdentity(value) {
-  return String(value ?? "").trim().toLowerCase()
+/** Welche Aktionen für einen Benutzer angeboten werden (Admins und das eigene Konto: keine). */
+function getAvailableActions(user) {
+  if (user.role === "admin" || user.isMe) return []
+  if (user.status === "pending") return ["approve", "block"]
+  if (user.status === "active") return ["block"]
+  if (user.status === "blocked") return ["reactivate"]
+
+  return []
 }
 
-function getStatusMeta(status) {
-  if (status === "active") {
-    return {
-      label: "Aktiv",
-      className: "bg-emerald-100 text-emerald-700",
-    }
+function describeActivity(user) {
+  const parts = [`Registriert ${formatDate(user.createdAt)}`]
+
+  parts.push(user.lastLoginAt ? `zuletzt angemeldet ${formatDate(user.lastLoginAt)}` : "noch nie angemeldet")
+
+  if (user.completedMatches > 0) {
+    parts.push(`${user.completedMatches} ${user.completedMatches === 1 ? "Match" : "Matches"}`)
   }
 
-  if (status === "blocked") {
-    return {
-      label: "Gesperrt",
-      className: "bg-red-100 text-red-700",
-    }
-  }
-
-  return {
-    label: "Ausstehend",
-    className: "bg-amber-100 text-amber-700",
-  }
+  return parts.join(" · ")
 }
 
-function getActionMeta(nextStatus, currentStatus) {
-  if (nextStatus === "blocked") {
-    return {
-      eyebrow: "Benutzer sperren",
-      title: "Zugriff wirklich sperren?",
-      description:
-        "Der Benutzer kann sich anschließend nicht mehr anmelden. Bestehende Sitzungen werden beendet.",
-      confirmLabel: "Benutzer sperren",
-      confirmClassName:
-        "bg-red-500 text-white shadow-[0_16px_38px_rgba(239,68,68,0.24)] hover:bg-red-600",
-      iconClassName: "bg-red-100 text-red-600",
-      Icon: UserX,
-    }
-  }
+function UserRow({ user, busy, onAction }) {
+  const pill = user.role === "admin" ? { tone: "dark", label: "Admin" } : STATUS_PILLS[user.status]
+  const actions = getAvailableActions(user)
 
-  if (currentStatus === "blocked") {
-    return {
-      eyebrow: "Benutzer reaktivieren",
-      title: "Zugriff wieder freigeben?",
-      description:
-        "Der Benutzer erhält wieder Zugriff und kann sich erneut bei Skinz anmelden.",
-      confirmLabel: "Benutzer reaktivieren",
-      confirmClassName:
-        "bg-emerald-500 text-white shadow-[0_16px_38px_rgba(16,185,129,0.24)] hover:bg-emerald-600",
-      iconClassName: "bg-emerald-100 text-emerald-700",
-      Icon: UserCheck,
-    }
-  }
+  return (
+    <div className="border-b border-line/10 px-4 py-4 last:border-b-0">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <Avatar shortName={user.shortName} name={user.displayName} size="md" />
+          <div className="min-w-0">
+            <div className="truncate font-bold tracking-[-0.02em] text-ink">
+              {user.displayName}
+              {user.isMe && <span className="font-medium text-ink-mute"> (du)</span>}
+            </div>
+            <div className="break-all text-sm font-medium text-ink-mute">{user.email}</div>
+            <div className="mt-1 text-xs font-medium leading-relaxed text-ink-mute">{describeActivity(user)}</div>
+          </div>
+        </div>
+        {pill && <Pill tone={pill.tone}>{pill.label}</Pill>}
+      </div>
 
-  return {
-    eyebrow: "Registrierung freigeben",
-    title: "Benutzer wirklich freigeben?",
-    description:
-      "Die Registrierung wird aktiviert. Der Benutzer kann sich anschließend bei Skinz anmelden.",
-    confirmLabel: "Benutzer freigeben",
-    confirmClassName:
-      "bg-emerald-500 text-white shadow-[0_16px_38px_rgba(16,185,129,0.24)] hover:bg-emerald-600",
-    iconClassName: "bg-emerald-100 text-emerald-700",
-    Icon: UserCheck,
-  }
+      {actions.length > 0 && (
+        <div className="mt-3 flex gap-2">
+          {actions.map((action, index) => (
+            <Button
+              key={action}
+              variant={index === 0 && action !== "block" ? "primary" : "glass"}
+              className={`flex-1 ${action === "block" ? "text-red-600" : ""}`}
+              disabled={busy}
+              onClick={() => onAction(action, user)}
+            >
+              {ACTION_COPY[action].confirmLabel}
+            </Button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function AdminUsersScreen() {
-  const { user: authenticatedUser } = useAuth()
+  const navigate = useNavigate()
   const [users, setUsers] = useState([])
-  const [search, setSearch] = useState("")
-  const [status, setStatus] = useState("all")
   const [isLoading, setIsLoading] = useState(true)
-  const [activeUserId, setActiveUserId] = useState(null)
-  const [pendingAction, setPendingAction] = useState(null)
-  const [errorMessage, setErrorMessage] = useState("")
-  const [successMessage, setSuccessMessage] = useState("")
+  const [loadError, setLoadError] = useState("")
+  const [filter, setFilter] = useState("all")
+  const [search, setSearch] = useState("")
+  const [dialog, setDialog] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [actionError, setActionError] = useState("")
+  const [notice, setNotice] = useState("")
 
-  const loadUsers = useCallback(async () => {
-    setIsLoading(true)
-    setErrorMessage("")
-
-    try {
-      const response = await fetch("/api/admin/users", {
-        credentials: "same-origin",
+  const loadUsers = useCallback(() => {
+    return apiRequest("/api/auth/admin-users")
+      .then((data) => {
+        setUsers(Array.isArray(data.users) ? data.users : [])
+        setLoadError("")
       })
-      const data = await readJson(response)
-
-      if (!response.ok) {
-        throw new Error(data.error || "Benutzer konnten nicht geladen werden.")
-      }
-
-      setUsers(Array.isArray(data.users) ? data.users : [])
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Benutzer konnten nicht geladen werden."
-      )
-    } finally {
-      setIsLoading(false)
-    }
+      .catch((error) => setLoadError(getErrorMessage(error, "Benutzer konnten nicht geladen werden.")))
+      .finally(() => setIsLoading(false))
   }, [])
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      loadUsers()
-    }, 0)
-
-    return () => {
-      window.clearTimeout(timeoutId)
-    }
+    loadUsers()
   }, [loadUsers])
-
-  useEffect(() => {
-    if (!pendingAction) return undefined
-
-    function handleKeyDown(event) {
-      if (event.key === "Escape" && !activeUserId) {
-        setPendingAction(null)
-      }
-    }
-
-    document.addEventListener("keydown", handleKeyDown)
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown)
-    }
-  }, [activeUserId, pendingAction])
-
-  const filteredUsers = useMemo(() => {
-    const term = search.trim().toLocaleLowerCase("de")
-
-    return users.filter((user) => {
-      const matchesStatus = status === "all" || user.status === status
-      const haystack = [
-        user.displayName,
-        user.name,
-        user.email,
-        user.homeClubName,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLocaleLowerCase("de")
-
-      return matchesStatus && (!term || haystack.includes(term))
-    })
-  }, [search, status, users])
 
   const counts = useMemo(
     () => ({
-      total: users.length,
       pending: users.filter((user) => user.status === "pending").length,
       active: users.filter((user) => user.status === "active").length,
       blocked: users.filter((user) => user.status === "blocked").length,
@@ -186,370 +142,148 @@ export default function AdminUsersScreen() {
     [users]
   )
 
-  function isOwnAccount(user) {
-    const sameId =
-      user?.id !== undefined &&
-      authenticatedUser?.id !== undefined &&
-      String(user.id) === String(authenticatedUser.id)
-    const sameEmail =
-      normalizeIdentity(user?.email) &&
-      normalizeIdentity(user?.email) === normalizeIdentity(authenticatedUser?.email)
+  const visibleUsers = useMemo(() => {
+    const term = search.trim().toLocaleLowerCase("de")
 
-    return Boolean(user?.isCurrentUser || sameId || sameEmail)
-  }
+    return users.filter((user) => {
+      if (filter !== "all" && user.status !== filter) return false
 
-  function requestUserUpdate(user, nextStatus) {
-    if (isOwnAccount(user) && nextStatus === "blocked") return
+      return (
+        !term ||
+        [user.displayName, user.shortName, user.email].filter(Boolean).join(" ").toLocaleLowerCase("de").includes(term)
+      )
+    })
+  }, [filter, search, users])
 
-    setErrorMessage("")
-    setSuccessMessage("")
-    setPendingAction({ user, nextStatus })
-  }
+  async function handleConfirm() {
+    if (!dialog) return
 
-  async function confirmUserUpdate() {
-    if (!pendingAction || activeUserId) return
+    const { action, user } = dialog
 
-    const { user, nextStatus } = pendingAction
-
-    if (isOwnAccount(user) && nextStatus === "blocked") {
-      setPendingAction(null)
-      setErrorMessage("Das eigene Administratorkonto kann nicht gesperrt werden.")
-      return
-    }
-
-    setActiveUserId(user.id)
-    setErrorMessage("")
-    setSuccessMessage("")
+    setBusy(true)
+    setActionError("")
+    setNotice("")
 
     try {
-      const response = await fetch("/api/admin/users/status", {
-        method: "PATCH",
-        credentials: "same-origin",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          status: nextStatus,
-        }),
+      const data = await apiRequest("/api/auth/admin-user-status", {
+        method: "POST",
+        body: { userId: user.id, action },
       })
-      const data = await readJson(response)
-
-      if (!response.ok) {
-        throw new Error(data.error || "Benutzer konnte nicht aktualisiert werden.")
-      }
 
       setUsers((current) =>
-        current.map((item) => (item.id === user.id ? data.user : item))
+        current.map((entry) => (entry.id === user.id ? { ...entry, ...data.user } : entry))
       )
-      setSuccessMessage(data.message || "Benutzer wurde aktualisiert.")
-      setPendingAction(null)
+      setNotice(ACTION_COPY[action].done(user.displayName))
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Benutzer konnte nicht aktualisiert werden."
-      )
+      setActionError(getErrorMessage(error))
+
+      if (error?.code === "STATUS_CHANGED") loadUsers()
     } finally {
-      setActiveUserId(null)
+      setBusy(false)
+      setDialog(null)
     }
   }
 
-  const actionMeta = pendingAction
-    ? getActionMeta(pendingAction.nextStatus, pendingAction.user.status)
-    : null
-
   return (
-    <AdminLayout>
-      <section className="rounded-[32px] border border-white/70 bg-white/50 p-5 shadow-xl shadow-slate-900/5 backdrop-blur-3xl sm:p-7">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
-              Administration
-            </p>
-            <h1 className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950 sm:text-4xl">
-              Benutzer
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
-              Registrierungen prüfen, freigeben, sperren und reaktivieren.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={loadUsers}
-            disabled={isLoading}
-            className="flex h-12 items-center justify-center gap-2 rounded-[20px] bg-[#071819] px-5 text-sm font-black text-white disabled:opacity-50"
-          >
-            <RefreshCw
-              size={18}
-              className={isLoading ? "animate-spin" : ""}
-            />
-            Aktualisieren
-          </button>
+    <div className="relative min-h-[100dvh] overflow-x-hidden pb-[calc(3rem+env(safe-area-inset-bottom))] text-ink">
+      <AppBackground />
+      <div className="relative mx-auto max-w-md px-5 pt-[calc(1rem+env(safe-area-inset-top))]">
+        <button
+          type="button"
+          onClick={() => navigate("/profile")}
+          aria-label="Zurück zum Profil"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-card text-ink shadow-[var(--shadow-chip)]"
+        >
+          <ChevronLeft size={22} aria-hidden="true" />
+        </button>
+
+        <ScreenHeader
+          className="mt-5"
+          eyebrow="Administration"
+          title="Benutzer"
+          subtitle="Registrierungen freigeben und Konten verwalten. Golfplätze und Matches pflegst du in der Admin-App am PC."
+        />
+
+        <div className="mt-6 grid grid-cols-3 gap-2">
+          <StatTile label="Wartend" value={counts.pending} valueClassName={counts.pending > 0 ? "text-amber-600" : ""} />
+          <StatTile label="Aktiv" value={counts.active} />
+          <StatTile label="Gesperrt" value={counts.blocked} />
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            ["Gesamt", counts.total],
-            ["Ausstehend", counts.pending],
-            ["Aktiv", counts.active],
-            ["Gesperrt", counts.blocked],
-          ].map(([label, value]) => (
-            <div
-              key={label}
-              className="rounded-[22px] border border-white/80 bg-white/70 p-4 text-center"
-            >
-              <div className="text-2xl font-black text-slate-950">{value}</div>
-              <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                {label}
-              </div>
-            </div>
+        <div className="-mx-5 mt-6 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {FILTERS.map((option) => (
+            <Chip key={option.value} selected={filter === option.value} onClick={() => setFilter(option.value)}>
+              {option.label}
+            </Chip>
           ))}
         </div>
-      </section>
 
-      <section className="mt-5 rounded-[32px] border border-white/70 bg-white/45 p-5 shadow-xl shadow-slate-900/5 backdrop-blur-3xl sm:p-7">
-        <div className="grid gap-3 sm:grid-cols-[1fr_190px]">
-          <label className="relative block">
-            <span className="sr-only">Benutzer suchen</span>
-            <Search
-              size={18}
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Name oder E-Mail suchen"
-              className="h-13 w-full rounded-[20px] border border-white/80 bg-white/80 pl-12 pr-4 text-sm font-bold text-slate-950 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
-            />
-          </label>
-          <select
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
-            className="h-13 rounded-[20px] border border-white/80 bg-white/80 px-4 text-sm font-bold text-slate-700 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
-          >
-            {STATUS_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <label className="surface mt-4 flex items-center gap-3 rounded-2xl px-4">
+          <Search size={18} className="shrink-0 text-ink-mute" aria-hidden="true" />
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Name, Kürzel oder E-Mail suchen"
+            aria-label="Benutzer suchen"
+            className="h-12 w-full bg-transparent text-base font-semibold text-ink outline-none placeholder:font-medium placeholder:text-ink-mute"
+          />
+        </label>
 
-        {errorMessage && (
-          <div
-            role="alert"
-            className="mt-4 rounded-[22px] border border-red-200 bg-red-50 px-4 py-3 text-center text-sm font-bold text-red-700"
-          >
-            {errorMessage}
+        {notice && (
+          <div role="status" className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+            {notice}
           </div>
         )}
 
-        {successMessage && (
-          <div
-            role="status"
-            className="mt-4 rounded-[22px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-sm font-bold text-emerald-800"
-          >
-            {successMessage}
+        {actionError && (
+          <div role="alert" className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+            {actionError}
           </div>
         )}
 
-        {isLoading ? (
-          <div className="flex min-h-56 items-center justify-center">
-            <LoaderCircle size={30} className="animate-spin text-emerald-600" />
-          </div>
-        ) : filteredUsers.length === 0 ? (
-          <div className="mt-5 rounded-[28px] border border-dashed border-slate-300 bg-white/55 p-8 text-center">
-            <UserRoundCog className="mx-auto text-slate-300" size={36} />
-            <h2 className="mt-4 text-lg font-black text-slate-800">
-              Keine Benutzer gefunden
-            </h2>
-          </div>
-        ) : (
-          <div className="mt-5 space-y-3">
-            {filteredUsers.map((user) => {
-              const statusMeta = getStatusMeta(user.status)
-              const ownAccount = isOwnAccount(user)
-              const isUpdating = activeUserId === user.id
+        {isLoading && <p className="mt-10 text-center text-sm font-medium text-ink-mute">Benutzer werden geladen …</p>}
 
-              return (
-                <article
-                  key={user.id}
-                  className="rounded-[26px] border border-white/80 bg-white/75 p-4 shadow-sm sm:p-5"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="break-words text-lg font-black text-slate-950">
-                          {user.displayName || user.name || "Unbekannt"}
-                        </h2>
-                        {user.role === "admin" && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-950 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-white">
-                            <ShieldCheck size={11} />
-                            Admin
-                          </span>
-                        )}
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${statusMeta.className}`}
-                        >
-                          {statusMeta.label}
-                        </span>
-                      </div>
-                      <p className="mt-2 break-all text-sm font-semibold text-slate-500">
-                        {user.email}
-                      </p>
-                      <p className="mt-1 text-xs font-bold text-slate-400">
-                        HCP {user.handicapIndex ?? "–"} ·{" "}
-                        {user.homeClubName || "Kein Heimatclub"}
-                      </p>
-                    </div>
-
-                    <div className="flex w-full gap-2 sm:w-auto">
-                      {user.status !== "active" && (
-                        <button
-                          type="button"
-                          disabled={isUpdating}
-                          onClick={() => requestUserUpdate(user, "active")}
-                          className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[18px] bg-emerald-500 px-4 text-sm font-black text-white disabled:opacity-45 sm:flex-none"
-                        >
-                          {isUpdating ? (
-                            <LoaderCircle size={17} className="animate-spin" />
-                          ) : (
-                            <UserCheck size={17} />
-                          )}
-                          {user.status === "blocked"
-                            ? "Reaktivieren"
-                            : "Freigeben"}
-                        </button>
-                      )}
-
-                      {user.status === "active" && !ownAccount && (
-                        <button
-                          type="button"
-                          disabled={isUpdating}
-                          onClick={() => requestUserUpdate(user, "blocked")}
-                          className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[18px] bg-red-50 px-4 text-sm font-black text-red-600 disabled:opacity-45 sm:flex-none"
-                        >
-                          {isUpdating ? (
-                            <LoaderCircle size={17} className="animate-spin" />
-                          ) : (
-                            <UserX size={17} />
-                          )}
-                          Sperren
-                        </button>
-                      )}
-
-                      {ownAccount && (
-                        <span className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[18px] bg-emerald-50 px-4 text-sm font-black text-emerald-700 sm:flex-none">
-                          <CheckCircle2 size={17} />
-                          Eigenes Konto
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </article>
-              )
-            })}
+        {!isLoading && loadError && (
+          <div role="alert" className="mt-6 rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+            {loadError}{" "}
+            <button type="button" onClick={loadUsers} className="underline">
+              Erneut versuchen
+            </button>
           </div>
         )}
-      </section>
 
-      {pendingAction && actionMeta && (
-        <div
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-[#071819]/55 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-10 backdrop-blur-xl sm:items-center"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="user-action-title"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !activeUserId) {
-              setPendingAction(null)
+        {!isLoading && !loadError && visibleUsers.length === 0 && (
+          <EmptyState
+            className="mt-6"
+            title={users.length === 0 ? "Noch keine Benutzer" : "Nichts gefunden"}
+            description={
+              filter === "pending" && !search.trim()
+                ? "Niemand wartet gerade auf eine Freigabe."
+                : "Passe Filter oder Suche an."
             }
-          }}
-        >
-          <div className="w-full max-w-md overflow-hidden rounded-[38px] border border-white/70 bg-white/90 p-5 shadow-[0_32px_90px_rgba(7,24,25,0.34)] backdrop-blur-3xl sm:p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div
-                className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-[22px] ${actionMeta.iconClassName}`}
-              >
-                <actionMeta.Icon size={25} />
-              </div>
-              <button
-                type="button"
-                onClick={() => setPendingAction(null)}
-                disabled={Boolean(activeUserId)}
-                aria-label="Dialog schließen"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-950 text-white shadow-sm disabled:opacity-40"
-              >
-                <X size={19} />
-              </button>
-            </div>
+          />
+        )}
 
-            <div className="mt-6">
-              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-700">
-                {actionMeta.eyebrow}
-              </p>
-              <h2
-                id="user-action-title"
-                className="mt-2 text-3xl font-black tracking-[-0.045em] text-slate-950"
-              >
-                {actionMeta.title}
-              </h2>
-              <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
-                {actionMeta.description}
-              </p>
-            </div>
+        {visibleUsers.length > 0 && (
+          <Card className="mt-6 overflow-hidden">
+            {visibleUsers.map((user) => (
+              <UserRow key={user.id} user={user} busy={busy} onAction={(action, target) => setDialog({ action, user: target })} />
+            ))}
+          </Card>
+        )}
+      </div>
 
-            <div className="mt-5 rounded-[24px] border border-white/80 bg-white/75 p-4 shadow-sm">
-              <div className="break-words text-lg font-black text-slate-950">
-                {pendingAction.user.displayName ||
-                  pendingAction.user.name ||
-                  "Unbekannt"}
-              </div>
-              <div className="mt-1 break-all text-sm font-semibold text-slate-500">
-                {pendingAction.user.email}
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-2">
-              <button
-                type="button"
-                onClick={confirmUserUpdate}
-                disabled={Boolean(activeUserId)}
-                className={`flex min-h-14 w-full items-center justify-between rounded-[22px] px-5 text-left text-sm font-black transition active:scale-[0.99] disabled:opacity-45 ${actionMeta.confirmClassName}`}
-              >
-                <span className="flex min-w-0 items-center gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20">
-                    {activeUserId ? (
-                      <LoaderCircle size={18} className="animate-spin" />
-                    ) : (
-                      <actionMeta.Icon size={18} />
-                    )}
-                  </span>
-                  <span className="truncate">
-                    {activeUserId
-                      ? "Wird gespeichert..."
-                      : actionMeta.confirmLabel}
-                  </span>
-                </span>
-                <span
-                  aria-hidden="true"
-                  className="ml-4 text-xl font-black leading-none"
-                >
-                  →
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setPendingAction(null)}
-                disabled={Boolean(activeUserId)}
-                className="min-h-12 w-full rounded-[20px] px-5 text-sm font-black text-slate-500 transition hover:bg-slate-100/80 active:scale-[0.99] disabled:opacity-40"
-              >
-                Abbrechen
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </AdminLayout>
+      <ConfirmDialog
+        open={Boolean(dialog)}
+        title={dialog ? ACTION_COPY[dialog.action].title : ""}
+        description={dialog ? ACTION_COPY[dialog.action].description(dialog.user.displayName) : ""}
+        confirmLabel={dialog ? ACTION_COPY[dialog.action].confirmLabel : ""}
+        tone={dialog ? ACTION_COPY[dialog.action].tone : "default"}
+        loading={busy}
+        onConfirm={handleConfirm}
+        onCancel={() => setDialog(null)}
+      />
+    </div>
   )
 }

@@ -2,9 +2,9 @@ import { AUTH_INPUT_CLASS_NAME } from "./authStyles"
 
 export default function AuthField({ label, hint, ...inputProps }) {
   return (
-    <label className="block text-sm font-black text-slate-800">
+    <label className="block text-sm font-semibold text-ink">
       {label}
-      {hint && <span className="ml-2 text-xs font-bold text-slate-400">{hint}</span>}
+      {hint && <span className="ml-2 text-xs font-medium text-ink-mute">{hint}</span>}
       <input {...inputProps} className={AUTH_INPUT_CLASS_NAME} />
     </label>
   )
