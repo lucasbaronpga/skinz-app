@@ -17,6 +17,7 @@ import AdminRoute from "./components/AdminRoute"
 import AppBackground from "./components/AppBackground"
 import BottomNav from "./components/BottomNav"
 import { useAuth } from "./context/AuthContext"
+import DeleteAccountScreen from "./pages/DeleteAccountScreen"
 import FlightScreen from "./pages/FlightScreen"
 import ForgotPasswordScreen from "./pages/ForgotPasswordScreen"
 import HomeScreen from "./pages/HomeScreen"
@@ -27,6 +28,7 @@ import LoginScreen from "./pages/LoginScreen"
 import MatchArchiveScreen from "./pages/MatchArchiveScreen"
 import MatchDetailsScreen from "./pages/MatchDetailsScreen"
 import PlayerScreen from "./pages/PlayerScreen"
+import PrivacyScreen from "./pages/PrivacyScreen"
 import ProfileEditScreen from "./pages/ProfileEditScreen"
 import ProfileScreen from "./pages/ProfileScreen"
 import ResetPasswordScreen from "./pages/ResetPasswordScreen"
@@ -46,6 +48,7 @@ const PUBLIC_ROUTES = [
   { path: "/reset-password", element: <ResetPasswordScreen /> },
   { path: "/verify-email", element: <VerifyEmailScreen /> },
   { path: "/join", element: <JoinScreen /> },
+  { path: "/privacy", element: <PrivacyScreen /> },
 ]
 
 const PROTECTED_ROUTES = [
@@ -60,6 +63,7 @@ const PROTECTED_ROUTES = [
   { path: "/players/:id", element: <PlayerScreen /> },
   { path: "/profile", element: <ProfileScreen /> },
   { path: "/profile/edit", element: <ProfileEditScreen /> },
+  { path: "/profile/delete", element: <DeleteAccountScreen /> },
 ]
 
 const ADMIN_ROUTES = [

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { ChevronRight, Minus, Plus } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import AppBackground from "../components/AppBackground"
-import { useGame } from "../context/GameContext"
+import useCurrentLiveMatch from "../hooks/useCurrentLiveMatch"
+import useGolfCourses from "../hooks/useGolfCourses"
 import { Button, Card, Pill, ScreenHeader } from "../ui/index.js"
 import cn from "../ui/cn.js"
 import { apiRequest, getErrorMessage } from "../utils/api.js"
@@ -157,7 +158,9 @@ function FlightRow({ flight, onOpen }) {
 
 export default function RoundSetupScreen() {
   const navigate = useNavigate()
-  const { courses, coursesLoading, coursesError, hasActiveMatch } = useGame()
+  const { courses, loading: coursesLoading, error: coursesError } = useGolfCourses()
+  const { match: liveMatch } = useCurrentLiveMatch()
+  const hasActiveMatch = Boolean(liveMatch)
   const [flights, setFlights] = useState([])
   const [flightsLoading, setFlightsLoading] = useState(true)
   const [flightsError, setFlightsError] = useState("")
@@ -244,7 +247,7 @@ export default function RoundSetupScreen() {
               </div>
               <div className="mt-1 font-bold text-ink">Du bist noch auf der Runde.</div>
             </div>
-            <Button variant="primary" onClick={() => navigate("/live")}>
+            <Button variant="primary" onClick={() => navigate(`/live/${liveMatch.id}`)}>
               Weiterspielen
             </Button>
           </Card>
@@ -379,7 +382,6 @@ export default function RoundSetupScreen() {
             </p>
           </>
         )}
-
       </div>
     </div>
   )

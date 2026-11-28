@@ -1,5 +1,4 @@
-const CACHE_NAME = "skinz-cache-v4"
-
+const CACHE_NAME = "skinz-cache-v5"
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -11,25 +10,27 @@ const APP_SHELL = [
   "/apple-touch-icon.png",
 ]
 
+// Lokal (vercel dev) wird nichts zwischengespeichert, damit immer der aktuelle Code läuft.
+const IS_LOCAL_DEVELOPMENT = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(self.location.hostname)
+
 function isSameOriginRequest(requestUrl) {
   return requestUrl.origin === self.location.origin
 }
 
 function isCacheableRequest(request) {
+  if (IS_LOCAL_DEVELOPMENT) return false
   if (request.method !== "GET") return false
   if (request.headers.has("range")) return false
 
   const url = new URL(request.url)
 
+  if (url.pathname.startsWith("/api/")) return false
+
   return isSameOriginRequest(url)
 }
 
 function isCacheableResponse(response) {
-  return Boolean(
-    response &&
-      response.status === 200 &&
-      response.type === "basic"
-  )
+  return Boolean(response && response.status === 200 && response.type === "basic")
 }
 
 async function putInCache(request, response) {
@@ -37,6 +38,7 @@ async function putInCache(request, response) {
 
   try {
     const cache = await caches.open(CACHE_NAME)
+
     await cache.put(request, response.clone())
   } catch {
     // Cache writes dürfen die eigentliche App-Response nicht blockieren.
@@ -46,6 +48,7 @@ async function putInCache(request, response) {
 async function networkFirstNavigation(request) {
   try {
     const networkResponse = await fetch(request)
+
     await putInCache("/index.html", networkResponse)
 
     return networkResponse
@@ -66,6 +69,7 @@ async function cacheFirstAsset(request) {
 
   try {
     const networkResponse = await fetch(request)
+
     await putInCache(request, networkResponse)
 
     return networkResponse
@@ -78,16 +82,14 @@ async function cacheFirstAsset(request) {
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) =>
-        Promise.allSettled(
-          APP_SHELL.map((url) =>
-            cache.add(new Request(url, { cache: "reload" }))
+    (IS_LOCAL_DEVELOPMENT
+      ? Promise.resolve()
+      : caches
+          .open(CACHE_NAME)
+          .then((cache) =>
+            Promise.allSettled(APP_SHELL.map((url) => cache.add(new Request(url, { cache: "reload" }))))
           )
-        )
-      )
-      .then(() => self.skipWaiting())
+    ).then(() => self.skipWaiting())
   )
 })
 
@@ -98,7 +100,7 @@ self.addEventListener("activate", (event) => {
       .then((cacheNames) =>
         Promise.all(
           cacheNames
-            .filter((cacheName) => cacheName !== CACHE_NAME)
+            .filter((cacheName) => IS_LOCAL_DEVELOPMENT || cacheName !== CACHE_NAME)
             .map((cacheName) => caches.delete(cacheName))
         )
       )
@@ -123,4 +125,48 @@ self.addEventListener("fetch", (event) => {
   }
 
   event.respondWith(cacheFirstAsset(request))
+})
+
+// ---------- Push-Nachrichten ----------
+
+function readPushPayload(event) {
+  try {
+    return event.data ? event.data.json() : {}
+  } catch {
+    return { body: event.data ? event.data.text() : "" }
+  }
+}
+
+self.addEventListener("push", (event) => {
+  const payload = readPushPayload(event)
+  const url = typeof payload.url === "string" && payload.url.startsWith("/") ? payload.url : "/"
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title || "Skinz", {
+      body: payload.body || "",
+      tag: payload.tag || undefined,
+      renotify: Boolean(payload.tag),
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      data: { url },
+    })
+  )
+})
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close()
+
+  const targetUrl = new URL(event.notification.data?.url || "/", self.location.origin).href
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+      const existing = windows.find((client) => new URL(client.url).origin === self.location.origin)
+
+      if (existing) {
+        return existing.focus().then((client) => client.navigate(targetUrl))
+      }
+
+      return self.clients.openWindow(targetUrl)
+    })
+  )
 })

@@ -1,8 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/auth/cleanup",
+      "schedule": "0 3 * * *"
+    }
+  ],
   "rewrites": [
     {
-      "source": "/:path((?!api/|src/|lib/|@vite/|@react-refresh|node_modules/|assets/).*)",
+      "source": "/:path((?!api/|src/|lib/|@vite/|@react-refresh|node_modules/|assets/|sw.js$|manifest.webmanifest$|favicon.svg$|icon-192.png$|icon-512.png$|icon-maskable-512.png$|apple-touch-icon.png$).*)",
       "destination": "/index.html"
     }
   ],

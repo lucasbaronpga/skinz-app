@@ -24,9 +24,12 @@ createRoot(rootElement).render(
   </StrictMode>
 )
 
+/**
+ * Der Service Worker wird auch lokal registriert, damit Push-Nachrichten
+ * getestet werden können. Lokal speichert er nichts zwischen (siehe public/sw.js).
+ */
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return
-  if (!import.meta.env.PROD) return
 
   window.addEventListener("load", () => {
     navigator.serviceWorker
@@ -42,10 +45,7 @@ function registerServiceWorker() {
           if (!installingWorker) return
 
           installingWorker.addEventListener("statechange", () => {
-            if (
-              installingWorker.state === "installed" &&
-              navigator.serviceWorker.controller
-            ) {
+            if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
               installingWorker.postMessage({ type: "SKIP_WAITING" })
             }
           })

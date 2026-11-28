@@ -1,8 +1,9 @@
 import { useState } from "react"
-import { ChevronRight, LogOut, Pencil, ShieldCheck } from "lucide-react"
+import { ChevronRight, FileText, LogOut, Pencil, ShieldCheck, Trash2 } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 import AppBackground from "../components/AppBackground"
 import Avatar from "../components/Avatar"
+import NotificationSettings from "../components/NotificationSettings"
 import PlayerStats from "../components/PlayerStats"
 import { useAuth } from "../context/AuthContext"
 import useApi from "../hooks/useApi"
@@ -25,6 +26,24 @@ function Section({ title, children }) {
       <h2 className="mb-3 text-[13px] font-semibold uppercase tracking-[0.06em] text-ink-mute">{title}</h2>
       {children}
     </section>
+  )
+}
+
+function LinkRow({ to, icon: Icon, label, danger = false }) {
+  return (
+    <Link
+      to={to}
+      className={cn(
+        "flex items-center justify-between gap-3 border-b border-line/10 px-4 py-3.5 font-semibold last:border-b-0",
+        danger ? "text-red-600" : "text-ink"
+      )}
+    >
+      <span className="flex items-center gap-3">
+        <Icon size={18} aria-hidden="true" />
+        {label}
+      </span>
+      <ChevronRight size={18} className="text-ink-mute" aria-hidden="true" />
+    </Link>
   )
 }
 
@@ -143,6 +162,10 @@ export default function ProfileScreen() {
           </Section>
         )}
 
+        <Section title="Benachrichtigungen">
+          <NotificationSettings />
+        </Section>
+
         <Section title="Darstellung">
           <Segmented
             label="Farbmodus"
@@ -155,21 +178,18 @@ export default function ProfileScreen() {
           />
         </Section>
 
-        <div className="mt-9 grid gap-2">
-          {isAdmin && (
-            <Button variant="glass" className="justify-between" onClick={() => navigate("/admin")}>
-              <span className="flex items-center gap-2">
-                <ShieldCheck size={18} aria-hidden="true" />
-                Administration
-              </span>
-              <ChevronRight size={18} aria-hidden="true" />
-            </Button>
-          )}
-          <Button variant="glass" className="text-red-600" onClick={handleLogout}>
-            <LogOut size={18} aria-hidden="true" />
-            Abmelden
-          </Button>
-        </div>
+        <Section title="Konto">
+          <Card className="overflow-hidden">
+            {isAdmin && <LinkRow to="/admin" icon={ShieldCheck} label="Administration" />}
+            <LinkRow to="/privacy" icon={FileText} label="Datenschutz" />
+            {!isAdmin && <LinkRow to="/profile/delete" icon={Trash2} label="Konto löschen" danger />}
+          </Card>
+        </Section>
+
+        <Button variant="glass" className="mt-6 w-full text-red-600" onClick={handleLogout}>
+          <LogOut size={18} aria-hidden="true" />
+          Abmelden
+        </Button>
       </div>
     </div>
   )
